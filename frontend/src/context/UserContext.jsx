@@ -14,7 +14,7 @@ export const userDataContext =
 const UserContext = ({ children }) => {
 
     const serverUrl =
-        "http://localhost:6001";
+        "https://virtualassistant-backend-26od.onrender.com";
 
     const [userData, setUserData] =
         useState(null);
