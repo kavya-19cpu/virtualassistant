@@ -1,4 +1,3 @@
-
 import express from "express"
 import dotenv from "dotenv"
 import mongoose from "mongoose"
@@ -15,7 +14,7 @@ const app = express()
 // CORS
 // ===============================
 app.use(cors({
-    origin: "http://localhost:6173",
+    origin: "https://virtualassistant-461g.onrender.com",
     credentials: true
 }))
 
