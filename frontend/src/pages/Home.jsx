@@ -25,7 +25,6 @@ function Home(){
     const [historyItems,setHistoryItems]=useState([]);
     const [typedText,setTypedText]=useState("");
     const [isSending,setIsSending]=useState(false);
-    const [selectedHistory,setSelectedHistory]=useState(null);
 
     const recognitionRef=useRef(null);
     const listeningRef=useRef(false);
@@ -34,11 +33,11 @@ function Home(){
     const restartTimeoutRef=useRef(null);
 
     useEffect(()=>{
-        setHistoryItems(
-            Array.isArray(userData?.history)
-                ?userData.history
-                :[]
-        );
+        const history=Array.isArray(userData?.history)
+            ?userData.history
+            :[];
+
+        setHistoryItems(history);
     },[userData?.history]);
 
     const saveHistory=async(command,answer)=>{
@@ -56,17 +55,47 @@ function Home(){
                     typeof item==="string"
                         ?item
                         :item?.command||"";
+
                 const oldAnswer=
                     typeof item==="string"
                         ?""
                         :item?.answer||"";
 
-                return!(
+                return !(
                     oldCommand===newItem.command&&
                     oldAnswer===newItem.answer
                 );
             })
         ].slice(0,50));
+
+        setUserData(prev=>
+            prev
+                ?{
+                    ...prev,
+                    history:[
+                        newItem,
+                        ...(Array.isArray(prev.history)
+                            ?prev.history.filter(item=>{
+                                const oldCommand=
+                                    typeof item==="string"
+                                        ?item
+                                        :item?.command||"";
+
+                                const oldAnswer=
+                                    typeof item==="string"
+                                        ?""
+                                        :item?.answer||"";
+
+                                return !(
+                                    oldCommand===newItem.command&&
+                                    oldAnswer===newItem.answer
+                                );
+                            })
+                            :[])
+                    ].slice(0,50)
+                }
+                :prev
+        );
 
         try{
             const result=await axios.post(
@@ -104,10 +133,6 @@ function Home(){
         setUserText(command||"");
         setAiText(answer||"");
         setShowAIText(true);
-        setSelectedHistory({
-            command,
-            answer
-        });
         setShowMenu(false);
     };
 
@@ -116,9 +141,7 @@ function Home(){
 
         window.speechSynthesis.cancel();
 
-        const utterance=new SpeechSynthesisUtterance(
-            String(text)
-        );
+        const utterance=new SpeechSynthesisUtterance(String(text));
 
         utterance.rate=1.05;
         utterance.pitch=1;
@@ -258,6 +281,21 @@ function Home(){
             };
         }
 
+        const openSearch=text.match(
+            /^(?:open|launch|visit|go to)\s+(.+?)\s+(?:on|in|using)\s+([a-zA-Z0-9]+)$/i
+        );
+
+        if(openSearch){
+            const site=openSearch[2].toLowerCase();
+            const query=openSearch[1].trim();
+
+            return{
+                url:createSiteSearchUrl(site,query),
+                site:openSearch[2].trim(),
+                query
+            };
+        }
+
         return null;
     };
 
@@ -314,17 +352,13 @@ function Home(){
 
             const newTab=window.open(
                 parsed.href,
-                "_blank"
+                "_blank",
+                "noopener,noreferrer"
             );
 
-            if(!newTab)return false;
-
-            return true;
+            return !!newTab;
         }catch(error){
-            console.error(
-                "Invalid URL:",
-                url
-            );
+            console.error("Invalid URL:",url);
             return false;
         }
     };
@@ -338,9 +372,7 @@ function Home(){
 
         switch(type){
             case "google_open":
-                openUrl(
-                    "https://www.google.com"
-                );
+                openUrl("https://www.google.com");
                 break;
 
             case "google_search":
@@ -352,9 +384,7 @@ function Home(){
                 break;
 
             case "youtube_open":
-                openUrl(
-                    "https://www.youtube.com"
-                );
+                openUrl("https://www.youtube.com");
                 break;
 
             case "youtube_search":
@@ -381,15 +411,11 @@ function Home(){
                 break;
 
             case "instagram_open":
-                openUrl(
-                    "https://www.instagram.com"
-                );
+                openUrl("https://www.instagram.com");
                 break;
 
             case "facebook_open":
-                openUrl(
-                    "https://www.facebook.com"
-                );
+                openUrl("https://www.facebook.com");
                 break;
 
             case "weather_show":
@@ -421,13 +447,8 @@ function Home(){
         return handled;
     };
 
-    const processCommand=async(
-        command,
-        shouldSpeak=true
-    )=>{
-        const cleanedCommand=String(
-            command||""
-        ).trim();
+    const processCommand=async(command,shouldSpeak=true)=>{
+        const cleanedCommand=String(command||"").trim();
 
         if(
             !cleanedCommand||
@@ -441,13 +462,10 @@ function Home(){
         setUserText(cleanedCommand);
         setAiText("");
         setShowAIText(false);
-        setSelectedHistory(null);
         setIsAIActive(true);
 
         try{
-            const siteSearch=getSearchUrl(
-                cleanedCommand
-            );
+            const siteSearch=getSearchUrl(cleanedCommand);
 
             if(siteSearch?.url){
                 const message=
@@ -456,12 +474,12 @@ function Home(){
                 setAiText(message);
                 setShowAIText(true);
 
-                await saveHistory(
+                openUrl(siteSearch.url);
+
+                void saveHistory(
                     cleanedCommand,
                     message
                 );
-
-                openUrl(siteSearch.url);
 
                 if(shouldSpeak){
                     speak(message);
@@ -485,13 +503,13 @@ function Home(){
                 setAiText(message);
                 setShowAIText(true);
 
-                await saveHistory(
-                    cleanedCommand,
-                    message
-                );
-
                 openUrl(
                     `https://www.google.com/search?q=${encodeURIComponent(query)}`
+                );
+
+                void saveHistory(
+                    cleanedCommand,
+                    message
                 );
 
                 if(shouldSpeak){
@@ -503,9 +521,7 @@ function Home(){
                 return;
             }
 
-            const directUrl=getDirectUrl(
-                cleanedCommand
-            );
+            const directUrl=getDirectUrl(cleanedCommand);
 
             if(directUrl){
                 const siteName=cleanedCommand
@@ -515,18 +531,17 @@ function Home(){
                     )
                     .trim();
 
-                const message=
-                    `Opening ${siteName}.`;
+                const message=`Opening ${siteName}.`;
 
                 setAiText(message);
                 setShowAIText(true);
 
-                await saveHistory(
+                openUrl(directUrl);
+
+                void saveHistory(
                     cleanedCommand,
                     message
                 );
-
-                openUrl(directUrl);
 
                 if(shouldSpeak){
                     speak(message);
@@ -537,9 +552,7 @@ function Home(){
                 return;
             }
 
-            const result=await getGeminiResponse(
-                cleanedCommand
-            );
+            const result=await getGeminiResponse(cleanedCommand);
 
             let parsedResult=result;
 
@@ -550,14 +563,10 @@ function Home(){
                     .trim();
 
                 try{
-                    parsedResult=JSON.parse(
-                        cleanResult
-                    );
+                    parsedResult=JSON.parse(cleanResult);
                 }catch{
                     const jsonMatch=
-                        cleanResult.match(
-                            /{[\s\S]*}/
-                        );
+                        cleanResult.match(/{[\s\S]*}/);
 
                     if(jsonMatch){
                         try{
@@ -587,7 +596,7 @@ function Home(){
                 setAiText(errorText);
                 setShowAIText(true);
 
-                await saveHistory(
+                void saveHistory(
                     cleanedCommand,
                     errorText
                 );
@@ -614,7 +623,7 @@ function Home(){
                 setAiText(errorText);
                 setShowAIText(true);
 
-                await saveHistory(
+                void saveHistory(
                     cleanedCommand,
                     errorText
                 );
@@ -631,7 +640,7 @@ function Home(){
             setAiText(responseText);
             setShowAIText(true);
 
-            await saveHistory(
+            void saveHistory(
                 cleanedCommand,
                 responseText
             );
@@ -668,7 +677,7 @@ function Home(){
             setAiText(errorText);
             setShowAIText(true);
 
-            await saveHistory(
+            void saveHistory(
                 cleanedCommand,
                 errorText
             );
@@ -726,16 +735,14 @@ function Home(){
 
         if(!SpeechRecognition)return;
 
-        const recognition=
-            new SpeechRecognition();
+        const recognition=new SpeechRecognition();
 
         recognition.continuous=true;
         recognition.lang="en-US";
         recognition.interimResults=false;
         recognition.maxAlternatives=1;
 
-        recognitionRef.current=
-            recognition;
+        recognitionRef.current=recognition;
 
         recognition.onstart=()=>{
             listeningRef.current=true;
@@ -804,10 +811,12 @@ function Home(){
                 lowerTranscript==="hi"||
                 lowerTranscript==="hello"
             ){
-                const answer=
-                    "Yes, I am listening.";
+                const answer="Yes, I am listening.";
 
-                await saveHistory(
+                setAiText(answer);
+                setShowAIText(true);
+
+                void saveHistory(
                     transcript,
                     answer
                 );
@@ -997,7 +1006,6 @@ function Home(){
                 <div className="w-full flex flex-col items-center justify-center px-5 box-border">
 
                     <div className="relative w-[clamp(190px,50vw,300px)] h-[clamp(280px,48vh,400px)] flex items-center justify-center overflow-hidden rounded-[20px] bg-black/10">
-
                         {assistantImage?(
                             <img
                                 src={assistantImage}
@@ -1009,7 +1017,6 @@ function Home(){
                                 🤖
                             </div>
                         )}
-
                     </div>
 
                     <div className="mt-3.5 text-white text-2xl font-semibold text-center max-sm:text-xl">
@@ -1032,7 +1039,6 @@ function Home(){
 
                     <div className="w-full max-w-175 mt-5 px-2">
                         <div className="flex items-center gap-2 w-full">
-
                             <input
                                 type="text"
                                 value={typedText}
@@ -1050,9 +1056,7 @@ function Home(){
                             />
 
                             <button
-                                onClick={
-                                    handleSendText
-                                }
+                                onClick={handleSendText}
                                 disabled={
                                     isSending||
                                     !typedText.trim()
@@ -1061,7 +1065,6 @@ function Home(){
                             >
                                 {isSending?"...":"Send"}
                             </button>
-
                         </div>
                     </div>
 
@@ -1100,7 +1103,6 @@ function Home(){
             )}
 
             <div className="fixed top-5 right-5 z-1200 flex flex-col items-end gap-3">
-
                 <button
                     onClick={handleLogout}
                     className="px-4.5 py-2.5 border-none rounded-[10px] bg-red-500 hover:bg-red-600 text-white text-sm font-semibold cursor-pointer whitespace-nowrap transition-all duration-150 active:scale-95 shadow-lg"
@@ -1114,7 +1116,6 @@ function Home(){
                 >
                     Customize your Assistant
                 </button>
-
             </div>
 
             <div
@@ -1135,9 +1136,7 @@ function Home(){
                         :"-translate-x-full"
                 }`}
             >
-
                 <div className="flex items-center justify-between px-5 py-5 border-b border-white/10 shrink-0">
-
                     <div>
                         <h2 className="text-white text-lg sm:text-xl font-bold m-0">
                             Assistant Menu
@@ -1157,11 +1156,9 @@ function Home(){
                     >
                         <IoMdClose/>
                     </button>
-
                 </div>
 
                 <div className="px-5 pt-5 pb-3 flex items-center justify-between shrink-0">
-
                     <h3 className="text-white text-base font-semibold m-0">
                         History
                     </h3>
@@ -1172,73 +1169,62 @@ function Home(){
                             ?"item"
                             :"items"}
                     </span>
-
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-4 pb-5 dark-scrollbar">
-
                     {historyItems.length?(
                         <div className="flex flex-col gap-2">
+                            {historyItems.map((item,index)=>{
+                                const command=
+                                    typeof item==="string"
+                                        ?item
+                                        :item?.command||
+                                            item?.text||
+                                            item?.query||
+                                            "";
 
-                            {historyItems.map(
-                                (item,index)=>{
-                                    const command=
-                                        typeof item==="string"
-                                            ?item
-                                            :item?.command||
-                                                item?.text||
-                                                item?.query||
-                                                "";
+                                const answer=
+                                    typeof item==="string"
+                                        ?""
+                                        :item?.answer||"";
 
-                                    const answer=
-                                        typeof item==="string"
-                                            ?""
-                                            :item?.answer||"";
-
-                                    return(
-                                        <button
-                                            key={
-                                                item?._id||
-                                                `${index}-${command}`
-                                            }
-                                            onClick={()=>
-                                                showAnswer(
-                                                    command,
-                                                    answer
-                                                )
-                                            }
-                                            className="w-full text-left group px-4 py-3 rounded-xl bg-white/4 hover:bg-white/8 border border-white/6 hover:border-blue-400/30 text-gray-300 hover:text-white text-sm leading-relaxed wrap-break-word transition-all duration-150 cursor-pointer"
-                                        >
-
-                                            <div className="flex flex-col gap-3 min-w-0 w-full">
-
-                                                <div>
-                                                    <div className="text-white font-medium">
-                                                        {command}
-                                                    </div>
+                                return(
+                                    <button
+                                        key={
+                                            item?._id||
+                                            `${index}-${command}`
+                                        }
+                                        onClick={()=>
+                                            showAnswer(
+                                                command,
+                                                answer
+                                            )
+                                        }
+                                        className="w-full text-left group px-4 py-3 rounded-xl bg-white/4 hover:bg-white/8 border border-white/6 hover:border-blue-400/30 text-gray-300 hover:text-white text-sm leading-relaxed wrap-break-word transition-all duration-150 cursor-pointer"
+                                    >
+                                        <div className="flex flex-col gap-3 min-w-0 w-full">
+                                            <div>
+                                                <div className="text-white font-medium">
+                                                    {command}
                                                 </div>
-
-                                                <div>
-                                                    <div className="text-gray-500 text-xs">
-                                                        Answer:
-                                                    </div>
-
-                                                    <div className="text-gray-400 text-sm leading-relaxed mt-1">
-                                                        {answer||"No answer saved."}
-                                                    </div>
-                                                </div>
-
                                             </div>
 
-                                        </button>
-                                    );
-                                }
-                            )}
+                                            <div>
+                                                <div className="text-gray-500 text-xs">
+                                                    Answer:
+                                                </div>
 
+                                                <div className="text-gray-400 text-sm leading-relaxed mt-1">
+                                                    {answer||"No answer saved."}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
                     ):(
                         <div className="h-full min-h-62.5 flex flex-col items-center justify-center text-center px-5">
-
                             <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-500 text-xl mb-4">
                                 ✦
                             </div>
@@ -1250,14 +1236,10 @@ function Home(){
                             <p className="text-gray-600 text-xs mt-2 max-w-55 leading-relaxed">
                                 Your questions and answers will appear here.
                             </p>
-
                         </div>
                     )}
-
                 </div>
-
             </aside>
-
         </div>
     );
 }
