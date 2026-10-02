@@ -4,7 +4,7 @@ import {
     updateAssistant,
     askToAssistant,
     saveHistory
-} from "../controllers/user.controller.js";
+} from "../controllers/user.controllers.js";
 
 import isAuth from "../middlewares/isAuth.js";
 
