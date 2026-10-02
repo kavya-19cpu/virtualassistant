@@ -1,75 +1,110 @@
-
-import React, { useState, useContext } from "react";
-import { IoEye, IoEyeOff } from "react-icons/io5";
-import { useNavigate } from "react-router-dom";
+import React,{useState,useContext} from "react";
+import {IoEye,IoEyeOff} from "react-icons/io5";
+import {useNavigate} from "react-router-dom";
 import axios from "axios";
-
 import bg from "../assets/AuthPg.png";
-import { userDataContext } from "../context/UserContext.jsx";
+import {userDataContext} from "../context/UserContext.jsx";
 
-const SignUp = () => {
-    const [showPassword, setShowPassword] = useState(false);
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [err, setErr] = useState("");
+const SignUp=()=>{
 
-    const { serverUrl, setUserData } = useContext(userDataContext);
-    const navigate = useNavigate();
+    const [showPassword,setShowPassword]=
+        useState(false);
 
-    const handleSignUp = async (e) => {
+    const [name,setName]=
+        useState("");
+
+    const [email,setEmail]=
+        useState("");
+
+    const [password,setPassword]=
+        useState("");
+
+    const [loading,setLoading]=
+        useState(false);
+
+    const [err,setErr]=
+        useState("");
+
+    const {
+        serverUrl,
+        setUserData
+    }=useContext(userDataContext);
+
+    const navigate=useNavigate();
+
+    const handleSignUp=async e=>{
         e.preventDefault();
+
         setErr("");
 
-        const nameRegex = /^[A-Za-z]+(?: [A-Za-z]+)*$/;
+        const nameRegex=
+            /^[A-Za-z]+(?: [A-Za-z]+)*$/;
 
-        if (!nameRegex.test(name.trim())) {
-            setErr("Name should contain letters and spaces only");
+        if(!nameRegex.test(name.trim())){
+            setErr(
+                "Name should contain letters and spaces only"
+            );
             return;
         }
 
         setLoading(true);
 
-        try {
-            const result = await axios.post(
-                `${serverUrl}/api/auth/SignUp`,
-                {
-                    name: name.trim(),
-                    email,
-                    password,
-                },
-                {
-                    withCredentials: true,
-                }
-            );
+        try{
 
-            console.log(result.data);
+            const result=
+                await axios.post(
+                    `${serverUrl}/api/auth/SignUp`,
+                    {
+                        name:name.trim(),
+                        email:
+                            email.trim().toLowerCase(),
+                        password
+                    },
+                    {
+                        withCredentials:true
+                    }
+                );
+
             setUserData(result.data);
+
             navigate("/customize");
-        } catch (error) {
-            console.log("STATUS:", error.response?.status);
-            console.log("BACKEND RESPONSE:", error.response?.data);
+
+        }catch(error){
+
+            console.error(
+                "SIGN UP ERROR:",
+                error.response?.data||
+                error.message
+            );
 
             setUserData(null);
+
             setErr(
-                error.response?.data?.message ||
+                error.response?.data?.message||
                 "Something went wrong"
             );
-        } finally {
+
+        }finally{
             setLoading(false);
         }
     };
 
-    return (
-        <div
-            className="flex min-h-screen w-full items-center justify-center bg-cover bg-center bg-no-repeat px-4 py-6 sm:px-6 md:px-8"
-            style={{ backgroundImage: `url(${bg})` }}
-        >
+    return(
+        <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#05060b] px-4 py-6 sm:px-6 md:px-8">
+
+            <img
+                src={bg}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover object-center"
+            />
+
+            <div className="absolute inset-0 bg-black/25"/>
+
             <form
                 onSubmit={handleSignUp}
-                className="flex min-h-140 w-full max-w-125 flex-col items-center justify-center gap-4 rounded-xl bg-[#00000062] px-5 py-8 shadow-lg shadow-black/70 backdrop-blur-md sm:min-h-150 sm:gap-5 sm:px-8 sm:py-10 md:min-h-155 md:px-10"
+                className="relative z-10 flex min-h-140 w-full max-w-125 flex-col items-center justify-center gap-4 rounded-xl bg-[#00000062] px-5 py-8 shadow-lg shadow-black/70 backdrop-blur-md sm:min-h-150 sm:gap-5 sm:px-8 sm:py-10 md:min-h-155 md:px-10"
             >
+
                 <h1 className="mb-4 text-center text-2xl font-semibold leading-tight text-white sm:mb-6 sm:text-[28px] md:text-[30px]">
                     Register to{" "}
                     <span className="text-blue-400">
@@ -83,7 +118,9 @@ const SignUp = () => {
                     autoComplete="name"
                     required
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={e=>
+                        setName(e.target.value)
+                    }
                     pattern="[A-Za-z]+(?: [A-Za-z]+)*"
                     title="Name should contain letters and spaces only"
                     className="h-13 w-full rounded-full border-2 border-white bg-transparent px-4 text-base text-white outline-none transition placeholder:text-gray-300 focus:border-blue-400 sm:h-14 sm:px-5 sm:text-[17px] md:h-15 md:text-[18px]"
@@ -95,38 +132,56 @@ const SignUp = () => {
                     autoComplete="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={e=>
+                        setEmail(e.target.value)
+                    }
                     className="h-13 w-full rounded-full border-2 border-white bg-transparent px-4 text-base text-white outline-none transition placeholder:text-gray-300 focus:border-blue-400 sm:h-14 sm:px-5 sm:text-[17px] md:h-15 md:text-[18px]"
                 />
 
                 <div className="relative h-13 w-full rounded-full border-2 border-white bg-transparent text-white transition focus-within:border-blue-400 sm:h-14 md:h-15">
+
                     <input
-                        type={showPassword ? "text" : "password"}
+                        type={
+                            showPassword
+                                ?"text"
+                                :"password"
+                        }
                         placeholder="Password"
                         autoComplete="new-password"
                         required
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={e=>
+                            setPassword(
+                                e.target.value
+                            )
+                        }
                         className="h-full w-full rounded-full bg-transparent px-4 pr-14 text-base text-white outline-none placeholder:text-gray-300 sm:px-5 sm:text-[17px] md:text-[18px]"
                     />
 
                     <button
                         type="button"
                         aria-label={
-                            showPassword ? "Hide password" : "Show password"
+                            showPassword
+                                ?"Hide password"
+                                :"Show password"
                         }
-                        onClick={() => setShowPassword((prev) => !prev)}
+                        onClick={()=>
+                            setShowPassword(
+                                prev=>!prev
+                            )
+                        }
                         className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-white sm:right-5"
                     >
-                        {showPassword ? (
-                            <IoEyeOff className="h-5 w-5 sm:h-6 sm:w-6" />
-                        ) : (
-                            <IoEye className="h-5 w-5 sm:h-6 sm:w-6" />
+                        {showPassword?(
+                            <IoEyeOff className="h-5 w-5 sm:h-6 sm:w-6"/>
+                        ):(
+                            <IoEye className="h-5 w-5 sm:h-6 sm:w-6"/>
                         )}
                     </button>
+
                 </div>
 
-                {err && (
+                {err&&(
                     <p className="w-full wrap-break-word text-center text-sm text-red-500 sm:text-base">
                         *{err}
                     </p>
@@ -137,20 +192,29 @@ const SignUp = () => {
                     disabled={loading}
                     className="mt-3 h-12 min-w-35 rounded-full bg-white px-6 text-base font-semibold text-black transition hover:bg-gray-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 sm:mt-5 sm:h-14 sm:min-w-37.5 sm:text-[18px] md:h-15 md:text-[19px]"
                 >
-                    {loading ? "Loading..." : "Sign Up"}
+                    {loading
+                        ?"Loading..."
+                        :"Sign Up"}
                 </button>
 
-                <p className="mt-2 cursor-pointer text-center text-sm text-white sm:text-base md:text-[18px]">
+                <p className="mt-2 text-center text-sm text-white sm:text-base md:text-[18px]">
+
                     Already have an account?{" "}
+
                     <button
                         type="button"
-                        onClick={() => navigate("/signin")}
+                        onClick={()=>
+                            navigate("/signin")
+                        }
                         className="text-blue-400 hover:underline"
                     >
                         Sign In
                     </button>
+
                 </p>
+
             </form>
+
         </div>
     );
 };
