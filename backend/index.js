@@ -15,7 +15,7 @@ const app = express()
 // CORS
 // ===============================
 app.use(cors({
-    origin: "https://virtualassistant-461g.onrender.com",
+origin: "https://virtualassistant-frontend-pebc.onrender.com",
     credentials: true
 }))
 
