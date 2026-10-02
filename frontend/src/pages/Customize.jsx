@@ -1,64 +1,344 @@
-import React, { useContext, useRef } from 'react'
-import Card from '../components/Card'
-import image1 from "../assets/image1.webp"
-import image2 from "../assets/image2.webp"
-import image3 from "../assets/image3.png"
-import image4 from "../assets/image4.webp"
-import image6 from "../assets/image6.webp"
-import { useNavigate } from 'react-router-dom'
+import React, {
+    useContext,
+    useRef
+} from "react";
+
+import Card from "../components/Card";
+
+import image1 from "../assets/image1.webp";
+import image2 from "../assets/image2.webp";
+import image3 from "../assets/image3.png";
+import image4 from "../assets/image4.webp";
+import image6 from "../assets/image6.webp";
+
+import { useNavigate } from "react-router-dom";
 import { BiImageAdd } from "react-icons/bi";
-import { userDataContext } from '../context/UserContext'
+import { userDataContext } from "../context/UserContext";
 import { IoMdArrowBack } from "react-icons/io";
 
 
-
-
 const Customize = () => {
-  const { backendImage, setBackendImage, frontendImage, setFrontendImage, selectedImage, setSelectedImage
-  } = useContext(userDataContext)
 
-  const navigate = useNavigate()
-
-  const inputImage = useRef()
-  const handleImage = (e) => {
-    const file = e.target.files[0]
-    setBackendImage(file)
-    setFrontendImage(URL.createObjectURL(file))
-  }
+    const {
+        backendImage,
+        setBackendImage,
+        frontendImage,
+        setFrontendImage,
+        selectedImage,
+        setSelectedImage
+    } = useContext(userDataContext);
 
 
-  return (
-    <div className='w-full h-screen bg-linear-to-t from-[black] to-[#030353] flex justify-center items-center flex-col p-5'>
-         <IoMdArrowBack className='absolute top-7.5 teft-7.5 text-white cursor-pointer w-6.25 h-6.25 'onClick={()=>navigate("/")}/>
-      <h1 className='text-white mb-7.5 text-7.5 text-center'>Select your<span className='text-blue-200'> Assistant Image</span> </h1>
-      <div className='w-[90%] max-w-225 flex justify-center items-center flex-wrap gap-3.75'>
-        <Card image={image1} />
-        <Card image={image2} />
-        <Card image={image3} />
-        <Card image={image4} />
-        <Card image={image6} />
-        <div className={`w-17.5 h-35 lg:w-37.5 lg:h-62.5 bg-[#020220] border-2 border-[blue] rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-blue-950 cursor-pointer hover:border-4 hover:border-white flex items-center justify-center ${selectedImage == "input" ? "border-4 border-white shadow-2xl shadow-blue-950" : null}`} onClick={() => {
-          inputImage.current.click()
-          setSelectedImage("input")
-          
-        }}>
-
-          {!frontendImage && <BiImageAdd className='text-white w-6.25 h-6.25' />
-
-          }
-          {frontendImage && <img src={frontendImage} className='h-full object-cover' />}
+    const navigate = useNavigate();
 
 
+    const inputImage = useRef();
+
+
+    const handleImage = (e) => {
+
+        const file = e.target.files[0];
+
+        if (!file) return;
+
+
+        setBackendImage(file);
+
+        setFrontendImage(
+            URL.createObjectURL(file)
+        );
+    };
+
+
+    return (
+
+        <div
+            className="
+                w-full
+                min-h-screen
+
+                bg-linear-to-t
+                from-black
+                to-[#030353]
+
+                flex
+                flex-col
+
+                justify-center
+                items-center
+
+                px-4
+                py-8
+
+                sm:px-6
+                md:px-8
+
+                overflow-x-hidden
+            "
+        >
+
+            {/* BACK BUTTON */}
+
+            <button
+                type="button"
+                onClick={() =>
+                    navigate("/")
+                }
+                className="
+                    absolute
+
+                    top-4
+                    left-4
+
+                    sm:top-6
+                    sm:left-6
+
+                    md:top-7
+                    md:left-7
+
+                    w-10
+                    h-10
+
+                    sm:w-11
+                    sm:h-11
+
+                    flex
+                    items-center
+                    justify-center
+
+                    text-white
+
+                    bg-white/5
+                    hover:bg-white/10
+
+                    rounded-full
+
+                    transition
+
+                    cursor-pointer
+                "
+                aria-label="Go back"
+            >
+
+                <IoMdArrowBack
+                    className="
+                        w-6
+                        h-6
+                    "
+                />
+
+            </button>
+
+
+            {/* HEADING */}
+
+            <h1
+                className="
+                    text-white
+
+                    font-semibold
+                    text-center
+
+                    leading-tight
+
+                    mb-7
+
+                    text-[26px]
+                    sm:text-[32px]
+                    md:text-[38px]
+                "
+            >
+
+                Select your
+
+                <span className="text-blue-200">
+                    {" "}Assistant Image
+                </span>
+
+            </h1>
+
+
+            {/* IMAGE GRID */}
+
+            <div
+                className="
+                    w-full
+                    max-w-225
+
+                    grid
+
+                    grid-cols-3
+                    sm:grid-cols-3
+                    md:grid-cols-3
+                    lg:grid-cols-3
+
+                    gap-3
+                    sm:gap-4
+                    md:gap-5
+
+                    justify-items-center
+
+                    px-2
+                "
+            >
+
+                <Card image={image1} />
+
+                <Card image={image2} />
+
+                <Card image={image3} />
+
+                <Card image={image4} />
+
+                <Card image={image6} />
+
+
+                {/* UPLOAD CARD */}
+
+                <div
+                    onClick={() => {
+
+                        inputImage.current.click();
+
+                        setSelectedImage("input");
+
+                    }}
+                    className={`
+                        w-full
+                        max-w-30
+
+                        aspect-3/5
+
+                        sm:max-w-37.5
+
+                        bg-[#020220]
+
+                        border-2
+                        border-blue-600
+
+                        rounded-2xl
+
+                        overflow-hidden
+
+                        cursor-pointer
+
+                        flex
+                        items-center
+                        justify-center
+
+                        hover:border-4
+                        hover:border-white
+
+                        hover:shadow-2xl
+                        hover:shadow-blue-950
+
+                        transition
+
+                        ${
+                            selectedImage === "input"
+                                ? "border-4 border-white shadow-2xl shadow-blue-950"
+                                : ""
+                        }
+                    `}
+                >
+
+                    {!frontendImage && (
+
+                        <BiImageAdd
+                            className="
+                                text-white
+
+                                w-8
+                                h-8
+
+                                sm:w-10
+                                sm:h-10
+                            "
+                        />
+
+                    )}
+
+
+                    {frontendImage && (
+
+                        <img
+                            src={frontendImage}
+                            alt="Uploaded assistant"
+                            className="
+                                w-full
+                                h-full
+                                object-cover
+                            "
+                        />
+
+                    )}
+
+                </div>
+
+
+                {/* FILE INPUT */}
+
+                <input
+                    type="file"
+                    accept="image/*"
+                    ref={inputImage}
+                    hidden
+                    onChange={handleImage}
+                />
+
+            </div>
+
+
+            {/* NEXT BUTTON */}
+
+            {selectedImage && (
+
+                <button
+                    type="button"
+                    onClick={() =>
+                        navigate("/customize2")
+                    }
+                    className="
+                        min-w-32.5
+                        sm:min-w-37.5
+
+                        h-12
+                        sm:h-14
+                        md:h-15
+
+                        mt-7
+
+                        px-6
+
+                        text-black
+                        font-semibold
+
+                        bg-white
+                        rounded-full
+
+                        text-base
+                        sm:text-[18px]
+                        md:text-[19px]
+
+                        cursor-pointer
+
+                        hover:bg-gray-200
+                        active:scale-95
+
+                        transition
+                    "
+                >
+
+                    Next
+
+                </button>
+
+            )}
 
         </div>
-        <input type="file" accept='image/*' ref={inputImage} hidden onChange={handleImage} />
-      </div>
-      {selectedImage && <button className='min-w-37.5 h-15 mt-7.5  text-black font-semibold cursor-pointer bg-white rounded-full text-4.75' onClick={() => navigate("/customize2")}>Next</button>}
+
+    );
+};
 
 
-    </div>
-  )
-}
-
-export default Customize
-
+export default Customize;

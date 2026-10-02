@@ -1,81 +1,158 @@
-import React, { useState, useContext } from 'react';
-import bg from "../assets/AuthPg.png"
-import { IoEye } from "react-icons/io5";
-import { IoEyeOff } from "react-icons/io5";
-import { useNavigate } from 'react-router-dom';
-import { userDataContext } from "../context/UserContext.jsx";
+
+import React, { useState, useContext } from "react";
+import { IoEye, IoEyeOff } from "react-icons/io5";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
+
+import bg from "../assets/AuthPg.png";
+import { userDataContext } from "../context/UserContext.jsx";
+
 const SignUp = () => {
-    const [showPassword, setShowPassword] = useState(false)
-    const { serverUrl, userData, setUserData } = useContext(userDataContext)
-    const navigate = useNavigate()
-    const [name, setName] = useState("")
-    const [email, setEmail] = useState("")
-    const [loading, setLoading] = useState(false)
+    const [showPassword, setShowPassword] = useState(false);
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [err, setErr] = useState("");
 
-    const [password, setPassword] = useState("")
-    const [err, setErr] = useState("")
+    const { serverUrl, setUserData } = useContext(userDataContext);
+    const navigate = useNavigate();
+
     const handleSignUp = async (e) => {
-        e.preventDefault()
-        setErr("")
-        setLoading(true)
-        try {
-            let result = await axios.post(
-                `${serverUrl}/api/auth/SignUp`,
-                { name, email, password },
-                { withCredentials: true }
-            )
+        e.preventDefault();
+        setErr("");
 
-            console.log(result.data)
+        const nameRegex = /^[A-Za-z]+(?: [A-Za-z]+)*$/;
 
-            setUserData(result.data)
-            navigate("/customize")
-            setLoading(false)
-
-
-        } catch (error) {
-            console.log("STATUS:", error.response?.status)
-            console.log("BACKEND RESPONSE:", error.response?.data)
-
-            setUserData(null)
-            setLoading(false)
-            setErr(error.response?.data?.message || "Something went wrong")
+        if (!nameRegex.test(name.trim())) {
+            setErr("Name should contain letters and spaces only");
+            return;
         }
-    }
+
+        setLoading(true);
+
+        try {
+            const result = await axios.post(
+                `${serverUrl}/api/auth/SignUp`,
+                {
+                    name: name.trim(),
+                    email,
+                    password,
+                },
+                {
+                    withCredentials: true,
+                }
+            );
+
+            console.log(result.data);
+            setUserData(result.data);
+            navigate("/customize");
+        } catch (error) {
+            console.log("STATUS:", error.response?.status);
+            console.log("BACKEND RESPONSE:", error.response?.data);
+
+            setUserData(null);
+            setErr(
+                error.response?.data?.message ||
+                "Something went wrong"
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
-        <div className='w-full h-screen bg-cover flex justify-center items-center' style={{ backgroundImage: `url(${bg})` }}>
+        <div
+            className="flex min-h-screen w-full items-center justify-center bg-cover bg-center bg-no-repeat px-4 py-6 sm:px-6 md:px-8"
+            style={{ backgroundImage: `url(${bg})` }}
+        >
+            <form
+                onSubmit={handleSignUp}
+                className="flex min-h-140 w-full max-w-125 flex-col items-center justify-center gap-4 rounded-xl bg-[#00000062] px-5 py-8 shadow-lg shadow-black/70 backdrop-blur-md sm:min-h-150 sm:gap-5 sm:px-8 sm:py-10 md:min-h-155 md:px-10"
+            >
+                <h1 className="mb-4 text-center text-2xl font-semibold leading-tight text-white sm:mb-6 sm:text-[28px] md:text-[30px]">
+                    Register to{" "}
+                    <span className="text-blue-400">
+                        Virtual Assistant
+                    </span>
+                </h1>
 
-            <form className="w-[90%] h-150 max-w-125 bg-[#00000062] backdrop-blur shadow-lg shadow-black flex flex-col items-center justify-center gap-5 px-5" onSubmit={handleSignUp}>
+                <input
+                    type="text"
+                    placeholder="Enter your Name"
+                    autoComplete="name"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    pattern="[A-Za-z]+(?: [A-Za-z]+)*"
+                    title="Name should contain letters and spaces only"
+                    className="h-13 w-full rounded-full border-2 border-white bg-transparent px-4 text-base text-white outline-none transition placeholder:text-gray-300 focus:border-blue-400 sm:h-14 sm:px-5 sm:text-[17px] md:h-15 md:text-[18px]"
+                />
 
-                <h1 className='text-white text-[30px] font-semibold mb-7.5'>Register to<span className='text-blue-400'>Virtual Assistant</span> </h1>
+                <input
+                    type="email"
+                    placeholder="Email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-13 w-full rounded-full border-2 border-white bg-transparent px-4 text-base text-white outline-none transition placeholder:text-gray-300 focus:border-blue-400 sm:h-14 sm:px-5 sm:text-[17px] md:h-15 md:text-[18px]"
+                />
 
-                <input type="text" placeholder='Enter your Name' className='w-full h-15 outline-none border-2 border-white bg-transparent text-white placeholder-gray-300 px-5 py-2.5 rounded-full text-4.5' required onChange={(e) => setName(e.target.value)} value={name} />
+                <div className="relative h-13 w-full rounded-full border-2 border-white bg-transparent text-white transition focus-within:border-blue-400 sm:h-14 md:h-15">
+                    <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Password"
+                        autoComplete="new-password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="h-full w-full rounded-full bg-transparent px-4 pr-14 text-base text-white outline-none placeholder:text-gray-300 sm:px-5 sm:text-[17px] md:text-[18px]"
+                    />
 
-                <input type="email" placeholder='Email' className='w-full h-15 outline-none border-2 border-white bg-transparent text-white placeholder-gray-300 px-5 py-2.5 rounded-full text-4.5' required onChange={(e) => setEmail(e.target.value)} value={email} />
-
-
-
-                <div className='w-full h-15 border-2 border-white bg-transparent text-white rounded-full text-4.5 relative'>
-
-                    <input type={showPassword ? "text" : "password"} placeholder='password' autoComplete="new-password"
-                        className='w-full h-full outline-none  bg-transparent placeholder-gray-300 px-5 py-2.5' required onChange={(e) => setPassword(e.target.value)} value={password} />
-                    {!showPassword && <IoEye className='absolute top-4.5 right-5 w-6.25 text-[white] cursor-pointer' onClick={() => setShowPassword(true)} />}
-                    {showPassword && <IoEyeOff className='absolute top-4.5 right-5 w-6.25 text-[white] cursor-pointer' onClick={() => setShowPassword(false)} />}
-
-
-
-
+                    <button
+                        type="button"
+                        aria-label={
+                            showPassword ? "Hide password" : "Show password"
+                        }
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-white sm:right-5"
+                    >
+                        {showPassword ? (
+                            <IoEyeOff className="h-5 w-5 sm:h-6 sm:w-6" />
+                        ) : (
+                            <IoEye className="h-5 w-5 sm:h-6 sm:w-6" />
+                        )}
+                    </button>
                 </div>
-                {err.length > 0 && <p className='text-red-500 text-4.25'>
-                    *{err}
-                </p>}
-                <button className='min-w-37.5 h-15 mt-7.5  text-black font-semibold bg-white rounded-full text-4.75' disabled={loading}>{loading ? "Loading..." : "Sign Up"}</button>
 
-                <p className='text-white text-4.5 cursor-pointer' onClick={() => navigate("/signin")}>Already have an account? <span className='text-blue-400 '>Sign In</span></p>
+                {err && (
+                    <p className="w-full wrap-break-word text-center text-sm text-red-500 sm:text-base">
+                        *{err}
+                    </p>
+                )}
+
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="mt-3 h-12 min-w-35 rounded-full bg-white px-6 text-base font-semibold text-black transition hover:bg-gray-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 sm:mt-5 sm:h-14 sm:min-w-37.5 sm:text-[18px] md:h-15 md:text-[19px]"
+                >
+                    {loading ? "Loading..." : "Sign Up"}
+                </button>
+
+                <p className="mt-2 cursor-pointer text-center text-sm text-white sm:text-base md:text-[18px]">
+                    Already have an account?{" "}
+                    <button
+                        type="button"
+                        onClick={() => navigate("/signin")}
+                        className="text-blue-400 hover:underline"
+                    >
+                        Sign In
+                    </button>
+                </p>
             </form>
         </div>
-    )
-}
+    );
+};
 
-export default SignUp
+export default SignUp;
