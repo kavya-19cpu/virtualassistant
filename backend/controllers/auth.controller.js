@@ -1,6 +1,8 @@
+
 import User from "../models/user.model.js"
 import bcrypt from "bcryptjs"
 import { genToken } from "../utils/token.js"
+
 
 export const signUp = async (req, res) => {
     try {
@@ -9,7 +11,9 @@ export const signUp = async (req, res) => {
         const existEmail = await User.findOne({ email })
 
         if (existEmail) {
-            return res.status(400).json({ message: "email already exists!" })
+            return res.status(400).json({
+                message: "email already exists!"
+            })
         }
 
         if (password.length < 6) {
@@ -31,8 +35,8 @@ export const signUp = async (req, res) => {
         res.cookie("token", token, {
             httpOnly: true,
             maxAge: 7 * 24 * 60 * 60 * 1000,
-            sameSite: "strict",
-            secure: false
+            sameSite: "none",
+            secure: true
         })
 
         return res.status(201).json(user)
@@ -43,6 +47,7 @@ export const signUp = async (req, res) => {
         })
     }
 }
+
 
 export const Login = async (req, res) => {
     try {
@@ -69,8 +74,8 @@ export const Login = async (req, res) => {
         res.cookie("token", token, {
             httpOnly: true,
             maxAge: 7 * 24 * 60 * 60 * 1000,
-            sameSite: "strict",
-            secure: false
+            sameSite: "none",
+            secure: true
         })
 
         return res.status(200).json(user)
@@ -82,9 +87,14 @@ export const Login = async (req, res) => {
     }
 }
 
+
 export const logOut = async (req, res) => {
     try {
-        res.clearCookie("token")
+        res.clearCookie("token", {
+            httpOnly: true,
+            sameSite: "none",
+            secure: true
+        })
 
         return res.status(200).json({
             message: "log out successfully"
