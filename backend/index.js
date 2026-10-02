@@ -5,7 +5,8 @@ import authRouter from "./routes/auth.routes.js"
 import userRouter from "./routes/user.routes.js"
 import cookieParser from "cookie-parser"
 import cors from "cors"
-
+import dns from "dns"
+dns.setDefaultResultOrder("ipv4first")
 dotenv.config()
 
 const app = express()
@@ -35,14 +36,15 @@ app.use("/api/user", userRouter)
 // ===============================
 // MONGODB
 // ===============================
-mongoose.connect("mongodb://127.0.0.1:27017/virtualAssistant")
-    .then(() => {
-        console.log("MongoDB connected")
-    })
-    .catch((error) => {
-        console.log("MongoDB connection error:", error)
-    })
-
+mongoose.connect(process.env.MONGODB_URL, {
+    family: 4
+})
+  .then(() => {
+    console.log("MongoDB connected")
+  })
+  .catch((error) => {
+    console.log("MongoDB connection error:", error)
+  })
 // ===============================
 // SERVER
 // ===============================
