@@ -24,22 +24,29 @@ export const getCurrentUser=async(req,res)=>{
 
 export const updateAssistant=async(req,res)=>{
     try{
-        const {assistantName}=req.body;
+        const {assistantName,imageUrl}=req.body;
 
-        let imageUrl;
+        let finalImageUrl=imageUrl;
 
         if(req.file){
-            imageUrl=await uploadOnCloudinary(req.file.path);
+            finalImageUrl=await uploadOnCloudinary(
+                req.file.path
+            );
         }
 
         const updateData={};
 
-        if(assistantName){
-            updateData.assistantName=assistantName;
+        if(
+            assistantName &&
+            assistantName.trim()
+        ){
+            updateData.assistantName=
+                assistantName.trim();
         }
 
-        if(imageUrl){
-            updateData.assistantImage=imageUrl;
+        if(finalImageUrl){
+            updateData.assistantImage=
+                finalImageUrl;
         }
 
         const user=await User.findByIdAndUpdate(
@@ -55,7 +62,14 @@ export const updateAssistant=async(req,res)=>{
         }
 
         return res.status(200).json(user);
+
     }catch(error){
+
+        console.error(
+            "UPDATE ASSISTANT ERROR:",
+            error
+        );
+
         return res.status(500).json({
             message:"Update assistant error",
             error:error.message
