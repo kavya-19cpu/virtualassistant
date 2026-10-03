@@ -98,7 +98,10 @@ export const updateAssistant = async (req, res) => {
 
 export const saveHistory = async (req, res) => {
   try {
-    const { command, answer } = req.body;
+    const {
+      command,
+      answer
+    } = req.body;
 
     if (
       typeof command !== "string" ||

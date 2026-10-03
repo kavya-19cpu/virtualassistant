@@ -1,3 +1,4 @@
+
 import React,{useContext,useEffect,useRef,useState} from "react";
 import {userDataContext} from "../context/UserContext";
 import {useNavigate} from "react-router-dom";
@@ -19,7 +20,6 @@ function Home(){
 
     const [isListening,setIsListening]=useState(false);
     const [isAIActive,setIsAIActive]=useState(false);
-    const [isSpeaking,setIsSpeaking]=useState(false);
     const [userText,setUserText]=useState("");
     const [aiText,setAiText]=useState("");
     const [showAIText,setShowAIText]=useState(false);
@@ -43,7 +43,6 @@ function Home(){
     },[userData?.history]);
 
     const saveHistory=async(command,answer)=>{
-
         if(!command||!answer)return;
 
         const newItem={
@@ -54,7 +53,6 @@ function Home(){
         setHistoryItems(prev=>[
             newItem,
             ...prev.filter(item=>{
-
                 const oldCommand=
                     typeof item==="string"
                         ?item
@@ -80,7 +78,6 @@ function Home(){
                         newItem,
                         ...(Array.isArray(prev.history)
                             ?prev.history.filter(item=>{
-
                                 const oldCommand=
                                     typeof item==="string"
                                         ?item
@@ -103,7 +100,6 @@ function Home(){
         );
 
         try{
-
             const result=await axios.post(
                 `${serverUrl}/api/user/savehistory`,
                 {
@@ -116,7 +112,6 @@ function Home(){
             );
 
             if(result.data?.history){
-
                 setHistoryItems(result.data.history);
 
                 setUserData(prev=>
@@ -128,9 +123,7 @@ function Home(){
                         :prev
                 );
             }
-
         }catch(error){
-
             console.error(
                 "SAVE HISTORY ERROR:",
                 error.response?.data||error.message
@@ -139,7 +132,6 @@ function Home(){
     };
 
     const showAnswer=(command,answer)=>{
-
         setUserText(command||"");
         setAiText(answer||"");
         setShowAIText(true);
@@ -147,30 +139,26 @@ function Home(){
     };
 
     const speak=text=>{
-
         if(!text)return;
 
         window.speechSynthesis.cancel();
 
-        const utterance=new SpeechSynthesisUtterance(
-            String(text)
-        );
+        const utterance=
+            new SpeechSynthesisUtterance(
+                String(text)
+            );
 
         utterance.rate=1.05;
         utterance.pitch=1;
         utterance.volume=1;
 
         utterance.onstart=()=>{
-
             speakingRef.current=true;
-            setIsSpeaking(true);
             setIsAIActive(true);
         };
 
         utterance.onend=()=>{
-
             speakingRef.current=false;
-            setIsSpeaking(false);
             setIsAIActive(false);
 
             if(
@@ -178,7 +166,6 @@ function Home(){
                 !processingRef.current&&
                 recognitionRef.current
             ){
-
                 try{
                     recognitionRef.current.start();
                 }catch{}
@@ -186,45 +173,14 @@ function Home(){
         };
 
         utterance.onerror=()=>{
-
             speakingRef.current=false;
-            setIsSpeaking(false);
             setIsAIActive(false);
         };
 
         window.speechSynthesis.speak(utterance);
     };
 
-    /* ONLY NEW STOP SPEAKING FUNCTION */
-
-    const stopSpeaking=()=>{
-
-        window.speechSynthesis.cancel();
-
-        speakingRef.current=false;
-
-        setIsSpeaking(false);
-
-        if(!isSending){
-            setIsAIActive(false);
-        }
-
-        if(
-            listeningRef.current&&
-            !processingRef.current&&
-            recognitionRef.current
-        ){
-
-            setTimeout(()=>{
-                try{
-                    recognitionRef.current.start();
-                }catch{}
-            },200);
-        }
-    };
-
     const websiteMap={
-
         google:"https://www.google.com",
         youtube:"https://www.youtube.com",
         instagram:"https://www.instagram.com",
@@ -266,96 +222,45 @@ function Home(){
     };
 
     const createSiteSearchUrl=(site,query)=>{
-
         const q=encodeURIComponent(query);
 
         const searchUrls={
-
-            google:
-                `https://www.google.com/search?q=${q}`,
-
-            youtube:
-                `https://www.youtube.com/results?search_query=${q}`,
-
-            instagram:
-                `https://www.instagram.com/explore/search/keyword/?q=${q}`,
-
-            facebook:
-                `https://www.facebook.com/search/top?q=${q}`,
-
-            wikipedia:
-                `https://www.wikipedia.org/w/index.php?search=${q}`,
-
-            spotify:
-                `https://open.spotify.com/search/${q}`,
-
-            github:
-                `https://github.com/search?q=${q}`,
-
-            reddit:
-                `https://www.reddit.com/search/?q=${q}`,
-
-            linkedin:
-                `https://www.linkedin.com/search/results/all/?keywords=${q}`,
-
-            amazon:
-                `https://www.amazon.in/s?k=${q}`,
-
-            flipkart:
-                `https://www.flipkart.com/search?q=${q}`,
-
-            bing:
-                `https://www.bing.com/search?q=${q}`,
-
-            yahoo:
-                `https://search.yahoo.com/search?p=${q}`,
-
-            stackoverflow:
-                `https://stackoverflow.com/search?q=${q}`,
-
-            pinterest:
-                `https://www.pinterest.com/search/pins/?q=${q}`,
-
-            quora:
-                `https://www.quora.com/search?q=${q}`,
-
-            twitch:
-                `https://www.twitch.tv/search?term=${q}`,
-
-            imdb:
-                `https://www.imdb.com/find/?q=${q}`,
-
-            soundcloud:
-                `https://soundcloud.com/search?q=${q}`,
-
-            deezer:
-                `https://www.deezer.com/search/${q}`,
-
-            udemy:
-                `https://www.udemy.com/courses/search/?q=${q}`,
-
-            coursera:
-                `https://www.coursera.org/search?query=${q}`,
-
-            canva:
-                `https://www.canva.com/search?q=${q}`
+            google:`https://www.google.com/search?q=${q}`,
+            youtube:`https://www.youtube.com/results?search_query=${q}`,
+            instagram:`https://www.instagram.com/explore/search/keyword/?q=${q}`,
+            facebook:`https://www.facebook.com/search/top?q=${q}`,
+            wikipedia:`https://www.wikipedia.org/w/index.php?search=${q}`,
+            spotify:`https://open.spotify.com/search/${q}`,
+            github:`https://github.com/search?q=${q}`,
+            reddit:`https://www.reddit.com/search/?q=${q}`,
+            linkedin:`https://www.linkedin.com/search/results/all/?keywords=${q}`,
+            amazon:`https://www.amazon.in/s?k=${q}`,
+            flipkart:`https://www.flipkart.com/search?q=${q}`,
+            bing:`https://www.bing.com/search?q=${q}`,
+            yahoo:`https://search.yahoo.com/search?p=${q}`,
+            stackoverflow:`https://stackoverflow.com/search?q=${q}`,
+            pinterest:`https://www.pinterest.com/search/pins/?q=${q}`,
+            quora:`https://www.quora.com/search?q=${q}`,
+            twitch:`https://www.twitch.tv/search?term=${q}`,
+            imdb:`https://www.imdb.com/find/?q=${q}`,
+            soundcloud:`https://soundcloud.com/search?q=${q}`,
+            deezer:`https://www.deezer.com/search/${q}`,
+            udemy:`https://www.udemy.com/courses/search/?q=${q}`,
+            coursera:`https://www.coursera.org/search?query=${q}`,
+            canva:`https://www.canva.com/search?q=${q}`
         };
 
         return searchUrls[site]||null;
     };
 
     const getSearchUrl=command=>{
-
-        const text=command
-            .trim()
-            .replace(/[?!.]+$/,"");
+        const text=command.trim().replace(/[?!.]+$/,"");
 
         const match=text.match(
             /^(?:search|find|look for|look up)\s+(.+?)\s+(?:on|in|at|using)\s+([a-zA-Z0-9]+)$/i
         );
 
         if(match){
-
             const site=match[2].toLowerCase();
             const query=match[1].trim();
 
@@ -371,7 +276,6 @@ function Home(){
         );
 
         if(reverse){
-
             const site=reverse[1].toLowerCase();
             const query=reverse[2].trim();
 
@@ -387,7 +291,6 @@ function Home(){
         );
 
         if(openSearch){
-
             const site=openSearch[2].toLowerCase();
             const query=openSearch[1].trim();
 
@@ -402,7 +305,6 @@ function Home(){
     };
 
     const getDirectUrl=command=>{
-
         const text=command.trim();
 
         const domainMatch=text.match(
@@ -410,9 +312,7 @@ function Home(){
         );
 
         if(domainMatch){
-
-            let url=domainMatch[1]
-                .replace(/[.,!?]+$/,"");
+            let url=domainMatch[1].replace(/[.,!?]+$/,"");
 
             if(!/^https?:\/\//i.test(url)){
                 url=`https://${url}`;
@@ -437,7 +337,6 @@ function Home(){
     };
 
     const openUrl=url=>{
-
         if(!url)return false;
 
         let finalUrl=String(url).trim();
@@ -447,7 +346,6 @@ function Home(){
         }
 
         try{
-
             const parsed=new URL(finalUrl);
 
             if(
@@ -466,7 +364,6 @@ function Home(){
             return !!newTab;
 
         }catch(error){
-
             console.error(
                 "Invalid URL:",
                 url
@@ -477,109 +374,75 @@ function Home(){
     };
 
     const handleSpecialCommand=(data,shouldSpeak)=>{
-
         if(!data)return false;
 
         const type=data.type;
         const response=data.response||"";
-
         let handled=true;
 
         switch(type){
 
             case "google_open":
-
-                openUrl(
-                    "https://www.google.com"
-                );
-
+                openUrl("https://www.google.com");
                 break;
 
             case "google_search":
-
                 if(data.query){
-
                     openUrl(
                         `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
                     );
                 }
-
                 break;
 
             case "youtube_open":
-
-                openUrl(
-                    "https://www.youtube.com"
-                );
-
+                openUrl("https://www.youtube.com");
                 break;
 
             case "youtube_search":
             case "youtube_play":
-
                 if(data.query){
-
                     openUrl(
                         `https://www.youtube.com/results?search_query=${encodeURIComponent(data.query)}`
                     );
                 }
-
                 break;
 
             case "calculator_open":
-
                 openUrl(
                     "https://www.google.com/search?q=calculator"
                 );
-
                 break;
 
             case "calculator_calculate":
-
                 if(data.query){
-
                     openUrl(
                         `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
                     );
                 }
-
                 break;
 
             case "instagram_open":
-
-                openUrl(
-                    "https://www.instagram.com"
-                );
-
+                openUrl("https://www.instagram.com");
                 break;
 
             case "facebook_open":
-
-                openUrl(
-                    "https://www.facebook.com"
-                );
-
+                openUrl("https://www.facebook.com");
                 break;
 
             case "weather_show":
-
                 openUrl(
                     data.query
                         ?`https://www.google.com/search?q=${encodeURIComponent(data.query)}`
                         :"https://www.google.com/search?q=weather"
                 );
-
                 break;
 
             default:
-
                 handled=false;
-
                 break;
         }
 
         if(response){
-
             setAiText(response);
             setShowAIText(true);
 
@@ -687,12 +550,10 @@ function Home(){
             if(directUrl){
 
                 const siteName=
-                    cleanedCommand
-                        .replace(
-                            /^(open|launch|visit|go to|take me to)\s+/i,
-                            ""
-                        )
-                        .trim();
+                    cleanedCommand.replace(
+                        /^(open|launch|visit|go to|take me to)\s+/i,
+                        ""
+                    ).trim();
 
                 const message=
                     `Opening ${siteName}.`;
@@ -739,9 +600,7 @@ function Home(){
                 }catch{
 
                     const jsonMatch=
-                        cleanResult.match(
-                            /\{[\s\S]*\}/
-                        );
+                        cleanResult.match(/{[\s\S]*}/);
 
                     if(jsonMatch){
 
@@ -770,10 +629,7 @@ function Home(){
                 }
             }
 
-            if(
-                !parsedResult||
-                parsedResult.error
-            ){
+            if(!parsedResult||parsedResult.error){
 
                 const errorText=
                     parsedResult?.error||
@@ -845,11 +701,8 @@ function Home(){
             }
 
             if(shouldSpeak){
-
                 speak(responseText);
-
             }else{
-
                 setIsAIActive(false);
             }
 
@@ -882,7 +735,6 @@ function Home(){
         }finally{
 
             processingRef.current=false;
-
             setIsSending(false);
 
             if(
@@ -896,15 +748,9 @@ function Home(){
 
     const handleSendText=async()=>{
 
-        const command=
-            typedText.trim();
+        const command=typedText.trim();
 
-        if(
-            !command||
-            isSending
-        ){
-            return;
-        }
+        if(!command||isSending)return;
 
         if(isListening){
 
@@ -949,8 +795,7 @@ function Home(){
         recognition.interimResults=false;
         recognition.maxAlternatives=1;
 
-        recognitionRef.current=
-            recognition;
+        recognitionRef.current=recognition;
 
         recognition.onstart=()=>{
 
@@ -976,9 +821,7 @@ function Home(){
             }
 
             const transcript=
-                lastResult[0]
-                    .transcript
-                    .trim();
+                lastResult[0].transcript.trim();
 
             if(!transcript)return;
 
@@ -1006,7 +849,6 @@ function Home(){
 
                 setIsListening(false);
                 setIsAIActive(false);
-                setIsSpeaking(false);
 
                 try{
                     recognition.stop();
@@ -1137,9 +979,6 @@ function Home(){
             window.speechSynthesis.cancel();
 
             speakingRef.current=false;
-
-            setIsSpeaking(false);
-
             processingRef.current=false;
 
             setIsAIActive(false);
@@ -1161,7 +1000,6 @@ function Home(){
 
         setIsListening(false);
         setIsAIActive(false);
-        setIsSpeaking(false);
 
         clearTimeout(
             restartTimeoutRef.current
@@ -1177,11 +1015,8 @@ function Home(){
     const toggleMic=()=>{
 
         if(isListening){
-
             stopListening();
-
         }else{
-
             startListening();
         }
     };
@@ -1196,7 +1031,6 @@ function Home(){
 
             setIsListening(false);
             setIsAIActive(false);
-            setIsSpeaking(false);
 
             clearTimeout(
                 restartTimeoutRef.current
@@ -1230,7 +1064,6 @@ function Home(){
     };
 
     const handleCustomize=()=>{
-
         navigate("/customize2");
     };
 
@@ -1244,7 +1077,6 @@ function Home(){
         "Assistant";
 
     return(
-
         <div className="relative min-h-screen w-full overflow-hidden bg-[#05060b] text-white">
 
             <main
@@ -1290,9 +1122,7 @@ function Home(){
                     <div className="w-full min-h-15 flex items-center justify-center px-3">
 
                         <div className="text-white text-[18px] font-bold text-center w-full leading-[1.4] whitespace-pre-wrap wrap-break-word max-h-45 overflow-y-auto dark-scrollbar">
-
                             {showAIText?aiText:userText}
-
                         </div>
 
                     </div>
@@ -1332,43 +1162,23 @@ function Home(){
 
                     </div>
 
-                    <div className="flex items-center justify-center gap-3 flex-wrap">
-
-                        <button
-                            onClick={toggleMic}
-                            className={`mt-5 px-6 py-3 border-none rounded-xl text-white text-base font-semibold cursor-pointer min-w-32.5 transition-all duration-150 active:scale-95 ${
-                                isListening
-                                    ?"bg-red-500 hover:bg-red-600"
-                                    :"bg-green-500 hover:bg-green-600"
-                            }`}
-                        >
-                            {isListening
-                                ?"Stop Mic"
-                                :"Start Mic"}
-                        </button>
-
-                        {/* ONLY ADDED BUTTON */}
-
-                        <button
-                            onClick={stopSpeaking}
-                            disabled={!isSpeaking}
-                            className="mt-5 px-6 py-3 border-none rounded-xl bg-orange-500 hover:bg-orange-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-base font-semibold cursor-pointer disabled:cursor-not-allowed transition-all duration-150 active:scale-95"
-                        >
-                            {isSpeaking
-                                ?"Stop Speaking"
-                                :"Not Speaking"}
-                        </button>
-
-                    </div>
+                    <button
+                        onClick={toggleMic}
+                        className={`mt-5 px-6 py-3 border-none rounded-xl text-white text-base font-semibold cursor-pointer min-w-32.5 transition-all duration-150 active:scale-95 ${
+                            isListening
+                                ?"bg-red-500 hover:bg-red-600"
+                                :"bg-green-500 hover:bg-green-600"
+                        }`}
+                    >
+                        {isListening
+                            ?"Stop Mic"
+                            :"Start Mic"}
+                    </button>
 
                     <div className="mt-3 text-gray-300 text-sm text-center max-w-[90%]">
-
-                        {isSpeaking
-                            ?"Speaking... Click Stop Speaking to stop the answer."
-                            :isListening
-                                ?"Listening... Speak now."
-                                :"Press the mic to start a conversation."}
-
+                        {isListening
+                            ?"Listening... Speak now."
+                            :"Press the mic to start a conversation."}
                     </div>
 
                 </div>
@@ -1486,7 +1296,6 @@ function Home(){
                                         :item?.answer||"";
 
                                 return(
-
                                     <button
                                         key={
                                             item?._id||
