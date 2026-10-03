@@ -1,6 +1,7 @@
 
 import React, {
     useContext,
+    useEffect,
     useState
 } from "react";
 
@@ -35,120 +36,198 @@ const Customize2 = () => {
     } = useContext(userDataContext);
 
 
-    const [assistantName, setAssistantName] =
-        useState(
-            userData?.assistantName || ""
-        );
+    const [
+        assistantName,
+        setAssistantName
+    ] = useState(
+        userData?.assistantName || ""
+    );
 
 
-    const [loading, setLoading] =
-        useState(false);
+    const [
+        loading,
+        setLoading
+    ] = useState(false);
+
+
+    const [
+        uploadedImageUrl,
+        setUploadedImageUrl
+    ] = useState(null);
 
 
     const navigate = useNavigate();
 
 
-    const handleUpdateAssistant = async () => {
+    /*
+     * CREATE PREVIEW FOR UPLOADED IMAGE
+     */
 
+    useEffect(() => {
 
-        if (!assistantName.trim()) {
-            alert("Please enter assistant name");
+        if (!backendImage) {
+
+            setUploadedImageUrl(null);
+
             return;
+
         }
 
 
-        if (!backendImage && !selectedImage) {
-            alert(
-                "Please select an assistant image"
-            );
-            return;
-        }
-
-
-        setLoading(true);
-
-
-        try {
-
-
-            const formData = new FormData();
-
-
-            formData.append(
-                "assistantName",
-                assistantName.trim()
+        const imageUrl =
+            URL.createObjectURL(
+                backendImage
             );
 
 
-            if (backendImage) {
+        setUploadedImageUrl(
+            imageUrl
+        );
 
 
-                formData.append(
-                    "assistantImage",
-                    backendImage
+        return () => {
+
+            URL.revokeObjectURL(
+                imageUrl
+            );
+
+        };
+
+    }, [backendImage]);
+
+
+    /*
+     * IMAGE TO DISPLAY
+     *
+     * Uploaded image has priority.
+     * Otherwise show selected preset image.
+     */
+
+    const previewImage =
+        uploadedImageUrl ||
+        selectedImage;
+
+
+    /*
+     * UPDATE ASSISTANT
+     */
+
+    const handleUpdateAssistant =
+        async () => {
+
+
+            if (!assistantName.trim()) {
+
+                alert(
+                    "Please enter assistant name"
                 );
 
+                return;
 
-            } else if (selectedImage) {
-
-
-                formData.append(
-                    "imageUrl",
-                    selectedImage
-                );
             }
 
 
-            const result = await axios.put(
-                `${serverUrl}/api/user/updateassistant`,
-                formData,
-                {
-                    withCredentials: true
+            if (
+                !backendImage &&
+                !selectedImage
+            ) {
+
+                alert(
+                    "Please select an assistant image"
+                );
+
+                return;
+
+            }
+
+
+            setLoading(true);
+
+
+            try {
+
+
+                const formData =
+                    new FormData();
+
+
+                formData.append(
+                    "assistantName",
+                    assistantName.trim()
+                );
+
+
+                if (backendImage) {
+
+                    formData.append(
+                        "assistantImage",
+                        backendImage
+                    );
+
+                } else if (
+                    selectedImage
+                ) {
+
+                    formData.append(
+                        "imageUrl",
+                        selectedImage
+                    );
+
                 }
-            );
 
 
-            console.log(
-                "UPDATE RESPONSE:",
-                result.data
-            );
+                const result =
+                    await axios.put(
+                        `${serverUrl}/api/user/updateassistant`,
+                        formData,
+                        {
+                            withCredentials: true
+                        }
+                    );
 
 
-            setUserData(result.data);
+                console.log(
+                    "UPDATE RESPONSE:",
+                    result.data
+                );
 
 
-            navigate("/");
+                setUserData(
+                    result.data
+                );
 
 
-        } catch (error) {
+                navigate("/");
 
 
-            console.error(
-                "UPDATE ASSISTANT ERROR:",
-                error
-            );
+            } catch (error) {
 
 
-            console.error(
-                "Status:",
-                error.response?.status
-            );
+                console.error(
+                    "UPDATE ASSISTANT ERROR:",
+                    error
+                );
 
 
-            console.error(
-                "Backend Response:",
-                error.response?.data
-            );
+                console.error(
+                    "Status:",
+                    error.response?.status
+                );
 
 
-        } finally {
+                console.error(
+                    "Backend Response:",
+                    error.response?.data
+                );
 
 
-            setLoading(false);
+            } finally {
 
+                setLoading(false);
 
-        }
-    };
+            }
+
+        };
 
 
     return (
@@ -242,7 +321,6 @@ const Customize2 = () => {
                 aria-label="Go back"
             >
 
-
                 <IoMdArrowBack
                     className="
                         w-5
@@ -255,7 +333,6 @@ const Customize2 = () => {
                         md:h-6
                     "
                 />
-
 
             </button>
 
@@ -275,6 +352,65 @@ const Customize2 = () => {
                     box-border
                 "
             >
+
+
+                {/* SELECTED / UPLOADED IMAGE */}
+
+
+                {previewImage && (
+
+                    <div
+                        className="
+                            w-18.75
+                            h-32.5
+
+                            sm:w-25
+                            sm:h-42.5
+
+                            md:w-30
+                            md:h-50
+
+                            lg:w-37.5
+                            lg:h-62.5
+
+                            bg-[#020220]
+
+                            border-2
+                            border-blue-600
+
+                            rounded-2xl
+
+                            overflow-hidden
+
+                            shrink-0
+
+                            flex
+                            items-center
+                            justify-center
+
+                            mb-6
+                            sm:mb-7
+                            md:mb-8
+
+                            shadow-2xl
+                            shadow-blue-950
+                        "
+                    >
+
+                        <img
+                            src={previewImage}
+                            alt="Assistant"
+                            className="
+                                w-full
+                                h-full
+                                object-cover
+                                block
+                            "
+                        />
+
+                    </div>
+
+                )}
 
 
                 {/* HEADING */}
@@ -303,13 +439,13 @@ const Customize2 = () => {
                     "
                 >
 
-
                     Enter your
 
-                    <span className="text-blue-200">
+                    <span
+                        className="text-blue-200"
+                    >
                         {" "}Assistant Name
                     </span>
-
 
                 </h1>
 
@@ -373,7 +509,6 @@ const Customize2 = () => {
 
                 {assistantName.trim() && (
 
-
                     <button
                         type="button"
                         disabled={loading}
@@ -427,23 +562,17 @@ const Customize2 = () => {
                         "
                     >
 
-
                         {loading
                             ? "Loading..."
                             : "Finally Create your Assistant"}
 
-
                     </button>
-
 
                 )}
 
-
             </div>
 
-
         </div>
-
 
     );
 };

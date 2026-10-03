@@ -1,8 +1,17 @@
+import React, {
+    useContext
+} from "react";
 
-import React, { useContext } from "react";
-import { userDataContext } from "../context/UserContext";
+import {
+    userDataContext
+} from "../context/UserContext";
 
-const Card = ({ image }) => {
+
+const Card = ({
+    image
+}) => {
+
+
     const {
         setBackendImage,
         setFrontendImage,
@@ -10,7 +19,9 @@ const Card = ({ image }) => {
         setSelectedImage
     } = useContext(userDataContext);
 
+
     return (
+
         <div
             className={`
                 w-18.75 h-32.5
@@ -19,18 +30,26 @@ const Card = ({ image }) => {
                 lg:w-37.5 lg:h-62.5
 
                 bg-[#020220]
-                border-2 border-blue-600
+
+                border-2
+                border-blue-600
+
                 rounded-2xl
+
                 overflow-hidden
+
                 cursor-pointer
+
                 shrink-0
 
                 hover:shadow-2xl
                 hover:shadow-blue-950
+
                 hover:border-4
                 hover:border-white
 
-                transition-all duration-200
+                transition-all
+                duration-200
 
                 ${
                     selectedImage === image
@@ -39,18 +58,31 @@ const Card = ({ image }) => {
                 }
             `}
             onClick={() => {
+
                 setSelectedImage(image);
+
                 setBackendImage(null);
+
                 setFrontendImage(null);
+
             }}
         >
+
             <img
                 src={image}
                 alt="Assistant"
-                className="w-full h-full object-cover"
+                className="
+                    w-full
+                    h-full
+                    object-cover
+                    block
+                "
             />
+
         </div>
+
     );
 };
+
 
 export default Card;

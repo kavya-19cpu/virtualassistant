@@ -1,9 +1,12 @@
+
 import React, {
     useContext,
     useRef
 } from "react";
 
+
 import Card from "../components/Card";
+
 
 import image1 from "../assets/image1.webp";
 import image2 from "../assets/image2.webp";
@@ -11,13 +14,29 @@ import image3 from "../assets/image3.png";
 import image4 from "../assets/image4.webp";
 import image6 from "../assets/image6.webp";
 
-import { useNavigate } from "react-router-dom";
-import { BiImageAdd } from "react-icons/bi";
-import { userDataContext } from "../context/UserContext";
-import { IoMdArrowBack } from "react-icons/io";
+
+import {
+    useNavigate
+} from "react-router-dom";
+
+
+import {
+    BiImageAdd
+} from "react-icons/bi";
+
+
+import {
+    userDataContext
+} from "../context/UserContext";
+
+
+import {
+    IoMdArrowBack
+} from "react-icons/io";
 
 
 const Customize = () => {
+
 
     const {
         backendImage,
@@ -37,20 +56,25 @@ const Customize = () => {
 
     const handleImage = (e) => {
 
+
         const file = e.target.files[0];
+
 
         if (!file) return;
 
 
         setBackendImage(file);
 
+
         setFrontendImage(
             URL.createObjectURL(file)
         );
+
     };
 
 
     return (
+
 
         <div
             className="
@@ -77,7 +101,9 @@ const Customize = () => {
             "
         >
 
+
             {/* BACK BUTTON */}
+
 
             <button
                 type="button"
@@ -111,14 +137,23 @@ const Customize = () => {
                     bg-white/5
                     hover:bg-white/10
 
+                    border
+                    border-white/10
+
                     rounded-full
 
-                    transition
+                    transition-all
+                    duration-200
 
                     cursor-pointer
+
+                    active:scale-95
+
+                    z-10
                 "
                 aria-label="Go back"
             >
+
 
                 <IoMdArrowBack
                     className="
@@ -127,13 +162,17 @@ const Customize = () => {
                     "
                 />
 
+
             </button>
 
 
             {/* HEADING */}
 
+
             <h1
                 className="
+                    w-full
+
                     text-white
 
                     font-semibold
@@ -143,11 +182,14 @@ const Customize = () => {
 
                     mb-7
 
-                    text-[26px]
-                    sm:text-[32px]
-                    md:text-[38px]
+                    px-2
+
+                    text-[clamp(24px,7vw,38px)]
+
+                    wrap-break-word
                 "
             >
+
 
                 Select your
 
@@ -155,10 +197,12 @@ const Customize = () => {
                     {" "}Assistant Image
                 </span>
 
+
             </h1>
 
 
             {/* IMAGE GRID */}
+
 
             <div
                 className="
@@ -168,9 +212,6 @@ const Customize = () => {
                     grid
 
                     grid-cols-3
-                    sm:grid-cols-3
-                    md:grid-cols-3
-                    lg:grid-cols-3
 
                     gap-3
                     sm:gap-4
@@ -179,8 +220,14 @@ const Customize = () => {
                     justify-items-center
 
                     px-2
+
+                    box-border
                 "
             >
+
+
+                {/* PRESET IMAGES */}
+
 
                 <Card image={image1} />
 
@@ -195,6 +242,7 @@ const Customize = () => {
 
                 {/* UPLOAD CARD */}
 
+
                 <div
                     onClick={() => {
 
@@ -204,12 +252,17 @@ const Customize = () => {
 
                     }}
                     className={`
-                        w-full
-                        max-w-30
+                        w-18.75
+                        h-32.5
 
-                        aspect-3/5
+                        sm:w-25
+                        sm:h-42.5
 
-                        sm:max-w-37.5
+                        md:w-30
+                        md:h-50
+
+                        lg:w-37.5
+                        lg:h-62.5
 
                         bg-[#020220]
 
@@ -226,13 +279,16 @@ const Customize = () => {
                         items-center
                         justify-center
 
+                        shrink-0
+
                         hover:border-4
                         hover:border-white
 
                         hover:shadow-2xl
                         hover:shadow-blue-950
 
-                        transition
+                        transition-all
+                        duration-200
 
                         ${
                             selectedImage === "input"
@@ -242,7 +298,12 @@ const Customize = () => {
                     `}
                 >
 
+
+                    {/* UPLOAD ICON */}
+
+
                     {!frontendImage && (
+
 
                         <BiImageAdd
                             className="
@@ -256,10 +317,15 @@ const Customize = () => {
                             "
                         />
 
+
                     )}
 
 
+                    {/* UPLOADED IMAGE */}
+
+
                     {frontendImage && (
+
 
                         <img
                             src={frontendImage}
@@ -268,15 +334,19 @@ const Customize = () => {
                                 w-full
                                 h-full
                                 object-cover
+                                block
                             "
                         />
 
+
                     )}
+
 
                 </div>
 
 
                 {/* FILE INPUT */}
+
 
                 <input
                     type="file"
@@ -286,12 +356,15 @@ const Customize = () => {
                     onChange={handleImage}
                 />
 
+
             </div>
 
 
             {/* NEXT BUTTON */}
 
+
             {selectedImage && (
+
 
                 <button
                     type="button"
@@ -300,10 +373,13 @@ const Customize = () => {
                     }
                     className="
                         min-w-32.5
+
                         sm:min-w-37.5
 
                         h-12
+
                         sm:h-14
+
                         md:h-15
 
                         mt-7
@@ -314,26 +390,35 @@ const Customize = () => {
                         font-semibold
 
                         bg-white
+
                         rounded-full
 
                         text-base
+
                         sm:text-[18px]
+
                         md:text-[19px]
 
                         cursor-pointer
 
                         hover:bg-gray-200
+
                         active:scale-95
 
-                        transition
+                        transition-all
+                        duration-200
                     "
                 >
 
+
                     Next
+
 
                 </button>
 
+
             )}
+
 
         </div>
 
