@@ -47,14 +47,11 @@ function Home() {
     const [selectedHistory, setSelectedHistory] = useState(null);
 
     const recognitionRef = useRef(null);
-
     const listeningRef = useRef(false);
-
     const speakingRef = useRef(false);
-
     const processingRef = useRef(false);
-
     const restartTimeoutRef = useRef(null);
+    const speechKeepAliveRef = useRef(null);
 
 
     /* =========================================================
@@ -62,13 +59,11 @@ function Home() {
     ========================================================= */
 
     useEffect(() => {
-
         setHistoryItems(
             Array.isArray(userData?.history)
                 ? userData.history
                 : []
         );
-
     }, [userData?.history]);
 
 
@@ -124,16 +119,18 @@ function Home() {
                 }
             );
 
-
             if (result.data?.history) {
 
-                setHistoryItems(result.data.history);
+                setHistoryItems(
+                    result.data.history
+                );
 
                 setUserData(prev =>
                     prev
                         ? {
                             ...prev,
-                            history: result.data.history
+                            history:
+                                result.data.history
                         }
                         : prev
                 );
@@ -143,7 +140,8 @@ function Home() {
 
             console.error(
                 "SAVE HISTORY ERROR:",
-                error.response?.data || error.message
+                error.response?.data ||
+                error.message
             );
         }
     };
@@ -156,9 +154,7 @@ function Home() {
     const showAnswer = (command, answer) => {
 
         setUserText(command || "");
-
         setAiText(answer || "");
-
         setShowAIText(true);
 
         setSelectedHistory({
@@ -174,50 +170,63 @@ function Home() {
        TEXT TO SPEECH
     ========================================================= */
 
-const speak = (text) => {
-    if (!text) {
-        console.log("Nothing to speak");
-        return;
-    }
+    const speak = (text) => {
 
-    if (
-        typeof window === "undefined" ||
-        !window.speechSynthesis
-    ) {
-        console.error(
-            "Speech Synthesis is not supported in this browser."
+        if (!text) {
+            console.log("Nothing to speak");
+            return;
+        }
+
+        if (
+            typeof window === "undefined" ||
+            !("speechSynthesis" in window) ||
+            typeof window.SpeechSynthesisUtterance ===
+                "undefined"
+        ) {
+            console.error(
+                "Speech synthesis is not supported."
+            );
+            return;
+        }
+
+        const speech =
+            window.speechSynthesis;
+
+        clearInterval(
+            speechKeepAliveRef.current
         );
-        return;
-    }
 
-    const speech = window.speechSynthesis;
+        speech.cancel();
 
-    const cleanText = String(text)
-        .replace(/[*#_`]/g, "")
-        .replace(/\n+/g, " ")
-        .trim();
+        const cleanText =
+            String(text)
+                .replace(/[*#_`]/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
 
-    if (!cleanText) {
-        return;
-    }
+        if (!cleanText) {
+            return;
+        }
 
-    console.log("Trying to speak:", cleanText);
+        console.log(
+            "🔊 Trying to speak:",
+            cleanText
+        );
 
-    // Stop previous speech
-    speech.cancel();
+        const utterance =
+            new SpeechSynthesisUtterance(
+                cleanText
+            );
 
-    const utterance =
-        new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = "en-US";
+        utterance.rate = 0.9;
+        utterance.pitch = 1;
+        utterance.volume = 1;
 
-    utterance.lang = "en-US";
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-    utterance.volume = 1;
 
-    // Get available voices
-    const voices = speech.getVoices();
+        const voices =
+            speech.getVoices();
 
-    if (voices.length > 0) {
         const englishVoice =
             voices.find(
                 voice =>
@@ -225,93 +234,164 @@ const speak = (text) => {
             ) ||
             voices.find(
                 voice =>
-                    voice.lang.startsWith("en")
+                    voice.lang?.startsWith("en")
             );
 
         if (englishVoice) {
-            utterance.voice = englishVoice;
+            utterance.voice =
+                englishVoice;
         }
-    }
 
-    utterance.onstart = () => {
-        console.log("========== AI SPEECH STARTED ==========");
 
-        speakingRef.current = true;
+        utterance.onstart = () => {
 
-        setIsAIActive(true);
-
-        // Stop microphone while AI is talking
-        try {
-            recognitionRef.current?.stop();
-        } catch (error) {
             console.log(
-                "Recognition stop:",
-                error.message
+                "========== AI SPEECH STARTED =========="
             );
+
+            speakingRef.current = true;
+
+            setIsAIActive(true);
+
+            /*
+             * VERY IMPORTANT:
+             * Stop microphone while AI speaks.
+             * Otherwise Chrome may hear the AI itself.
+             */
+
+            try {
+                recognitionRef.current?.stop();
+            } catch (error) {
+                console.log(
+                    "Recognition stop:",
+                    error.message
+                );
+            }
+
+
+            /*
+             * Chrome can sometimes pause speech
+             * unexpectedly. Keep it alive.
+             */
+
+            speechKeepAliveRef.current =
+                setInterval(() => {
+
+                    if (
+                        speech.speaking &&
+                        speech.paused
+                    ) {
+                        speech.resume();
+                    }
+
+                }, 4000);
+        };
+
+
+        utterance.onend = () => {
+
+            console.log(
+                "========== AI SPEECH FINISHED =========="
+            );
+
+            clearInterval(
+                speechKeepAliveRef.current
+            );
+
+            speechKeepAliveRef.current =
+                null;
+
+            speakingRef.current = false;
+
+            setIsAIActive(false);
+
+
+            /*
+             * Start listening again only when:
+             *
+             * 1. User still wants microphone active
+             * 2. AI is not processing
+             */
+
+            if (
+                listeningRef.current &&
+                recognitionRef.current &&
+                !processingRef.current
+            ) {
+
+                clearTimeout(
+                    restartTimeoutRef.current
+                );
+
+                restartTimeoutRef.current =
+                    setTimeout(() => {
+
+                        try {
+
+                            recognitionRef.current.start();
+
+                            console.log(
+                                "🎤 Microphone restarted"
+                            );
+
+                        } catch (error) {
+
+                            console.log(
+                                "Recognition restart:",
+                                error.message
+                            );
+                        }
+
+                    }, 500);
+            }
+        };
+
+
+        utterance.onerror = event => {
+
+            console.error(
+                "========== SPEECH ERROR ==========",
+                event.error
+            );
+
+            clearInterval(
+                speechKeepAliveRef.current
+            );
+
+            speechKeepAliveRef.current =
+                null;
+
+            speakingRef.current = false;
+
+            setIsAIActive(false);
+        };
+
+
+        /*
+         * IMPORTANT:
+         * Speak immediately.
+         */
+
+        try {
+
+            speech.speak(utterance);
+
+            console.log(
+                "✅ speech.speak() called"
+            );
+
+        } catch (error) {
+
+            console.error(
+                "❌ speech.speak() failed:",
+                error
+            );
+
+            speakingRef.current = false;
+
+            setIsAIActive(false);
         }
     };
-
-    utterance.onend = () => {
-        console.log("========== AI SPEECH FINISHED ==========");
-
-        speakingRef.current = false;
-
-        setIsAIActive(false);
-
-        // Start microphone again after AI finishes
-        if (
-            listeningRef.current &&
-            recognitionRef.current
-        ) {
-            setTimeout(() => {
-                try {
-                    recognitionRef.current.start();
-
-                    console.log(
-                        "Microphone restarted after AI speech"
-                    );
-                } catch (error) {
-                    console.log(
-                        "Microphone restart:",
-                        error.message
-                    );
-                }
-            }, 400);
-        }
-    };
-
-    utterance.onerror = (event) => {
-        console.error(
-            "========== SPEECH ERROR ==========",
-            event.error
-        );
-
-        speakingRef.current = false;
-
-        setIsAIActive(false);
-    };
-
-    // IMPORTANT:
-    // speak directly instead of delaying it
-    try {
-        speech.speak(utterance);
-
-        console.log(
-            "speech.speak() was called successfully"
-        );
-
-    } catch (error) {
-
-        console.error(
-            "speech.speak() failed:",
-            error
-        );
-
-        speakingRef.current = false;
-
-        setIsAIActive(false);
-    }
-};
 
 
     /* =========================================================
@@ -440,85 +520,86 @@ const speak = (text) => {
        CREATE SEARCH URL
     ========================================================= */
 
-    const createSiteSearchUrl = (site, query) => {
+    const createSiteSearchUrl =
+        (site, query) => {
 
-        const q = encodeURIComponent(query);
+            const q =
+                encodeURIComponent(query);
 
-        const searchUrls = {
+            const searchUrls = {
 
-            google:
-                `https://www.google.com/search?q=${q}`,
+                google:
+                    `https://www.google.com/search?q=${q}`,
 
-            youtube:
-                `https://www.youtube.com/results?search_query=${q}`,
+                youtube:
+                    `https://www.youtube.com/results?search_query=${q}`,
 
-            instagram:
-                `https://www.instagram.com/explore/search/keyword/?q=${q}`,
+                instagram:
+                    `https://www.instagram.com/explore/search/keyword/?q=${q}`,
 
-            facebook:
-                `https://www.facebook.com/search/top?q=${q}`,
+                facebook:
+                    `https://www.facebook.com/search/top?q=${q}`,
 
-            wikipedia:
-                `https://www.wikipedia.org/w/index.php?search=${q}`,
+                wikipedia:
+                    `https://www.wikipedia.org/w/index.php?search=${q}`,
 
-            spotify:
-                `https://open.spotify.com/search/${q}`,
+                spotify:
+                    `https://open.spotify.com/search/${q}`,
 
-            github:
-                `https://github.com/search?q=${q}`,
+                github:
+                    `https://github.com/search?q=${q}`,
 
-            reddit:
-                `https://www.reddit.com/search/?q=${q}`,
+                reddit:
+                    `https://www.reddit.com/search/?q=${q}`,
 
-            linkedin:
-                `https://www.linkedin.com/search/results/all/?keywords=${q}`,
+                linkedin:
+                    `https://www.linkedin.com/search/results/all/?keywords=${q}`,
 
-            amazon:
-                `https://www.amazon.in/s?k=${q}`,
+                amazon:
+                    `https://www.amazon.in/s?k=${q}`,
 
-            flipkart:
-                `https://www.flipkart.com/search?q=${q}`,
+                flipkart:
+                    `https://www.flipkart.com/search?q=${q}`,
 
-            bing:
-                `https://www.bing.com/search?q=${q}`,
+                bing:
+                    `https://www.bing.com/search?q=${q}`,
 
-            yahoo:
-                `https://search.yahoo.com/search?p=${q}`,
+                yahoo:
+                    `https://search.yahoo.com/search?p=${q}`,
 
-            stackoverflow:
-                `https://stackoverflow.com/search?q=${q}`,
+                stackoverflow:
+                    `https://stackoverflow.com/search?q=${q}`,
 
-            pinterest:
-                `https://www.pinterest.com/search/pins/?q=${q}`,
+                pinterest:
+                    `https://www.pinterest.com/search/pins/?q=${q}`,
 
-            quora:
-                `https://www.quora.com/search?q=${q}`,
+                quora:
+                    `https://www.quora.com/search?q=${q}`,
 
-            twitch:
-                `https://www.twitch.tv/search?term=${q}`,
+                twitch:
+                    `https://www.twitch.tv/search?term=${q}`,
 
-            imdb:
-                `https://www.imdb.com/find/?q=${q}`,
+                imdb:
+                    `https://www.imdb.com/find/?q=${q}`,
 
-            soundcloud:
-                `https://soundcloud.com/search?q=${q}`,
+                soundcloud:
+                    `https://soundcloud.com/search?q=${q}`,
 
-            deezer:
-                `https://www.deezer.com/search/${q}`,
+                deezer:
+                    `https://www.deezer.com/search/${q}`,
 
-            udemy:
-                `https://www.udemy.com/courses/search/?q=${q}`,
+                udemy:
+                    `https://www.udemy.com/courses/search/?q=${q}`,
 
-            coursera:
-                `https://www.coursera.org/search?query=${q}`,
+                coursera:
+                    `https://www.coursera.org/search?query=${q}`,
 
-            canva:
-                `https://www.canva.com/search?q=${q}`
+                canva:
+                    `https://www.canva.com/search?q=${q}`
+            };
+
+            return searchUrls[site] || null;
         };
-
-
-        return searchUrls[site] || null;
-    };
 
 
     /* =========================================================
@@ -533,9 +614,10 @@ const speak = (text) => {
                 .replace(/[?!.]+$/, "");
 
 
-        const match = text.match(
-            /^(?:search|find|look for|look up)\s+(.+?)\s+(?:on|in|at|using)\s+([a-zA-Z0-9]+)$/i
-        );
+        const match =
+            text.match(
+                /^(?:search|find|look for|look up)\s+(.+?)\s+(?:on|in|at|using)\s+([a-zA-Z0-9]+)$/i
+            );
 
 
         if (match) {
@@ -545,7 +627,6 @@ const speak = (text) => {
 
             const query =
                 match[1].trim();
-
 
             return {
 
@@ -563,9 +644,10 @@ const speak = (text) => {
         }
 
 
-        const reverse = text.match(
-            /^(?:search|find|look for|look up)\s+([a-zA-Z0-9]+)\s+(?:for|about|regarding)\s+(.+)$/i
-        );
+        const reverse =
+            text.match(
+                /^(?:search|find|look for|look up)\s+([a-zA-Z0-9]+)\s+(?:for|about|regarding)\s+(.+)$/i
+            );
 
 
         if (reverse) {
@@ -575,7 +657,6 @@ const speak = (text) => {
 
             const query =
                 reverse[2].trim();
-
 
             return {
 
@@ -603,12 +684,14 @@ const speak = (text) => {
 
     const getDirectUrl = command => {
 
-        const text = command.trim();
+        const text =
+            command.trim();
 
 
-        const domainMatch = text.match(
-            /^(?:open|launch|visit|go to|take me to)\s+(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+)$/i
-        );
+        const domainMatch =
+            text.match(
+                /^(?:open|launch|visit|go to|take me to)\s+(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+)$/i
+            );
 
 
         if (domainMatch) {
@@ -626,14 +709,14 @@ const speak = (text) => {
                     `https://${url}`;
             }
 
-
             return url;
         }
 
 
-        const nameMatch = text.match(
-            /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
-        );
+        const nameMatch =
+            text.match(
+                /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
+            );
 
 
         if (!nameMatch) {
@@ -663,7 +746,6 @@ const speak = (text) => {
             return false;
         }
 
-
         let finalUrl =
             String(url).trim();
 
@@ -687,7 +769,6 @@ const speak = (text) => {
                 parsed.protocol !== "http:" &&
                 parsed.protocol !== "https:"
             ) {
-
                 return false;
             }
 
@@ -728,443 +809,582 @@ const speak = (text) => {
        SPECIAL COMMANDS
     ========================================================= */
 
-    const handleSpecialCommand = (
-        data,
-        shouldSpeak
-    ) => {
+    const handleSpecialCommand =
+        (
+            data,
+            shouldSpeak
+        ) => {
 
-        if (!data) {
-            return false;
-        }
-
-
-        const type =
-            data.type;
-
-        const response =
-            data.response || "";
-
-
-        let handled = true;
-
-
-        switch (type) {
-
-            case "google_open":
-
-                openUrl(
-                    "https://www.google.com"
-                );
-
-                break;
-
-
-            case "google_search":
-
-                if (data.query) {
-
-                    openUrl(
-                        `https://www.google.com/search?q=${encodeURIComponent(
-                            data.query
-                        )}`
-                    );
-                }
-
-                break;
-
-
-            case "youtube_open":
-
-                openUrl(
-                    "https://www.youtube.com"
-                );
-
-                break;
-
-
-            case "youtube_search":
-
-            case "youtube_play":
-
-                if (data.query) {
-
-                    openUrl(
-                        `https://www.youtube.com/results?search_query=${encodeURIComponent(
-                            data.query
-                        )}`
-                    );
-                }
-
-                break;
-
-
-            case "calculator_open":
-
-                openUrl(
-                    "https://www.google.com/search?q=calculator"
-                );
-
-                break;
-
-
-            case "calculator_calculate":
-
-                if (data.query) {
-
-                    openUrl(
-                        `https://www.google.com/search?q=${encodeURIComponent(
-                            data.query
-                        )}`
-                    );
-                }
-
-                break;
-
-
-            case "instagram_open":
-
-                openUrl(
-                    "https://www.instagram.com"
-                );
-
-                break;
-
-
-            case "facebook_open":
-
-                openUrl(
-                    "https://www.facebook.com"
-                );
-
-                break;
-
-
-            case "weather_show":
-
-                openUrl(
-                    data.query
-                        ? `https://www.google.com/search?q=${encodeURIComponent(
-                            data.query
-                        )}`
-                        : "https://www.google.com/search?q=weather"
-                );
-
-                break;
-
-
-            default:
-
-                handled = false;
-
-                break;
-        }
-
-
-        if (response) {
-
-            setAiText(response);
-
-            setShowAIText(true);
-
-
-            if (shouldSpeak) {
-
-                speak(response);
+            if (!data) {
+                return false;
             }
-        }
 
 
-        if (!shouldSpeak) {
+            const type =
+                data.type;
 
-            setIsAIActive(false);
-        }
+            const response =
+                data.response || "";
 
 
-        return handled;
-    };
+            let handled = true;
+
+
+            switch (type) {
+
+                case "google_open":
+
+                    openUrl(
+                        "https://www.google.com"
+                    );
+
+                    break;
+
+
+                case "google_search":
+
+                    if (data.query) {
+
+                        openUrl(
+                            `https://www.google.com/search?q=${encodeURIComponent(
+                                data.query
+                            )}`
+                        );
+                    }
+
+                    break;
+
+
+                case "youtube_open":
+
+                    openUrl(
+                        "https://www.youtube.com"
+                    );
+
+                    break;
+
+
+                case "youtube_search":
+
+                case "youtube_play":
+
+                    if (data.query) {
+
+                        openUrl(
+                            `https://www.youtube.com/results?search_query=${encodeURIComponent(
+                                data.query
+                            )}`
+                        );
+                    }
+
+                    break;
+
+
+                case "calculator_open":
+
+                    openUrl(
+                        "https://www.google.com/search?q=calculator"
+                    );
+
+                    break;
+
+
+                case "calculator_calculate":
+
+                    if (data.query) {
+
+                        openUrl(
+                            `https://www.google.com/search?q=${encodeURIComponent(
+                                data.query
+                            )}`
+                        );
+                    }
+
+                    break;
+
+
+                case "instagram_open":
+
+                    openUrl(
+                        "https://www.instagram.com"
+                    );
+
+                    break;
+
+
+                case "facebook_open":
+
+                    openUrl(
+                        "https://www.facebook.com"
+                    );
+
+                    break;
+
+
+                case "weather_show":
+
+                    openUrl(
+                        data.query
+                            ? `https://www.google.com/search?q=${encodeURIComponent(
+                                data.query
+                            )}`
+                            : "https://www.google.com/search?q=weather"
+                    );
+
+                    break;
+
+
+                default:
+
+                    handled = false;
+
+                    break;
+            }
+
+
+            if (response) {
+
+                setAiText(response);
+
+                setShowAIText(true);
+
+
+                if (shouldSpeak) {
+
+                    speak(response);
+
+                } else {
+
+                    setIsAIActive(false);
+                }
+            }
+
+
+            return handled;
+        };
 
 
     /* =========================================================
        PROCESS COMMAND
     ========================================================= */
 
-    const processCommand = async (
-        command,
-        shouldSpeak = true
-    ) => {
-
-        const cleanedCommand =
-            String(command || "").trim();
-
-
-        if (
-            !cleanedCommand ||
-            processingRef.current
-        ) {
-
-            return;
-        }
-
-
-        processingRef.current = true;
-
-        setIsSending(true);
-
-        setUserText(cleanedCommand);
-
-        setAiText("");
-
-        setShowAIText(false);
-
-        setSelectedHistory(null);
-
-        /*
-         * AI is visually active while processing.
-         */
-
-        setIsAIActive(true);
-
-
-        try {
-
-            /* =================================================
-               SEARCH COMMAND
-            ================================================= */
-
-            const siteSearch =
-                getSearchUrl(
-                    cleanedCommand
-                );
-
-
-            if (siteSearch?.url) {
-
-                const message =
-                    `Searching ${siteSearch.site} for ${siteSearch.query}.`;
-
-
-                setAiText(message);
-
-                setShowAIText(true);
-
-
-                await saveHistory(
-                    cleanedCommand,
-                    message
-                );
-
-
-                openUrl(
-                    siteSearch.url
-                );
-
-
-                if (shouldSpeak) {
-
-                    speak(message);
-
-                } else {
-
-                    setIsAIActive(false);
-                }
-
-
-                return;
-            }
-
-
-            /* =================================================
-               GOOGLE COMMAND
-            ================================================= */
-
-            const googleMatch =
-                cleanedCommand.match(
-                    /^(?:open|search|find)\s+(.+?)\s+(?:at|on|in)\s+google$/i
-                );
-
-
-            if (googleMatch) {
-
-                const query =
-                    googleMatch[1].trim();
-
-
-                const message =
-                    `Searching Google for ${query}.`;
-
-
-                setAiText(message);
-
-                setShowAIText(true);
-
-
-                await saveHistory(
-                    cleanedCommand,
-                    message
-                );
-
-
-                openUrl(
-                    `https://www.google.com/search?q=${encodeURIComponent(
-                        query
-                    )}`
-                );
-
-
-                if (shouldSpeak) {
-
-                    speak(message);
-
-                } else {
-
-                    setIsAIActive(false);
-                }
-
-
-                return;
-            }
-
-
-            /* =================================================
-               DIRECT WEBSITE COMMAND
-            ================================================= */
-
-            const directUrl =
-                getDirectUrl(
-                    cleanedCommand
-                );
-
-
-            if (directUrl) {
-
-                const siteName =
-                    cleanedCommand
-                        .replace(
-                            /^(open|launch|visit|go to|take me to)\s+/i,
-                            ""
-                        )
-                        .trim();
-
-
-                const message =
-                    `Opening ${siteName}.`;
-
-
-                setAiText(message);
-
-                setShowAIText(true);
-
-
-                await saveHistory(
-                    cleanedCommand,
-                    message
-                );
-
-
-                openUrl(
-                    directUrl
-                );
-
-
-                if (shouldSpeak) {
-
-                    speak(message);
-
-                } else {
-
-                    setIsAIActive(false);
-                }
-
-
-                return;
-            }
-
-
-            /* =================================================
-               GEMINI
-            ================================================= */
-
-            const result =
-                await getGeminiResponse(
-                    cleanedCommand
-                );
-
-
-            let parsedResult = result;
+    const processCommand =
+        async (
+            command,
+            shouldSpeak = true
+        ) => {
+
+            const cleanedCommand =
+                String(command || "").trim();
 
 
             if (
-                typeof result === "string"
+                !cleanedCommand ||
+                processingRef.current
             ) {
-
-                const cleanResult =
-                    result
-                        .replace(
-                            /```json/gi,
-                            ""
-                        )
-                        .replace(
-                            /```/g,
-                            ""
-                        )
-                        .trim();
+                return;
+            }
 
 
-                try {
+            processingRef.current = true;
 
-                    parsedResult =
-                        JSON.parse(
-                            cleanResult
-                        );
+            setIsSending(true);
 
-                } catch {
+            setUserText(cleanedCommand);
 
-                    const jsonMatch =
-                        cleanResult.match(
-                            /\{[\s\S]*\}/
-                        );
+            setAiText("");
+
+            setShowAIText(false);
+
+            setSelectedHistory(null);
+
+            setIsAIActive(true);
 
 
-                    if (jsonMatch) {
+            try {
 
-                        try {
+                /* =================================================
+                   SEARCH COMMAND
+                ================================================= */
 
-                            parsedResult =
-                                JSON.parse(
-                                    jsonMatch[0]
-                                );
+                const siteSearch =
+                    getSearchUrl(
+                        cleanedCommand
+                    );
 
-                        } catch {
 
-                            parsedResult = {
-                                type: "general",
-                                response: cleanResult
-                            };
-                        }
+                if (siteSearch?.url) {
+
+                    const message =
+                        `Searching ${siteSearch.site} for ${siteSearch.query}.`;
+
+
+                    setAiText(message);
+
+                    setShowAIText(true);
+
+
+                    await saveHistory(
+                        cleanedCommand,
+                        message
+                    );
+
+
+                    openUrl(
+                        siteSearch.url
+                    );
+
+
+                    if (shouldSpeak) {
+
+                        speak(message);
 
                     } else {
 
-                        parsedResult = {
-                            type: "general",
-                            response: cleanResult
-                        };
+                        setIsAIActive(false);
+                    }
+
+
+                    return;
+                }
+
+
+                /* =================================================
+                   GOOGLE COMMAND
+                ================================================= */
+
+                const googleMatch =
+                    cleanedCommand.match(
+                        /^(?:open|search|find)\s+(.+?)\s+(?:at|on|in)\s+google$/i
+                    );
+
+
+                if (googleMatch) {
+
+                    const query =
+                        googleMatch[1].trim();
+
+
+                    const message =
+                        `Searching Google for ${query}.`;
+
+
+                    setAiText(message);
+
+                    setShowAIText(true);
+
+
+                    await saveHistory(
+                        cleanedCommand,
+                        message
+                    );
+
+
+                    openUrl(
+                        `https://www.google.com/search?q=${encodeURIComponent(
+                            query
+                        )}`
+                    );
+
+
+                    if (shouldSpeak) {
+
+                        speak(message);
+
+                    } else {
+
+                        setIsAIActive(false);
+                    }
+
+
+                    return;
+                }
+
+
+                /* =================================================
+                   DIRECT WEBSITE COMMAND
+                ================================================= */
+
+                const directUrl =
+                    getDirectUrl(
+                        cleanedCommand
+                    );
+
+
+                if (directUrl) {
+
+                    const siteName =
+                        cleanedCommand
+                            .replace(
+                                /^(open|launch|visit|go to|take me to)\s+/i,
+                                ""
+                            )
+                            .trim();
+
+
+                    const message =
+                        `Opening ${siteName}.`;
+
+
+                    setAiText(message);
+
+                    setShowAIText(true);
+
+
+                    await saveHistory(
+                        cleanedCommand,
+                        message
+                    );
+
+
+                    openUrl(
+                        directUrl
+                    );
+
+
+                    if (shouldSpeak) {
+
+                        speak(message);
+
+                    } else {
+
+                        setIsAIActive(false);
+                    }
+
+
+                    return;
+                }
+
+
+                /* =================================================
+                   GEMINI
+                ================================================= */
+
+                const result =
+                    await getGeminiResponse(
+                        cleanedCommand
+                    );
+
+
+                let parsedResult = result;
+
+
+                if (
+                    typeof result === "string"
+                ) {
+
+                    const cleanResult =
+                        result
+                            .replace(
+                                /```json/gi,
+                                ""
+                            )
+                            .replace(
+                                /```/g,
+                                ""
+                            )
+                            .trim();
+
+
+                    try {
+
+                        parsedResult =
+                            JSON.parse(
+                                cleanResult
+                            );
+
+                    } catch {
+
+                        const jsonMatch =
+                            cleanResult.match(
+                                /{[\s\S]*}/
+                            );
+
+
+                        if (jsonMatch) {
+
+                            try {
+
+                                parsedResult =
+                                    JSON.parse(
+                                        jsonMatch[0]
+                                    );
+
+                            } catch {
+
+                                parsedResult = {
+                                    type: "general",
+                                    response:
+                                        cleanResult
+                                };
+                            }
+
+                        } else {
+
+                            parsedResult = {
+                                type: "general",
+                                response:
+                                    cleanResult
+                            };
+                        }
                     }
                 }
-            }
 
 
-            /* =================================================
-               ERROR RESPONSE
-            ================================================= */
+                /* =================================================
+                   ERROR RESPONSE
+                ================================================= */
 
-            if (
-                !parsedResult ||
-                parsedResult.error
-            ) {
+                if (
+                    !parsedResult ||
+                    parsedResult.error
+                ) {
+
+                    const errorText =
+                        parsedResult?.error ||
+                        "Sorry, I could not process that request.";
+
+
+                    setAiText(errorText);
+
+                    setShowAIText(true);
+
+
+                    await saveHistory(
+                        cleanedCommand,
+                        errorText
+                    );
+
+
+                    if (shouldSpeak) {
+
+                        speak(errorText);
+
+                    } else {
+
+                        setIsAIActive(false);
+                    }
+
+
+                    return;
+                }
+
+
+                /* =================================================
+                   GET RESPONSE TEXT
+                ================================================= */
+
+                const responseText =
+                    parsedResult.response ||
+                    parsedResult.answer ||
+                    parsedResult.text ||
+                    "";
+
+
+                if (!responseText) {
+
+                    const errorText =
+                        "Sorry, I did not get an answer.";
+
+
+                    setAiText(errorText);
+
+                    setShowAIText(true);
+
+
+                    await saveHistory(
+                        cleanedCommand,
+                        errorText
+                    );
+
+
+                    if (shouldSpeak) {
+
+                        speak(errorText);
+
+                    } else {
+
+                        setIsAIActive(false);
+                    }
+
+
+                    return;
+                }
+
+
+                /* =================================================
+                   SHOW RESPONSE
+                ================================================= */
+
+                setAiText(responseText);
+
+                setShowAIText(true);
+
+
+                /* =================================================
+                   SAVE HISTORY
+                ================================================= */
+
+                await saveHistory(
+                    cleanedCommand,
+                    responseText
+                );
+
+
+                /* =================================================
+                   SPECIAL COMMAND
+                ================================================= */
+
+                const specialHandled =
+                    handleSpecialCommand(
+                        {
+                            ...parsedResult,
+                            response:
+                                responseText
+                        },
+                        shouldSpeak
+                    );
+
+
+                if (specialHandled) {
+                    return;
+                }
+
+
+                /* =================================================
+                   SPEAK AI RESPONSE
+                ================================================= */
+
+                if (shouldSpeak) {
+
+                    console.log(
+                        "🎤 Voice command response → SPEAK"
+                    );
+
+                    speak(responseText);
+
+                } else {
+
+                    console.log(
+                        "⌨️ Typed command → NO SPEECH"
+                    );
+
+                    setIsAIActive(false);
+                }
+
+
+            } catch (error) {
+
+                console.error(
+                    "Assistant error:",
+                    error
+                );
+
 
                 const errorText =
-                    parsedResult?.error ||
-                    "Sorry, I could not process that request.";
+                    error.response?.data?.message ||
+                    error.message ||
+                    "Sorry, something went wrong.";
 
 
                 setAiText(errorText);
@@ -1188,158 +1408,22 @@ const speak = (text) => {
                 }
 
 
-                return;
-            }
+            } finally {
+
+                processingRef.current = false;
+
+                setIsSending(false);
 
 
-            /* =================================================
-               GET RESPONSE TEXT
-            ================================================= */
-
-            const responseText =
-                parsedResult.response ||
-                parsedResult.answer ||
-                parsedResult.text ||
-                "";
-
-
-            if (!responseText) {
-
-                const errorText =
-                    "Sorry, I did not get an answer.";
-
-
-                setAiText(errorText);
-
-                setShowAIText(true);
-
-
-                await saveHistory(
-                    cleanedCommand,
-                    errorText
-                );
-
-
-                if (shouldSpeak) {
-
-                    speak(errorText);
-
-                } else {
+                if (
+                    !speakingRef.current &&
+                    !shouldSpeak
+                ) {
 
                     setIsAIActive(false);
                 }
-
-
-                return;
             }
-
-
-            /* =================================================
-               SHOW RESPONSE
-            ================================================= */
-
-            setAiText(responseText);
-
-            setShowAIText(true);
-
-
-            /* =================================================
-               SAVE HISTORY
-            ================================================= */
-
-            await saveHistory(
-                cleanedCommand,
-                responseText
-            );
-
-
-            /* =================================================
-               SPECIAL COMMAND
-            ================================================= */
-
-            const specialHandled =
-                handleSpecialCommand(
-                    {
-                        ...parsedResult,
-                        response: responseText
-                    },
-                    shouldSpeak
-                );
-
-
-            if (specialHandled) {
-                return;
-            }
-
-
-            /* =================================================
-               SPEAK AI RESPONSE
-            ================================================= */
-
-            if (shouldSpeak) {
-
-                speak(responseText);
-
-            } else {
-
-                /*
-                 * Typed input must NEVER speak.
-                 */
-
-                setIsAIActive(false);
-            }
-
-
-        } catch (error) {
-
-            console.error(
-                "Assistant error:",
-                error
-            );
-
-
-            const errorText =
-                error.response?.data?.message ||
-                error.message ||
-                "Sorry, something went wrong.";
-
-
-            setAiText(errorText);
-
-            setShowAIText(true);
-
-
-            await saveHistory(
-                cleanedCommand,
-                errorText
-            );
-
-
-            if (shouldSpeak) {
-
-                speak(errorText);
-
-            } else {
-
-                setIsAIActive(false);
-            }
-
-        } finally {
-
-            processingRef.current = false;
-
-            setIsSending(false);
-
-
-            if (
-                !speakingRef.current &&
-                !shouldSpeak
-            ) {
-
-                setIsAIActive(false);
-            }
-        }
-    };
+        };
 
 
     /* =========================================================
@@ -1356,29 +1440,43 @@ const speak = (text) => {
             !command ||
             isSending
         ) {
-
             return;
         }
 
 
-        if (isListening) {
+        /*
+         * Typed input should not continue
+         * microphone conversation.
+         */
 
-            listeningRef.current = false;
+        listeningRef.current = false;
+
+        try {
+            recognitionRef.current?.stop();
+        } catch {}
 
 
-            try {
+        /*
+         * If AI was previously speaking,
+         * stop it because this is a typed command.
+         */
 
-                recognitionRef.current?.stop();
+        if ("speechSynthesis" in window) {
 
-            } catch {}
+            window.speechSynthesis.cancel();
         }
+
+        speakingRef.current = false;
+
+        setIsAIActive(false);
 
 
         setTypedText("");
 
 
         /*
-         * false = do NOT speak typed commands
+         * FALSE = typed input.
+         * Therefore NO speech.
          */
 
         await processCommand(
@@ -1392,15 +1490,18 @@ const speak = (text) => {
        ENTER KEY
     ========================================================= */
 
-    const handleInputKeyDown = event => {
+    const handleInputKeyDown =
+        event => {
 
-        if (event.key === "Enter") {
+            if (
+                event.key === "Enter"
+            ) {
 
-            event.preventDefault();
+                event.preventDefault();
 
-            handleSendText();
-        }
-    };
+                handleSendText();
+            }
+        };
 
 
     /* =========================================================
@@ -1448,7 +1549,7 @@ const speak = (text) => {
         recognition.onstart = () => {
 
             console.log(
-                "MICROPHONE STARTED"
+                "🎤 MICROPHONE STARTED"
             );
 
             listeningRef.current = true;
@@ -1461,158 +1562,166 @@ const speak = (text) => {
            ON RESULT
         ===================================================== */
 
-        recognition.onresult = async event => {
+        recognition.onresult =
+            async event => {
 
-            if (processingRef.current) {
-                return;
-            }
+                if (
+                    processingRef.current ||
+                    speakingRef.current
+                ) {
+                    return;
+                }
 
 
-            const lastResult =
-                event.results[
-                    event.results.length - 1
+                const lastResult =
+                    event.results[
+                        event.results.length - 1
+                    ];
+
+
+                if (
+                    !lastResult ||
+                    !lastResult[0]
+                ) {
+                    return;
+                }
+
+
+                const transcript =
+                    lastResult[0]
+                        .transcript
+                        .trim();
+
+
+                if (!transcript) {
+                    return;
+                }
+
+
+                console.log(
+                    "🎤 USER SAID:",
+                    transcript
+                );
+
+
+                const lowerTranscript =
+                    transcript.toLowerCase();
+
+
+                /* =================================================
+                   STOP COMMANDS
+                ================================================= */
+
+                const stopCommands = [
+                    "thank you",
+                    "thanks",
+                    "stop",
+                    "bye",
+                    "goodbye",
+                    "stop listening",
+                    "cancel"
                 ];
 
 
-            if (
-                !lastResult ||
-                !lastResult[0]
-            ) {
+                if (
+                    stopCommands.includes(
+                        lowerTranscript
+                    )
+                ) {
 
-                return;
-            }
+                    listeningRef.current = false;
 
+                    speakingRef.current = false;
 
-            const transcript =
-                lastResult[0]
-                    .transcript
-                    .trim();
+                    processingRef.current = false;
 
 
-            if (!transcript) {
-                return;
-            }
+                    setIsListening(false);
+
+                    setIsAIActive(false);
 
 
-            console.log(
-                "USER SAID:",
-                transcript
-            );
+                    try {
+                        recognition.stop();
+                    } catch {}
 
 
-            const lowerTranscript =
-                transcript.toLowerCase();
+                    window.speechSynthesis.cancel();
+
+                    return;
+                }
 
 
-            /* =================================================
-               STOP COMMANDS
-            ================================================= */
+                setUserText(transcript);
 
-            const stopCommands = [
-                "thank you",
-                "thanks",
-                "stop",
-                "bye",
-                "goodbye",
-                "stop listening",
-                "cancel"
-            ];
+                setAiText("");
+
+                setShowAIText(false);
 
 
-            if (
-                stopCommands.includes(
-                    lowerTranscript
-                )
-            ) {
+                /* =================================================
+                   GREETING
+                ================================================= */
 
-                listeningRef.current = false;
+                if (
+                    lowerTranscript === "hey" ||
+                    lowerTranscript === "hi" ||
+                    lowerTranscript === "hello"
+                ) {
 
-                speakingRef.current = false;
+                    const answer =
+                        "Yes, I am listening.";
 
 
-                setIsListening(false);
+                    setAiText(answer);
 
-                setIsAIActive(false);
+                    setShowAIText(true);
 
+
+                    /*
+                     * Stop microphone before speaking.
+                     */
+
+                    try {
+                        recognition.stop();
+                    } catch {}
+
+
+                    await saveHistory(
+                        transcript,
+                        answer
+                    );
+
+
+                    speak(answer);
+
+                    return;
+                }
+
+
+                /* =================================================
+                   STOP RECOGNITION WHILE PROCESSING
+                ================================================= */
 
                 try {
-
                     recognition.stop();
-
                 } catch {}
 
 
-                window.speechSynthesis.cancel();
+                /* =================================================
+                   PROCESS VOICE COMMAND
+                ================================================= */
+
+                console.log(
+                    "🎤 Sending voice command to processCommand()"
+                );
 
 
-                return;
-            }
-
-
-            setUserText(transcript);
-
-            setAiText("");
-
-            setShowAIText(false);
-
-
-            /* =================================================
-               GREETING
-            ================================================= */
-
-          if (
-    lowerTranscript === "hey" ||
-    lowerTranscript === "hi" ||
-    lowerTranscript === "hello"
-) {
-
-    const answer =
-        "Yes, I am listening.";
-
-    setAiText(answer);
-    setShowAIText(true);
-
-    await saveHistory(
-        transcript,
-        answer
-    );
-
-    // Stop microphone before AI speaks
-    try {
-        recognition.stop();
-    } catch (error) {
-        console.log(
-            "Recognition stop:",
-            error.message
-        );
-    }
-
-    speak(answer);
-
-    return;
-}
-
-
-            /* =================================================
-               STOP RECOGNITION WHILE PROCESSING
-            ================================================= */
-
-            try {
-
-                recognition.stop();
-
-            } catch {}
-
-
-            /* =================================================
-               PROCESS VOICE COMMAND
-            ================================================= */
-
-            await processCommand(
-                transcript,
-                true
-            );
-        };
+                await processCommand(
+                    transcript,
+                    true
+                );
+            };
 
 
         /* =====================================================
@@ -1622,9 +1731,16 @@ const speak = (text) => {
         recognition.onend = () => {
 
             console.log(
-                "MICROPHONE ENDED"
+                "🎤 MICROPHONE ENDED"
             );
 
+
+            /*
+             * Do NOT restart while:
+             *
+             * - AI is speaking
+             * - command is processing
+             */
 
             if (
                 listeningRef.current &&
@@ -1644,8 +1760,15 @@ const speak = (text) => {
 
                             recognition.start();
 
-                        } catch {}
-                    }, 300);
+                        } catch (error) {
+
+                            console.log(
+                                "Recognition restart:",
+                                error.message
+                            );
+                        }
+
+                    }, 500);
 
             } else if (
                 !listeningRef.current
@@ -1662,26 +1785,37 @@ const speak = (text) => {
            ON ERROR
         ===================================================== */
 
-        recognition.onerror = event => {
+        recognition.onerror =
+            event => {
 
-            console.error(
-                "Speech recognition error:",
-                event.error
-            );
+                console.error(
+                    "🎤 Speech recognition error:",
+                    event.error
+                );
 
 
-            if (
-                event.error === "not-allowed" ||
-                event.error === "audio-capture"
-            ) {
+                if (
+                    event.error === "not-allowed" ||
+                    event.error === "audio-capture"
+                ) {
 
-                listeningRef.current = false;
+                    listeningRef.current = false;
 
-                setIsListening(false);
+                    setIsListening(false);
 
-                setIsAIActive(false);
-            }
-        };
+                    setIsAIActive(false);
+                }
+
+
+                if (
+                    event.error === "no-speech"
+                ) {
+
+                    console.log(
+                        "No speech detected."
+                    );
+                }
+            };
 
 
         /* =====================================================
@@ -1702,14 +1836,22 @@ const speak = (text) => {
             );
 
 
+            clearInterval(
+                speechKeepAliveRef.current
+            );
+
+
             try {
-
                 recognition.stop();
-
             } catch {}
 
 
-            window.speechSynthesis.cancel();
+            if (
+                "speechSynthesis" in window
+            ) {
+
+                window.speechSynthesis.cancel();
+            }
         };
 
     }, [getGeminiResponse]);
@@ -1731,14 +1873,35 @@ const speak = (text) => {
         }
 
 
+        /*
+         * Don't start another recognition session
+         * while processing/speaking.
+         */
+
+        if (
+            processingRef.current ||
+            speakingRef.current
+        ) {
+
+            console.log(
+                "Assistant is busy."
+            );
+
+            return;
+        }
+
+
         try {
 
-            window.speechSynthesis.cancel();
+            if (
+                "speechSynthesis" in window
+            ) {
+
+                window.speechSynthesis.cancel();
+            }
 
 
             speakingRef.current = false;
-
-            processingRef.current = false;
 
 
             setIsAIActive(false);
@@ -1751,10 +1914,11 @@ const speak = (text) => {
 
             recognitionRef.current.start();
 
+
         } catch (error) {
 
             console.log(
-                "Microphone already running:",
+                "Microphone start:",
                 error.message
             );
         }
@@ -1784,13 +1948,21 @@ const speak = (text) => {
         );
 
 
-        window.speechSynthesis.cancel();
+        clearInterval(
+            speechKeepAliveRef.current
+        );
+
+
+        if (
+            "speechSynthesis" in window
+        ) {
+
+            window.speechSynthesis.cancel();
+        }
 
 
         try {
-
             recognitionRef.current?.stop();
-
         } catch {}
     };
 
@@ -1837,10 +2009,13 @@ const speak = (text) => {
             );
 
 
+            clearInterval(
+                speechKeepAliveRef.current
+            );
+
+
             try {
-
                 recognitionRef.current?.stop();
-
             } catch {}
 
 
@@ -1875,7 +2050,6 @@ const speak = (text) => {
     ========================================================= */
 
     const handleCustomize = () => {
-
         navigate("/customize2");
     };
 
@@ -1903,11 +2077,6 @@ const speak = (text) => {
 
         <div className="relative min-h-screen w-full overflow-hidden bg-[#05060b] text-white">
 
-
-            {/* =================================================
-                MAIN
-            ================================================= */}
-
             <main
                 className={`
                     w-full
@@ -1934,10 +2103,6 @@ const speak = (text) => {
                 <div className="w-full flex flex-col items-center justify-center px-5 box-border">
 
 
-                    {/* =================================================
-                        ASSISTANT IMAGE
-                    ================================================= */}
-
                     <div className="relative w-[clamp(190px,50vw,300px)] h-[clamp(280px,48vh,400px)] flex items-center justify-center overflow-hidden rounded-[20px] bg-black/10">
 
                         {assistantImage ? (
@@ -1958,20 +2123,12 @@ const speak = (text) => {
                     </div>
 
 
-                    {/* =================================================
-                        ASSISTANT NAME
-                    ================================================= */}
-
                     <div className="mt-3.5 text-white text-2xl font-semibold text-center max-sm:text-xl">
 
                         I'm {assistantName}
 
                     </div>
 
-
-                    {/* =================================================
-                        USER / AI GIF
-                    ================================================= */}
 
                     <div className="w-full h-25 flex items-center justify-center mt-2 max-sm:h-22.5">
 
@@ -1992,10 +2149,6 @@ const speak = (text) => {
                     </div>
 
 
-                    {/* =================================================
-                        RESPONSE TEXT
-                    ================================================= */}
-
                     <div className="w-full min-h-15 flex items-center justify-center px-3">
 
                         <div className="text-white text-[18px] font-bold text-center w-full leading-[1.4] whitespace-pre-wrap wrap-break-word max-h-45 overflow-y-auto dark-scrollbar">
@@ -2009,14 +2162,9 @@ const speak = (text) => {
                     </div>
 
 
-                    {/* =================================================
-                        TEXT INPUT
-                    ================================================= */}
-
                     <div className="w-full max-w-175 mt-5 px-2">
 
                         <div className="flex items-center gap-2 w-full">
-
 
                             <input
                                 type="text"
@@ -2057,10 +2205,6 @@ const speak = (text) => {
                     </div>
 
 
-                    {/* =================================================
-                        MICROPHONE
-                    ================================================= */}
-
                     <button
                         onClick={toggleMic}
                         className={`
@@ -2093,10 +2237,6 @@ const speak = (text) => {
                     </button>
 
 
-                    {/* =================================================
-                        MIC STATUS
-                    ================================================= */}
-
                     <div className="mt-3 text-gray-300 text-sm text-center max-w-[90%]">
 
                         {isListening
@@ -2109,10 +2249,6 @@ const speak = (text) => {
 
             </main>
 
-
-            {/* =================================================
-                MENU BUTTON
-            ================================================= */}
 
             {!showMenu && (
 
@@ -2130,12 +2266,7 @@ const speak = (text) => {
             )}
 
 
-            {/* =================================================
-                TOP RIGHT BUTTONS
-            ================================================= */}
-
             <div className="fixed top-5 right-5 z-1200 flex flex-col items-end gap-3">
-
 
                 <button
                     onClick={handleLogout}
@@ -2159,10 +2290,6 @@ const speak = (text) => {
             </div>
 
 
-            {/* =================================================
-                BACKDROP
-            ================================================= */}
-
             <div
                 onClick={() =>
                     setShowMenu(false)
@@ -2183,10 +2310,6 @@ const speak = (text) => {
                 `}
             />
 
-
-            {/* =================================================
-                SIDEBAR
-            ================================================= */}
 
             <aside
                 className={`
@@ -2218,26 +2341,16 @@ const speak = (text) => {
                 `}
             >
 
-
-                {/* =================================================
-                    SIDEBAR HEADER
-                ================================================= */}
-
                 <div className="flex items-center justify-between px-5 py-5 border-b border-white/10 shrink-0">
 
                     <div>
 
                         <h2 className="text-white text-lg sm:text-xl font-bold m-0">
-
                             Assistant Menu
-
                         </h2>
 
-
                         <p className="text-gray-500 text-xs mt-1 m-0">
-
                             Your recent activity
-
                         </p>
 
                     </div>
@@ -2258,35 +2371,26 @@ const speak = (text) => {
                 </div>
 
 
-                {/* =================================================
-                    HISTORY TITLE
-                ================================================= */}
-
                 <div className="px-5 pt-5 pb-3 flex items-center justify-between shrink-0">
 
                     <h3 className="text-white text-base font-semibold m-0">
-
                         History
-
                     </h3>
-
 
                     <span className="text-gray-500 text-xs">
 
                         {historyItems.length}{" "}
 
-                        {historyItems.length === 1
-                            ? "item"
-                            : "items"}
+                        {
+                            historyItems.length === 1
+                                ? "item"
+                                : "items"
+                        }
 
                     </span>
 
                 </div>
 
-
-                {/* =================================================
-                    HISTORY LIST
-                ================================================= */}
 
                 <div className="flex-1 overflow-y-auto px-4 pb-5 dark-scrollbar">
 
@@ -2330,13 +2434,10 @@ const speak = (text) => {
 
                                             <div className="flex flex-col gap-3 min-w-0 w-full">
 
-
                                                 <div>
 
                                                     <div className="text-white font-medium">
-
                                                         {command}
-
                                                     </div>
 
                                                 </div>
@@ -2345,21 +2446,16 @@ const speak = (text) => {
                                                 <div>
 
                                                     <div className="text-gray-500 text-xs">
-
                                                         Answer:
-
                                                     </div>
 
 
                                                     <div className="text-gray-400 text-sm leading-relaxed mt-1">
-
                                                         {answer ||
                                                             "No answer saved."}
-
                                                     </div>
 
                                                 </div>
-
 
                                             </div>
 
@@ -2375,23 +2471,15 @@ const speak = (text) => {
                         <div className="h-full min-h-62.5 flex flex-col items-center justify-center text-center px-5">
 
                             <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-500 text-xl mb-4">
-
                                 ✦
-
                             </div>
 
-
                             <p className="text-gray-400 text-sm m-0">
-
                                 No history yet
-
                             </p>
 
-
                             <p className="text-gray-600 text-xs mt-2 max-w-55 leading-relaxed">
-
                                 Your questions and answers will appear here.
-
                             </p>
 
                         </div>
@@ -2404,6 +2492,5 @@ const speak = (text) => {
         </div>
     );
 }
-
 
 export default Home;
