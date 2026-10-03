@@ -1,751 +1,1560 @@
-
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState
-} from "react";
-import { useNavigate } from "react-router-dom";
+import React,{useContext,useEffect,useRef,useState} from "react";
+import {userDataContext} from "../context/UserContext";
+import {useNavigate} from "react-router-dom";
 import axios from "axios";
-import { userDataContext } from "../context/UserContext";
+import userImg from "../assets/user.gif";
+import aiImg from "../assets/ai.gif";
+import {IoMdMenu,IoMdClose} from "react-icons/io";
 
-const Home = () => {
-  const {
-    userData,
-    serverUrl,
-    getGeminiResponse,
-    saveHistory
-  } = useContext(userDataContext);
+function Home(){
 
-  const navigate = useNavigate();
+    const {
+        userData,
+        serverUrl,
+        setUserData,
+        getGeminiResponse
+    }=useContext(userDataContext);
 
-  const [typedText, setTypedText] = useState("");
-  const [userText, setUserText] = useState("");
-  const [aiText, setAiText] = useState("");
-  const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-  const [historyItems, setHistoryItems] = useState([]);
+    const navigate=useNavigate();
 
-  const recognitionRef = useRef(null);
-  const listeningRef = useRef(false);
-  const speakingRef = useRef(false);
-  const processingRef = useRef(false);
-  const restartTimeoutRef = useRef(null);
-  const mountedRef = useRef(true);
+    const [isListening,setIsListening]=useState(false);
+    const [isAIActive,setIsAIActive]=useState(false);
+    const [isSpeaking,setIsSpeaking]=useState(false);
+    const [userText,setUserText]=useState("");
+    const [aiText,setAiText]=useState("");
+    const [showAIText,setShowAIText]=useState(false);
+    const [showMenu,setShowMenu]=useState(false);
+    const [historyItems,setHistoryItems]=useState([]);
+    const [typedText,setTypedText]=useState("");
+    const [isSending,setIsSending]=useState(false);
 
-  const assistantName = userData?.assistantName || "Mark";
+    const recognitionRef=useRef(null);
+    const listeningRef=useRef(false);
+    const speakingRef=useRef(false);
+    const processingRef=useRef(false);
+    const restartTimeoutRef=useRef(null);
 
-  const cancelRestart = useCallback(() => {
-    if (restartTimeoutRef.current) {
-      clearTimeout(restartTimeoutRef.current);
-      restartTimeoutRef.current = null;
-    }
-  }, []);
+    useEffect(()=>{
+        const history=Array.isArray(userData?.history)
+            ?userData.history
+            :[];
 
-  const startRecognition = useCallback(() => {
-    const recognition = recognitionRef.current;
+        setHistoryItems(history);
+    },[userData?.history]);
 
-    if (
-      !recognition ||
-      !listeningRef.current ||
-      speakingRef.current ||
-      processingRef.current
-    ) {
-      return;
-    }
+    const saveHistory=async(command,answer)=>{
 
-    cancelRestart();
+        if(!command||!answer)return;
 
-    try {
-      recognition.start();
-    } catch (error) {
-      // Recognition may already be starting or running.
-    }
-  }, [cancelRestart]);
+        const newItem={
+            command:String(command).trim(),
+            answer:String(answer).trim()
+        };
 
-  const scheduleRecognitionRestart = useCallback(() => {
-    cancelRestart();
+        setHistoryItems(prev=>[
+            newItem,
+            ...prev.filter(item=>{
 
-    restartTimeoutRef.current = setTimeout(() => {
-      startRecognition();
-    }, 300);
-  }, [cancelRestart, startRecognition]);
+                const oldCommand=
+                    typeof item==="string"
+                        ?item
+                        :item?.command||"";
 
-  const stopSpeaking = useCallback(() => {
-    window.speechSynthesis.cancel();
-    speakingRef.current = false;
+                const oldAnswer=
+                    typeof item==="string"
+                        ?""
+                        :item?.answer||"";
 
-    if (mountedRef.current) {
-      setIsSpeaking(false);
+                return !(
+                    oldCommand===newItem.command&&
+                    oldAnswer===newItem.answer
+                );
+            })
+        ].slice(0,50));
 
-      if (!processingRef.current) {
-        setIsSending(false);
-      }
-    }
+        setUserData(prev=>
+            prev
+                ?{
+                    ...prev,
+                    history:[
+                        newItem,
+                        ...(Array.isArray(prev.history)
+                            ?prev.history.filter(item=>{
 
-    if (listeningRef.current && !processingRef.current) {
-      scheduleRecognitionRestart();
-    }
-  }, [scheduleRecognitionRestart]);
+                                const oldCommand=
+                                    typeof item==="string"
+                                        ?item
+                                        :item?.command||"";
 
-  const speak = useCallback(
-    (text) => {
-      if (!text || !("speechSynthesis" in window)) {
-        return;
-      }
+                                const oldAnswer=
+                                    typeof item==="string"
+                                        ?""
+                                        :item?.answer||"";
 
-      window.speechSynthesis.cancel();
+                                return !(
+                                    oldCommand===newItem.command&&
+                                    oldAnswer===newItem.answer
+                                );
+                            })
+                            :[])
+                    ].slice(0,50)
+                }
+                :prev
+        );
 
-      const utterance = new SpeechSynthesisUtterance(String(text));
-      utterance.rate = 1.05;
-      utterance.pitch = 1;
-      utterance.volume = 1;
+        try{
 
-      utterance.onstart = () => {
-        speakingRef.current = true;
+            const result=await axios.post(
+                `${serverUrl}/api/user/savehistory`,
+                {
+                    command:newItem.command,
+                    answer:newItem.answer
+                },
+                {
+                    withCredentials:true
+                }
+            );
 
-        if (mountedRef.current) {
-          setIsSpeaking(true);
+            if(result.data?.history){
+
+                setHistoryItems(result.data.history);
+
+                setUserData(prev=>
+                    prev
+                        ?{
+                            ...prev,
+                            history:result.data.history
+                        }
+                        :prev
+                );
+            }
+
+        }catch(error){
+
+            console.error(
+                "SAVE HISTORY ERROR:",
+                error.response?.data||error.message
+            );
         }
-      };
-
-      utterance.onend = () => {
-        speakingRef.current = false;
-
-        if (mountedRef.current) {
-          setIsSpeaking(false);
-        }
-
-        if (listeningRef.current && !processingRef.current) {
-          scheduleRecognitionRestart();
-        }
-      };
-
-      utterance.onerror = () => {
-        speakingRef.current = false;
-
-        if (mountedRef.current) {
-          setIsSpeaking(false);
-        }
-
-        if (listeningRef.current && !processingRef.current) {
-          scheduleRecognitionRestart();
-        }
-      };
-
-      window.speechSynthesis.speak(utterance);
-    },
-    [scheduleRecognitionRestart]
-  );
-
-  const loadHistory = useCallback(async () => {
-    try {
-      const response = await axios.get(
-        `${serverUrl}/api/user/current`,
-        { withCredentials: true }
-      );
-
-      const history = response.data?.history;
-
-      if (mountedRef.current) {
-        setHistoryItems(Array.isArray(history) ? history : []);
-      }
-    } catch (error) {
-      console.error(
-        "LOAD HISTORY ERROR:",
-        error.response?.data || error.message
-      );
-    }
-  }, [serverUrl]);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    loadHistory();
-
-    return () => {
-      mountedRef.current = false;
-      listeningRef.current = false;
-      cancelRestart();
-
-      if (recognitionRef.current) {
-        recognitionRef.current.onresult = null;
-        recognitionRef.current.onend = null;
-        recognitionRef.current.onerror = null;
-
-        try {
-          recognitionRef.current.stop();
-        } catch (error) {
-          // Recognition may already be stopped.
-        }
-      }
-
-      window.speechSynthesis.cancel();
     };
-  }, [cancelRestart, loadHistory]);
 
-  const stopListening = useCallback(() => {
-    listeningRef.current = false;
-    cancelRestart();
+    const showAnswer=(command,answer)=>{
 
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (error) {
-        // Recognition may already be stopped.
-      }
-    }
+        setUserText(command||"");
+        setAiText(answer||"");
+        setShowAIText(true);
+        setShowMenu(false);
+    };
 
-    window.speechSynthesis.cancel();
-    speakingRef.current = false;
+    const speak=text=>{
 
-    if (mountedRef.current) {
-      setIsListening(false);
-      setIsSpeaking(false);
-    }
-  }, [cancelRestart]);
+        if(!text)return;
 
-  const startListening = useCallback(() => {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+        window.speechSynthesis.cancel();
 
-    if (!SpeechRecognition) {
-      alert(
-        "Speech recognition is not supported in this browser. Try Chrome."
-      );
-      return;
-    }
+        const utterance=new SpeechSynthesisUtterance(
+            String(text)
+        );
 
-    if (!recognitionRef.current) {
-      const recognition = new SpeechRecognition();
+        utterance.rate=1.05;
+        utterance.pitch=1;
+        utterance.volume=1;
 
-      recognition.continuous = true;
-      recognition.interimResults = false;
-      recognition.lang = "en-IN";
+        utterance.onstart=()=>{
 
-      recognition.onstart = () => {
-        if (mountedRef.current) {
-          setIsListening(true);
-        }
-      };
+            speakingRef.current=true;
+            setIsSpeaking(true);
+            setIsAIActive(true);
+        };
 
-      recognition.onresult = async (event) => {
-        const resultIndex = event.resultIndex;
-        const transcript = event.results[resultIndex][0].transcript.trim();
+        utterance.onend=()=>{
 
-        if (!transcript) return;
+            speakingRef.current=false;
+            setIsSpeaking(false);
+            setIsAIActive(false);
 
-        console.log("HEARD:", transcript);
+            if(
+                listeningRef.current&&
+                !processingRef.current&&
+                recognitionRef.current
+            ){
 
-        const lowerTranscript = transcript.toLowerCase().trim();
+                try{
+                    recognitionRef.current.start();
+                }catch{}
+            }
+        };
 
-        if (
-          /^(stop listening|close chat|close assistant|turn off microphone|stop microphone|goodbye|bye)$/.test(
-            lowerTranscript
-          )
-        ) {
-          stopListening();
-          return;
-        }
+        utterance.onerror=()=>{
 
-        if (processingRef.current) return;
+            speakingRef.current=false;
+            setIsSpeaking(false);
+            setIsAIActive(false);
+        };
 
-        // Support commands such as "Hi Mark, what is the time?"
-        // Also accept ordinary spoken questions without the wake phrase.
-        const command = transcript
-          .replace(/^\s*(hi|hey|hello)?\s*mark[\s,.:!-]*/i, "")
-          .trim();
+        window.speechSynthesis.speak(utterance);
+    };
 
-        if (!command) {
-          speak(`Yes, I am listening.`);
-          return;
+    /* ONLY NEW STOP SPEAKING FUNCTION */
+
+    const stopSpeaking=()=>{
+
+        window.speechSynthesis.cancel();
+
+        speakingRef.current=false;
+
+        setIsSpeaking(false);
+
+        if(!isSending){
+            setIsAIActive(false);
         }
 
-        try {
-          recognitionRef.current?.stop();
-        } catch (error) {
-          // Recognition may already be stopped.
+        if(
+            listeningRef.current&&
+            !processingRef.current&&
+            recognitionRef.current
+        ){
+
+            setTimeout(()=>{
+                try{
+                    recognitionRef.current.start();
+                }catch{}
+            },200);
+        }
+    };
+
+    const websiteMap={
+
+        google:"https://www.google.com",
+        youtube:"https://www.youtube.com",
+        instagram:"https://www.instagram.com",
+        facebook:"https://www.facebook.com",
+        snapchat:"https://www.snapchat.com",
+        wikipedia:"https://www.wikipedia.org",
+        gaana:"https://gaana.com",
+        spotify:"https://open.spotify.com",
+        github:"https://github.com",
+        reddit:"https://www.reddit.com",
+        linkedin:"https://www.linkedin.com",
+        netflix:"https://www.netflix.com",
+        gmail:"https://mail.google.com",
+        whatsapp:"https://web.whatsapp.com",
+        amazon:"https://www.amazon.in",
+        flipkart:"https://www.flipkart.com",
+        twitter:"https://x.com",
+        x:"https://x.com",
+        telegram:"https://web.telegram.org",
+        discord:"https://discord.com",
+        stackoverflow:"https://stackoverflow.com",
+        canva:"https://www.canva.com",
+        quora:"https://www.quora.com",
+        pinterest:"https://www.pinterest.com",
+        twitch:"https://www.twitch.tv",
+        imdb:"https://www.imdb.com",
+        soundcloud:"https://soundcloud.com",
+        deezer:"https://www.deezer.com",
+        yahoo:"https://www.yahoo.com",
+        bing:"https://www.bing.com",
+        topper:"https://www.toppr.com",
+        toppr:"https://www.toppr.com",
+        vedant:"https://www.vedantu.com",
+        vedantu:"https://www.vedantu.com",
+        hungama:"https://www.hungama.com",
+        udemy:"https://www.udemy.com",
+        coursera:"https://www.coursera.org",
+        gate:"https://gate2027.iitm.ac.in"
+    };
+
+    const createSiteSearchUrl=(site,query)=>{
+
+        const q=encodeURIComponent(query);
+
+        const searchUrls={
+
+            google:
+                `https://www.google.com/search?q=${q}`,
+
+            youtube:
+                `https://www.youtube.com/results?search_query=${q}`,
+
+            instagram:
+                `https://www.instagram.com/explore/search/keyword/?q=${q}`,
+
+            facebook:
+                `https://www.facebook.com/search/top?q=${q}`,
+
+            wikipedia:
+                `https://www.wikipedia.org/w/index.php?search=${q}`,
+
+            spotify:
+                `https://open.spotify.com/search/${q}`,
+
+            github:
+                `https://github.com/search?q=${q}`,
+
+            reddit:
+                `https://www.reddit.com/search/?q=${q}`,
+
+            linkedin:
+                `https://www.linkedin.com/search/results/all/?keywords=${q}`,
+
+            amazon:
+                `https://www.amazon.in/s?k=${q}`,
+
+            flipkart:
+                `https://www.flipkart.com/search?q=${q}`,
+
+            bing:
+                `https://www.bing.com/search?q=${q}`,
+
+            yahoo:
+                `https://search.yahoo.com/search?p=${q}`,
+
+            stackoverflow:
+                `https://stackoverflow.com/search?q=${q}`,
+
+            pinterest:
+                `https://www.pinterest.com/search/pins/?q=${q}`,
+
+            quora:
+                `https://www.quora.com/search?q=${q}`,
+
+            twitch:
+                `https://www.twitch.tv/search?term=${q}`,
+
+            imdb:
+                `https://www.imdb.com/find/?q=${q}`,
+
+            soundcloud:
+                `https://soundcloud.com/search?q=${q}`,
+
+            deezer:
+                `https://www.deezer.com/search/${q}`,
+
+            udemy:
+                `https://www.udemy.com/courses/search/?q=${q}`,
+
+            coursera:
+                `https://www.coursera.org/search?query=${q}`,
+
+            canva:
+                `https://www.canva.com/search?q=${q}`
+        };
+
+        return searchUrls[site]||null;
+    };
+
+    const getSearchUrl=command=>{
+
+        const text=command
+            .trim()
+            .replace(/[?!.]+$/,"");
+
+        const match=text.match(
+            /^(?:search|find|look for|look up)\s+(.+?)\s+(?:on|in|at|using)\s+([a-zA-Z0-9]+)$/i
+        );
+
+        if(match){
+
+            const site=match[2].toLowerCase();
+            const query=match[1].trim();
+
+            return{
+                url:createSiteSearchUrl(site,query),
+                site:match[2].trim(),
+                query
+            };
         }
 
-        await processCommand(command, true);
-      };
+        const reverse=text.match(
+            /^(?:search|find|look for|look up)\s+([a-zA-Z0-9]+)\s+(?:for|about|regarding)\s+(.+)$/i
+        );
 
-      recognition.onerror = (event) => {
-        console.error("SPEECH RECOGNITION ERROR:", event.error);
+        if(reverse){
 
-        if (
-          event.error === "not-allowed" ||
-          event.error === "service-not-allowed"
-        ) {
-          listeningRef.current = false;
+            const site=reverse[1].toLowerCase();
+            const query=reverse[2].trim();
 
-          if (mountedRef.current) {
-            setIsListening(false);
-          }
+            return{
+                url:createSiteSearchUrl(site,query),
+                site:reverse[1].trim(),
+                query
+            };
         }
-      };
 
-      recognition.onend = () => {
-        if (
-          listeningRef.current &&
-          !speakingRef.current &&
-          !processingRef.current
-        ) {
-          scheduleRecognitionRestart();
+        const openSearch=text.match(
+            /^(?:open|launch|visit|go to)\s+(.+?)\s+(?:on|in|using)\s+([a-zA-Z0-9]+)$/i
+        );
+
+        if(openSearch){
+
+            const site=openSearch[2].toLowerCase();
+            const query=openSearch[1].trim();
+
+            return{
+                url:createSiteSearchUrl(site,query),
+                site:openSearch[2].trim(),
+                query
+            };
         }
-      };
 
-      recognitionRef.current = recognition;
-    }
+        return null;
+    };
 
-    window.speechSynthesis.cancel();
-    listeningRef.current = true;
+    const getDirectUrl=command=>{
 
-    if (mountedRef.current) {
-      setIsListening(true);
-    }
+        const text=command.trim();
 
-    startRecognition();
-  }, [scheduleRecognitionRestart, speak, startRecognition, stopListening]);
+        const domainMatch=text.match(
+            /^(?:open|launch|visit|go to|take me to)\s+(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+)$/i
+        );
 
-  const processCommand = useCallback(
-    async (command, shouldSpeak = false) => {
-      if (!command?.trim() || processingRef.current) return;
+        if(domainMatch){
 
-      const cleanCommand = command.trim();
+            let url=domainMatch[1]
+                .replace(/[.,!?]+$/,"");
 
-      processingRef.current = true;
+            if(!/^https?:\/\//i.test(url)){
+                url=`https://${url}`;
+            }
 
-      if (mountedRef.current) {
-        setUserText(cleanCommand);
-        setAiText("");
+            return url;
+        }
+
+        const nameMatch=text.match(
+            /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
+        );
+
+        if(!nameMatch)return null;
+
+        const siteName=nameMatch[1]
+            .trim()
+            .toLowerCase()
+            .replace(/\s+website$/i,"")
+            .replace(/\s+site$/i,"");
+
+        return websiteMap[siteName]||null;
+    };
+
+    const openUrl=url=>{
+
+        if(!url)return false;
+
+        let finalUrl=String(url).trim();
+
+        if(!/^https?:\/\//i.test(finalUrl)){
+            finalUrl=`https://${finalUrl}`;
+        }
+
+        try{
+
+            const parsed=new URL(finalUrl);
+
+            if(
+                parsed.protocol!=="http:"&&
+                parsed.protocol!=="https:"
+            ){
+                return false;
+            }
+
+            const newTab=window.open(
+                parsed.href,
+                "_blank",
+                "noopener,noreferrer"
+            );
+
+            return !!newTab;
+
+        }catch(error){
+
+            console.error(
+                "Invalid URL:",
+                url
+            );
+
+            return false;
+        }
+    };
+
+    const handleSpecialCommand=(data,shouldSpeak)=>{
+
+        if(!data)return false;
+
+        const type=data.type;
+        const response=data.response||"";
+
+        let handled=true;
+
+        switch(type){
+
+            case "google_open":
+
+                openUrl(
+                    "https://www.google.com"
+                );
+
+                break;
+
+            case "google_search":
+
+                if(data.query){
+
+                    openUrl(
+                        `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
+                    );
+                }
+
+                break;
+
+            case "youtube_open":
+
+                openUrl(
+                    "https://www.youtube.com"
+                );
+
+                break;
+
+            case "youtube_search":
+            case "youtube_play":
+
+                if(data.query){
+
+                    openUrl(
+                        `https://www.youtube.com/results?search_query=${encodeURIComponent(data.query)}`
+                    );
+                }
+
+                break;
+
+            case "calculator_open":
+
+                openUrl(
+                    "https://www.google.com/search?q=calculator"
+                );
+
+                break;
+
+            case "calculator_calculate":
+
+                if(data.query){
+
+                    openUrl(
+                        `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
+                    );
+                }
+
+                break;
+
+            case "instagram_open":
+
+                openUrl(
+                    "https://www.instagram.com"
+                );
+
+                break;
+
+            case "facebook_open":
+
+                openUrl(
+                    "https://www.facebook.com"
+                );
+
+                break;
+
+            case "weather_show":
+
+                openUrl(
+                    data.query
+                        ?`https://www.google.com/search?q=${encodeURIComponent(data.query)}`
+                        :"https://www.google.com/search?q=weather"
+                );
+
+                break;
+
+            default:
+
+                handled=false;
+
+                break;
+        }
+
+        if(response){
+
+            setAiText(response);
+            setShowAIText(true);
+
+            if(shouldSpeak){
+                speak(response);
+            }
+        }
+
+        if(!shouldSpeak){
+            setIsAIActive(false);
+        }
+
+        return handled;
+    };
+
+    const processCommand=async(
+        command,
+        shouldSpeak=true
+    )=>{
+
+        const cleanedCommand=
+            String(command||"").trim();
+
+        if(
+            !cleanedCommand||
+            processingRef.current
+        ){
+            return;
+        }
+
+        processingRef.current=true;
+
         setIsSending(true);
-      }
+        setUserText(cleanedCommand);
+        setAiText("");
+        setShowAIText(false);
+        setIsAIActive(true);
 
-      try {
-        const lowerCommand = cleanCommand.toLowerCase();
+        try{
 
-        if (
-          /^(stop speaking|stop voice|be quiet|mute yourself)$/.test(
-            lowerCommand
-          )
-        ) {
-          stopSpeaking();
+            const siteSearch=
+                getSearchUrl(cleanedCommand);
 
-          if (mountedRef.current) {
-            setAiText("Voice stopped.");
-          }
+            if(siteSearch?.url){
 
-          return;
+                const message=
+                    `Searching ${siteSearch.site} for ${siteSearch.query}.`;
+
+                setAiText(message);
+                setShowAIText(true);
+
+                openUrl(siteSearch.url);
+
+                void saveHistory(
+                    cleanedCommand,
+                    message
+                );
+
+                if(shouldSpeak){
+                    speak(message);
+                }else{
+                    setIsAIActive(false);
+                }
+
+                return;
+            }
+
+            const googleMatch=
+                cleanedCommand.match(
+                    /^(?:open|search|find)\s+(.+?)\s+(?:at|on|in)\s+google$/i
+                );
+
+            if(googleMatch){
+
+                const query=
+                    googleMatch[1].trim();
+
+                const message=
+                    `Searching Google for ${query}.`;
+
+                setAiText(message);
+                setShowAIText(true);
+
+                openUrl(
+                    `https://www.google.com/search?q=${encodeURIComponent(query)}`
+                );
+
+                void saveHistory(
+                    cleanedCommand,
+                    message
+                );
+
+                if(shouldSpeak){
+                    speak(message);
+                }else{
+                    setIsAIActive(false);
+                }
+
+                return;
+            }
+
+            const directUrl=
+                getDirectUrl(cleanedCommand);
+
+            if(directUrl){
+
+                const siteName=
+                    cleanedCommand
+                        .replace(
+                            /^(open|launch|visit|go to|take me to)\s+/i,
+                            ""
+                        )
+                        .trim();
+
+                const message=
+                    `Opening ${siteName}.`;
+
+                setAiText(message);
+                setShowAIText(true);
+
+                openUrl(directUrl);
+
+                void saveHistory(
+                    cleanedCommand,
+                    message
+                );
+
+                if(shouldSpeak){
+                    speak(message);
+                }else{
+                    setIsAIActive(false);
+                }
+
+                return;
+            }
+
+            const result=
+                await getGeminiResponse(
+                    cleanedCommand
+                );
+
+            let parsedResult=result;
+
+            if(typeof result==="string"){
+
+                const cleanResult=
+                    result
+                        .replace(/```json/gi,"")
+                        .replace(/```/g,"")
+                        .trim();
+
+                try{
+
+                    parsedResult=
+                        JSON.parse(cleanResult);
+
+                }catch{
+
+                    const jsonMatch=
+                        cleanResult.match(
+                            /\{[\s\S]*\}/
+                        );
+
+                    if(jsonMatch){
+
+                        try{
+
+                            parsedResult=
+                                JSON.parse(
+                                    jsonMatch[0]
+                                );
+
+                        }catch{
+
+                            parsedResult={
+                                type:"general",
+                                response:cleanResult
+                            };
+                        }
+
+                    }else{
+
+                        parsedResult={
+                            type:"general",
+                            response:cleanResult
+                        };
+                    }
+                }
+            }
+
+            if(
+                !parsedResult||
+                parsedResult.error
+            ){
+
+                const errorText=
+                    parsedResult?.error||
+                    "Sorry, I could not process that request.";
+
+                setAiText(errorText);
+                setShowAIText(true);
+
+                void saveHistory(
+                    cleanedCommand,
+                    errorText
+                );
+
+                if(shouldSpeak){
+                    speak(errorText);
+                }else{
+                    setIsAIActive(false);
+                }
+
+                return;
+            }
+
+            const responseText=
+                parsedResult.response||
+                parsedResult.answer||
+                parsedResult.text||
+                "";
+
+            if(!responseText){
+
+                const errorText=
+                    "Sorry, I did not get an answer.";
+
+                setAiText(errorText);
+                setShowAIText(true);
+
+                void saveHistory(
+                    cleanedCommand,
+                    errorText
+                );
+
+                if(shouldSpeak){
+                    speak(errorText);
+                }else{
+                    setIsAIActive(false);
+                }
+
+                return;
+            }
+
+            setAiText(responseText);
+            setShowAIText(true);
+
+            void saveHistory(
+                cleanedCommand,
+                responseText
+            );
+
+            if(
+                handleSpecialCommand(
+                    {
+                        ...parsedResult,
+                        response:responseText
+                    },
+                    shouldSpeak
+                )
+            ){
+                return;
+            }
+
+            if(shouldSpeak){
+
+                speak(responseText);
+
+            }else{
+
+                setIsAIActive(false);
+            }
+
+        }catch(error){
+
+            console.error(
+                "Assistant error:",
+                error
+            );
+
+            const errorText=
+                error.response?.data?.message||
+                error.message||
+                "Sorry, something went wrong.";
+
+            setAiText(errorText);
+            setShowAIText(true);
+
+            void saveHistory(
+                cleanedCommand,
+                errorText
+            );
+
+            if(shouldSpeak){
+                speak(errorText);
+            }else{
+                setIsAIActive(false);
+            }
+
+        }finally{
+
+            processingRef.current=false;
+
+            setIsSending(false);
+
+            if(
+                !speakingRef.current&&
+                !shouldSpeak
+            ){
+                setIsAIActive(false);
+            }
+        }
+    };
+
+    const handleSendText=async()=>{
+
+        const command=
+            typedText.trim();
+
+        if(
+            !command||
+            isSending
+        ){
+            return;
         }
 
-        const siteCommands = [
-          {
-            pattern: /^(open )?(google|search google)$/,
-            url: "https://www.google.com"
-          },
-          {
-            pattern: /^(open )?(youtube|you tube)$/,
-            url: "https://www.youtube.com"
-          },
-          {
-            pattern: /^(open )?(facebook|fb)$/,
-            url: "https://www.facebook.com"
-          },
-          {
-            pattern: /^(open )?(instagram|insta)$/,
-            url: "https://www.instagram.com"
-          },
-          {
-            pattern: /^(open )?(github|git hub)$/,
-            url: "https://github.com"
-          },
-          {
-            pattern: /^(open )?(linkedin|linked in)$/,
-            url: "https://www.linkedin.com"
-          }
-        ];
+        if(isListening){
 
-        const matchedSite = siteCommands.find((site) =>
-          site.pattern.test(lowerCommand)
+            listeningRef.current=false;
+
+            try{
+                recognitionRef.current?.stop();
+            }catch{}
+        }
+
+        setTypedText("");
+
+        await processCommand(
+            command,
+            false
+        );
+    };
+
+    const handleInputKeyDown=event=>{
+
+        if(event.key==="Enter"){
+
+            event.preventDefault();
+
+            handleSendText();
+        }
+    };
+
+    useEffect(()=>{
+
+        const SpeechRecognition=
+            window.SpeechRecognition||
+            window.webkitSpeechRecognition;
+
+        if(!SpeechRecognition)return;
+
+        const recognition=
+            new SpeechRecognition();
+
+        recognition.continuous=true;
+        recognition.lang="en-US";
+        recognition.interimResults=false;
+        recognition.maxAlternatives=1;
+
+        recognitionRef.current=
+            recognition;
+
+        recognition.onstart=()=>{
+
+            listeningRef.current=true;
+
+            setIsListening(true);
+        };
+
+        recognition.onresult=async event=>{
+
+            if(processingRef.current)return;
+
+            const lastResult=
+                event.results[
+                    event.results.length-1
+                ];
+
+            if(
+                !lastResult||
+                !lastResult[0]
+            ){
+                return;
+            }
+
+            const transcript=
+                lastResult[0]
+                    .transcript
+                    .trim();
+
+            if(!transcript)return;
+
+            const lowerTranscript=
+                transcript.toLowerCase();
+
+            const stopCommands=[
+                "thank you",
+                "thanks",
+                "stop",
+                "bye",
+                "goodbye",
+                "stop listening",
+                "cancel"
+            ];
+
+            if(
+                stopCommands.includes(
+                    lowerTranscript
+                )
+            ){
+
+                listeningRef.current=false;
+                speakingRef.current=false;
+
+                setIsListening(false);
+                setIsAIActive(false);
+                setIsSpeaking(false);
+
+                try{
+                    recognition.stop();
+                }catch{}
+
+                window.speechSynthesis.cancel();
+
+                return;
+            }
+
+            setUserText(transcript);
+            setAiText("");
+            setShowAIText(false);
+
+            if(
+                lowerTranscript==="hey"||
+                lowerTranscript==="hi"||
+                lowerTranscript==="hello"
+            ){
+
+                const answer=
+                    "Yes, I am listening.";
+
+                setAiText(answer);
+                setShowAIText(true);
+
+                void saveHistory(
+                    transcript,
+                    answer
+                );
+
+                speak(answer);
+
+                return;
+            }
+
+            try{
+                recognition.stop();
+            }catch{}
+
+            await processCommand(
+                transcript,
+                true
+            );
+        };
+
+        recognition.onend=()=>{
+
+            if(
+                listeningRef.current&&
+                !speakingRef.current&&
+                !processingRef.current
+            ){
+
+                clearTimeout(
+                    restartTimeoutRef.current
+                );
+
+                restartTimeoutRef.current=
+                    setTimeout(()=>{
+
+                        try{
+                            recognition.start();
+                        }catch{}
+
+                    },150);
+
+            }else if(
+                !listeningRef.current
+            ){
+
+                setIsListening(false);
+                setIsAIActive(false);
+            }
+        };
+
+        recognition.onerror=event=>{
+
+            console.log(
+                "Speech recognition error:",
+                event.error
+            );
+
+            if(
+                event.error==="not-allowed"||
+                event.error==="audio-capture"
+            ){
+
+                listeningRef.current=false;
+
+                setIsListening(false);
+                setIsAIActive(false);
+            }
+        };
+
+        return()=>{
+
+            listeningRef.current=false;
+            processingRef.current=false;
+            speakingRef.current=false;
+
+            clearTimeout(
+                restartTimeoutRef.current
+            );
+
+            try{
+                recognition.stop();
+            }catch{}
+
+            window.speechSynthesis.cancel();
+        };
+
+    },[getGeminiResponse]);
+
+    const startListening=()=>{
+
+        if(!recognitionRef.current){
+
+            alert(
+                "Speech recognition is not supported in this browser."
+            );
+
+            return;
+        }
+
+        try{
+
+            window.speechSynthesis.cancel();
+
+            speakingRef.current=false;
+
+            setIsSpeaking(false);
+
+            processingRef.current=false;
+
+            setIsAIActive(false);
+
+            listeningRef.current=true;
+
+            setIsListening(true);
+
+            recognitionRef.current.start();
+
+        }catch{}
+    };
+
+    const stopListening=()=>{
+
+        listeningRef.current=false;
+        processingRef.current=false;
+        speakingRef.current=false;
+
+        setIsListening(false);
+        setIsAIActive(false);
+        setIsSpeaking(false);
+
+        clearTimeout(
+            restartTimeoutRef.current
         );
 
-        if (matchedSite) {
-          window.open(matchedSite.url, "_blank", "noopener,noreferrer");
+        window.speechSynthesis.cancel();
 
-          const answer = `Opening ${cleanCommand.replace(/^open\s+/i, "")}.`;
+        try{
+            recognitionRef.current?.stop();
+        }catch{}
+    };
 
-          if (mountedRef.current) {
-            setAiText(answer);
-          }
+    const toggleMic=()=>{
 
-          await saveHistory(cleanCommand, answer);
+        if(isListening){
 
-          if (shouldSpeak) speak(answer);
-          return;
+            stopListening();
+
+        }else{
+
+            startListening();
         }
+    };
 
-        const googleSearch = cleanCommand.match(
-          /^(?:search google for|google|search for)\s+(.+)$/i
-        );
+    const handleLogout=async()=>{
 
-        if (googleSearch) {
-          const query = googleSearch[1].trim();
+        try{
 
-          window.open(
-            `https://www.google.com/search?q=${encodeURIComponent(query)}`,
-            "_blank",
-            "noopener,noreferrer"
-          );
+            listeningRef.current=false;
+            processingRef.current=false;
+            speakingRef.current=false;
 
-          const answer = `Searching Google for ${query}.`;
+            setIsListening(false);
+            setIsAIActive(false);
+            setIsSpeaking(false);
 
-          if (mountedRef.current) {
-            setAiText(answer);
-          }
+            clearTimeout(
+                restartTimeoutRef.current
+            );
 
-          await saveHistory(cleanCommand, answer);
+            try{
+                recognitionRef.current?.stop();
+            }catch{}
 
-          if (shouldSpeak) speak(answer);
-          return;
+            window.speechSynthesis.cancel();
+
+            await axios.post(
+                `${serverUrl}/api/auth/logout`,
+                {},
+                {
+                    withCredentials:true
+                }
+            );
+
+            setUserData(null);
+
+            navigate("/signin");
+
+        }catch(error){
+
+            console.error(
+                "LOGOUT ERROR:",
+                error
+            );
         }
+    };
 
-        if (/^(customize|change assistant|customize assistant)$/i.test(cleanCommand)) {
-          navigate("/customize");
-          const answer = "Opening assistant customization.";
+    const handleCustomize=()=>{
 
-          if (mountedRef.current) {
-            setAiText(answer);
-          }
+        navigate("/customize2");
+    };
 
-          await saveHistory(cleanCommand, answer);
+    const assistantImage=
+        userData?.assistantImage||
+        userData?.selectedImage||
+        userData?.image;
 
-          if (shouldSpeak) speak(answer);
-          return;
-        }
+    const assistantName=
+        userData?.assistantName||
+        "Assistant";
 
-        const result = await getGeminiResponse(cleanCommand);
+    return(
 
-        let answer = "";
+        <div className="relative min-h-screen w-full overflow-hidden bg-[#05060b] text-white">
 
-        if (typeof result === "string") {
-          answer = result;
-        } else if (result && typeof result === "object") {
-          answer =
-            result.response ||
-            result.answer ||
-            result.message ||
-            "Sorry, I could not understand the response.";
-        }
-
-        if (!answer.trim()) {
-          answer = "Sorry, I could not get an answer.";
-        }
-
-        if (mountedRef.current) {
-          setAiText(answer);
-        }
-
-        await saveHistory(cleanCommand, answer);
-        await loadHistory();
-
-        if (shouldSpeak) {
-          speak(answer);
-        }
-      } catch (error) {
-        console.error("PROCESS COMMAND ERROR:", error);
-
-        const errorMessage =
-          "Sorry, something went wrong. Please try again.";
-
-        if (mountedRef.current) {
-          setAiText(errorMessage);
-        }
-
-        if (shouldSpeak) {
-          speak(errorMessage);
-        }
-      } finally {
-        processingRef.current = false;
-
-        if (mountedRef.current) {
-          setIsSending(false);
-        }
-
-        if (listeningRef.current && !speakingRef.current) {
-          scheduleRecognitionRestart();
-        }
-      }
-    },
-    [
-      getGeminiResponse,
-      loadHistory,
-      navigate,
-      saveHistory,
-      scheduleRecognitionRestart,
-      speak,
-      stopSpeaking
-    ]
-  );
-
-  const handleSendText = async (event) => {
-    event.preventDefault();
-
-    const command = typedText.trim();
-
-    if (!command || processingRef.current) return;
-
-    setTypedText("");
-    await processCommand(command, false);
-  };
-
-  const handleLogout = async () => {
-    stopListening();
-    stopSpeaking();
-
-    try {
-      await axios.get(`${serverUrl}/api/user/logout`, {
-        withCredentials: true
-      });
-    } catch (error) {
-      console.error(
-        "LOGOUT ERROR:",
-        error.response?.data || error.message
-      );
-    } finally {
-      navigate("/login");
-    }
-  };
-
-  const clearDisplayedAnswer = () => {
-    setUserText("");
-    setAiText("");
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-indigo-950 text-white">
-      <header className="flex items-center justify-between gap-3 p-4 sm:p-6">
-        <button
-          type="button"
-          onClick={() => setShowMenu((value) => !value)}
-          className="rounded-lg border border-white/20 px-4 py-2 hover:bg-white/10"
-        >
-          ☰ Menu
-        </button>
-
-        <h1 className="text-lg font-semibold sm:text-2xl">
-          {assistantName}
-        </h1>
-
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="rounded-lg bg-red-600 px-4 py-2 hover:bg-red-700"
-        >
-          Logout
-        </button>
-      </header>
-
-      {showMenu && (
-        <div className="mx-4 rounded-xl border border-white/10 bg-slate-900 p-3 sm:mx-6">
-          <button
-            type="button"
-            onClick={() => {
-              setShowHistory((value) => !value);
-              setShowMenu(false);
-              loadHistory();
-            }}
-            className="block w-full rounded-lg px-4 py-3 text-left hover:bg-white/10"
-          >
-            Conversation History
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("/customize")}
-            className="block w-full rounded-lg px-4 py-3 text-left hover:bg-white/10"
-          >
-            Customize Assistant
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              clearDisplayedAnswer();
-              setShowMenu(false);
-            }}
-            className="block w-full rounded-lg px-4 py-3 text-left hover:bg-white/10"
-          >
-            Clear Current Answer
-          </button>
-        </div>
-      )}
-
-      <main className="mx-auto flex w-full max-w-4xl flex-col items-center px-4 py-8 sm:py-12">
-        <div className="mb-6 flex h-36 w-36 items-center justify-center rounded-full border border-indigo-300/30 bg-indigo-500/20 text-6xl shadow-2xl sm:h-44 sm:w-44">
-          {userData?.assistantImage ? (
-            <img
-              src={userData.assistantImage}
-              alt={assistantName}
-              className="h-full w-full rounded-full object-cover"
-            />
-          ) : (
-            "🤖"
-          )}
-        </div>
-
-        <h2 className="text-center text-2xl font-bold sm:text-3xl">
-          Hello{userData?.name ? `, ${userData.name}` : ""}!
-        </h2>
-
-        <p className="mt-2 text-center text-sm text-gray-300 sm:text-base">
-          Ask by voice or type your question.
-        </p>
-
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          {!isListening ? (
-            <button
-              type="button"
-              onClick={startListening}
-              className="rounded-xl bg-indigo-600 px-5 py-3 font-semibold hover:bg-indigo-700"
+            <main
+                className={`w-full max-w-225 min-h-screen flex flex-col items-center justify-center box-border pt-10 mx-auto transition-all duration-200 ${
+                    showMenu
+                        ?"blur-[3px] opacity-70"
+                        :"blur-0 opacity-100"
+                }`}
             >
-              🎙️ Start Listening
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={stopListening}
-              className="rounded-xl bg-orange-600 px-5 py-3 font-semibold hover:bg-orange-700"
-            >
-              ⏹ Stop Listening
-            </button>
-          )}
 
-          <button
-            type="button"
-            onClick={stopSpeaking}
-            disabled={!isSpeaking}
-            className="rounded-xl bg-red-600 px-5 py-3 font-semibold hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            🔇 Stop Voice
-          </button>
-        </div>
+                <div className="w-full flex flex-col items-center justify-center px-5 box-border">
 
-        <p className="mt-3 text-sm text-gray-300" aria-live="polite">
-          {isListening
-            ? "Microphone is active. Speak your question."
-            : "Microphone is off."}
-          {isSending ? " Processing your question…" : ""}
-          {isSpeaking ? " Speaking…" : ""}
-        </p>
+                    <div className="relative w-[clamp(190px,50vw,300px)] h-[clamp(280px,48vh,400px)] flex items-center justify-center overflow-hidden rounded-[20px] bg-black/10">
 
-        <form
-          onSubmit={handleSendText}
-          className="mt-8 flex w-full flex-col gap-3 sm:flex-row"
-        >
-          <input
-            type="text"
-            value={typedText}
-            onChange={(event) => setTypedText(event.target.value)}
-            placeholder="Type your question here..."
-            className="min-w-0 flex-1 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-gray-400 focus:border-indigo-400"
-          />
+                        {assistantImage?(
+                            <img
+                                src={assistantImage}
+                                alt={assistantName}
+                                className="w-full h-full object-contain object-center block"
+                            />
+                        ):(
+                            <div className="w-full h-full flex items-center justify-center text-[80px]">
+                                🤖
+                            </div>
+                        )}
 
-          <button
-            type="submit"
-            disabled={!typedText.trim() || isSending}
-            className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isSending ? "Please wait..." : "Send"}
-          </button>
-        </form>
+                    </div>
 
-        {(userText || aiText) && (
-          <section className="mt-8 w-full rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-6">
-            {userText && (
-              <div className="mb-5">
-                <h3 className="mb-2 font-semibold text-indigo-300">
-                  Your question
-                </h3>
-                <p className="whitespace-pre-wrap break-words text-gray-100">
-                  {userText}
-                </p>
-              </div>
+                    <div className="mt-3.5 text-white text-2xl font-semibold text-center max-sm:text-xl">
+                        I'm {assistantName}
+                    </div>
+
+                    <div className="w-full h-25 flex items-center justify-center mt-2 max-sm:h-22.5">
+
+                        <img
+                            src={isAIActive?aiImg:userImg}
+                            alt={isAIActive?"AI":"User"}
+                            className="w-22.5 h-22.5 object-contain block max-sm:w-20 max-sm:h-20"
+                        />
+
+                    </div>
+
+                    <div className="w-full min-h-15 flex items-center justify-center px-3">
+
+                        <div className="text-white text-[18px] font-bold text-center w-full leading-[1.4] whitespace-pre-wrap wrap-break-word max-h-45 overflow-y-auto dark-scrollbar">
+
+                            {showAIText?aiText:userText}
+
+                        </div>
+
+                    </div>
+
+                    <div className="w-full max-w-175 mt-5 px-2">
+
+                        <div className="flex items-center gap-2 w-full">
+
+                            <input
+                                type="text"
+                                value={typedText}
+                                onChange={event=>
+                                    setTypedText(
+                                        event.target.value
+                                    )
+                                }
+                                onKeyDown={
+                                    handleInputKeyDown
+                                }
+                                placeholder="Type your question or command..."
+                                disabled={isSending}
+                                className="flex-1 min-w-0 px-4 py-3 rounded-xl bg-white/10 border border-white/10 focus:border-blue-400/50 outline-none text-white placeholder:text-gray-500 text-sm transition-all duration-150 disabled:opacity-50"
+                            />
+
+                            <button
+                                onClick={handleSendText}
+                                disabled={
+                                    isSending||
+                                    !typedText.trim()
+                                }
+                                className="px-5 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold cursor-pointer disabled:cursor-not-allowed transition-all duration-150 active:scale-95"
+                            >
+                                {isSending?"...":"Send"}
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <div className="flex items-center justify-center gap-3 flex-wrap">
+
+                        <button
+                            onClick={toggleMic}
+                            className={`mt-5 px-6 py-3 border-none rounded-xl text-white text-base font-semibold cursor-pointer min-w-32.5 transition-all duration-150 active:scale-95 ${
+                                isListening
+                                    ?"bg-red-500 hover:bg-red-600"
+                                    :"bg-green-500 hover:bg-green-600"
+                            }`}
+                        >
+                            {isListening
+                                ?"Stop Mic"
+                                :"Start Mic"}
+                        </button>
+
+                        {/* ONLY ADDED BUTTON */}
+
+                        <button
+                            onClick={stopSpeaking}
+                            disabled={!isSpeaking}
+                            className="mt-5 px-6 py-3 border-none rounded-xl bg-orange-500 hover:bg-orange-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-base font-semibold cursor-pointer disabled:cursor-not-allowed transition-all duration-150 active:scale-95"
+                        >
+                            {isSpeaking
+                                ?"Stop Speaking"
+                                :"Not Speaking"}
+                        </button>
+
+                    </div>
+
+                    <div className="mt-3 text-gray-300 text-sm text-center max-w-[90%]">
+
+                        {isSpeaking
+                            ?"Speaking... Click Stop Speaking to stop the answer."
+                            :isListening
+                                ?"Listening... Speak now."
+                                :"Press the mic to start a conversation."}
+
+                    </div>
+
+                </div>
+
+            </main>
+
+            {!showMenu&&(
+                <button
+                    onClick={()=>
+                        setShowMenu(true)
+                    }
+                    className="fixed top-5 left-5 z-1200 flex items-center justify-center w-11 h-11 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-[29px] cursor-pointer backdrop-blur-xl shadow-lg transition-all duration-150 active:scale-95"
+                    aria-label="Open assistant menu"
+                >
+                    <IoMdMenu/>
+                </button>
             )}
 
-            {aiText && (
-              <div>
-                <h3 className="mb-2 font-semibold text-green-300">
-                  {assistantName}'s answer
-                </h3>
-                <p className="whitespace-pre-wrap break-words leading-7 text-gray-100">
-                  {aiText}
-                </p>
-              </div>
-            )}
-          </section>
-        )}
+            <div className="fixed top-5 right-5 z-1200 flex flex-col items-end gap-3">
 
-        {showHistory && (
-          <section className="mt-8 w-full rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-6">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 className="text-lg font-bold">Conversation History</h3>
+                <button
+                    onClick={handleLogout}
+                    className="px-4.5 py-2.5 border-none rounded-[10px] bg-red-500 hover:bg-red-600 text-white text-sm font-semibold cursor-pointer whitespace-nowrap transition-all duration-150 active:scale-95 shadow-lg"
+                >
+                    Log Out
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setShowHistory(false)}
-                className="rounded-lg px-3 py-2 hover:bg-white/10"
-              >
-                Close
-              </button>
+                <button
+                    onClick={handleCustomize}
+                    className="px-4.5 py-2.5 border-none rounded-[10px] bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold cursor-pointer whitespace-nowrap transition-all duration-150 active:scale-95 shadow-lg"
+                >
+                    Customize your Assistant
+                </button>
+
             </div>
 
-            {historyItems.length === 0 ? (
-              <p className="text-gray-400">No saved conversations yet.</p>
-            ) : (
-              <div className="space-y-4">
-                {historyItems.map((item, index) => (
-                  <article
-                    key={item._id || `${item.command}-${index}`}
-                    className="rounded-xl border border-white/10 bg-black/20 p-4"
-                  >
-                    <p className="mb-2 text-sm text-indigo-300">
-                      Question
-                    </p>
-                    <p className="whitespace-pre-wrap break-words">
-                      {item.command}
-                    </p>
+            <div
+                onClick={()=>
+                    setShowMenu(false)
+                }
+                className={`fixed inset-0 z-1050 bg-transparent transition-all duration-200 ${
+                    showMenu
+                        ?"visible backdrop-blur-[2px]"
+                        :"invisible pointer-events-none"
+                }`}
+            />
 
-                    <p className="mb-2 mt-4 text-sm text-green-300">
-                      Answer
-                    </p>
-                    <p className="whitespace-pre-wrap break-words text-gray-200">
-                      {item.answer}
-                    </p>
+            <aside
+                className={`fixed top-0 left-0 bottom-0 z-1100 w-[min(25vw,380px)] min-w-75 max-sm:min-w-0 max-sm:w-[86vw] bg-[#0b0d14]/97 backdrop-blur-2xl border-r border-white/10 shadow-[20px_0_60px_rgba(0,0,0,0.3)] flex flex-col transition-transform duration-200 ease-out ${
+                    showMenu
+                        ?"translate-x-0"
+                        :"-translate-x-full"
+                }`}
+            >
+
+                <div className="flex items-center justify-between px-5 py-5 border-b border-white/10 shrink-0">
+
+                    <div>
+
+                        <h2 className="text-white text-lg sm:text-xl font-bold m-0">
+                            Assistant Menu
+                        </h2>
+
+                        <p className="text-gray-500 text-xs mt-1 m-0">
+                            Your recent activity
+                        </p>
+
+                    </div>
 
                     <button
-                      type="button"
-                      onClick={() => {
-                        setUserText(item.command || "");
-                        setAiText(item.answer || "");
-                        setShowHistory(false);
-                      }}
-                      className="mt-4 rounded-lg border border-white/20 px-3 py-2 text-sm hover:bg-white/10"
+                        onClick={()=>
+                            setShowMenu(false)
+                        }
+                        className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-2xl cursor-pointer transition-all duration-150 active:scale-95"
+                        aria-label="Close assistant menu"
                     >
-                      View Conversation
+                        <IoMdClose/>
                     </button>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-      </main>
-    </div>
-  );
-};
+
+                </div>
+
+                <div className="px-5 pt-5 pb-3 flex items-center justify-between shrink-0">
+
+                    <h3 className="text-white text-base font-semibold m-0">
+                        History
+                    </h3>
+
+                    <span className="text-gray-500 text-xs">
+                        {historyItems.length}{" "}
+                        {historyItems.length===1
+                            ?"item"
+                            :"items"}
+                    </span>
+
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-4 pb-5 dark-scrollbar">
+
+                    {historyItems.length?(
+                        <div className="flex flex-col gap-2">
+
+                            {historyItems.map((item,index)=>{
+
+                                const command=
+                                    typeof item==="string"
+                                        ?item
+                                        :item?.command||
+                                          item?.text||
+                                          item?.query||
+                                          "";
+
+                                const answer=
+                                    typeof item==="string"
+                                        ?""
+                                        :item?.answer||"";
+
+                                return(
+
+                                    <button
+                                        key={
+                                            item?._id||
+                                            `${index}-${command}`
+                                        }
+                                        onClick={()=>
+                                            showAnswer(
+                                                command,
+                                                answer
+                                            )
+                                        }
+                                        className="w-full text-left group px-4 py-3 rounded-xl bg-white/4 hover:bg-white/8 border border-white/6 hover:border-blue-400/30 text-gray-300 hover:text-white text-sm leading-relaxed wrap-break-word transition-all duration-150 cursor-pointer"
+                                    >
+
+                                        <div className="flex flex-col gap-3 min-w-0 w-full">
+
+                                            <div>
+
+                                                <div className="text-white font-medium">
+                                                    {command}
+                                                </div>
+
+                                            </div>
+
+                                            <div>
+
+                                                <div className="text-gray-500 text-xs">
+                                                    Answer:
+                                                </div>
+
+                                                <div className="text-gray-400 text-sm leading-relaxed mt-1">
+                                                    {answer||"No answer saved."}
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+                                    </button>
+                                );
+                            })}
+
+                        </div>
+
+                    ):(
+                        <div className="h-full min-h-62.5 flex flex-col items-center justify-center text-center px-5">
+
+                            <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-500 text-xl mb-4">
+                                ✦
+                            </div>
+
+                            <p className="text-gray-400 text-sm m-0">
+                                No history yet
+                            </p>
+
+                            <p className="text-gray-600 text-xs mt-2 max-w-55 leading-relaxed">
+                                Your questions and answers will appear here.
+                            </p>
+
+                        </div>
+                    )}
+
+                </div>
+
+            </aside>
+
+        </div>
+    );
+}
 
 export default Home;
