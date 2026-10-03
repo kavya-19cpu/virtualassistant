@@ -1326,7 +1326,7 @@ function Home(){
 
             {/* DESKTOP CONTROLS */}
 
-            <div className="fixed top-5 right-5 z-[1200] hidden sm:flex flex-col items-end gap-3">
+            <div className="fixed top-5 right-5 z-1200 hidden sm:flex flex-col items-end gap-3">
 
                 <button
                     onClick={handleLogout}
@@ -1353,7 +1353,7 @@ function Home(){
                     onClick={()=>
                         setShowMenu(true)
                     }
-                    className="fixed top-5 left-5 z-[1200] flex items-center justify-center w-11 h-11 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-[29px] cursor-pointer backdrop-blur-xl shadow-lg transition-all duration-200 active:scale-95"
+                    className="fixed top-5 left-5 z-1200 flex items-center justify-center w-11 h-11 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-[29px] cursor-pointer backdrop-blur-xl shadow-lg transition-all duration-200 active:scale-95"
                     aria-label="Open assistant menu"
                 >
                     <IoMdMenu/>
@@ -1367,7 +1367,7 @@ function Home(){
                 onClick={()=>
                     setShowMenu(false)
                 }
-                className={`fixed inset-0 z-[1050] bg-transparent transition-all duration-300 ${
+                className={`fixed inset-0 z-1050 bg-transparent transition-all duration-300 ${
                     showMenu
                         ?"visible backdrop-blur-[2px]"
                         :"invisible pointer-events-none"
@@ -1378,7 +1378,7 @@ function Home(){
             {/* SIDE MENU */}
 
             <aside
-                className={`fixed top-0 left-0 bottom-0 z-[1100] w-[min(25vw,380px)] min-w-75 max-sm:min-w-0 max-sm:w-[86vw] bg-[#0b0d14]/97 backdrop-blur-2xl border-r border-white/10 shadow-[20px_0_60px_rgba(0,0,0,0.3)] flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                className={`fixed top-0 left-0 bottom-0 z-1100 w-[min(25vw,380px)] min-w-75 max-sm:min-w-0 max-sm:w-[86vw] bg-[#0b0d14]/97 backdrop-blur-2xl border-r border-white/10 shadow-[20px_0_60px_rgba(0,0,0,0.3)] flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                     showMenu
                         ?"translate-x-0"
                         :"-translate-x-full"

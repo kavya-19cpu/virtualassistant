@@ -3,21 +3,27 @@ import React, {
     useState
 } from "react";
 
+
 import {
     userDataContext
 } from "../context/UserContext";
+
 
 import {
     useNavigate
 } from "react-router-dom";
 
+
 import axios from "axios";
+
 
 import {
     IoMdArrowBack
 } from "react-icons/io";
 
+
 const Customize2 = () => {
+
 
     const {
         userData,
@@ -27,22 +33,28 @@ const Customize2 = () => {
         setUserData
     } = useContext(userDataContext);
 
+
     const [assistantName, setAssistantName] =
         useState(
             userData?.assistantName || ""
         );
 
+
     const [loading, setLoading] =
         useState(false);
 
+
     const navigate = useNavigate();
 
+
     const handleUpdateAssistant = async () => {
+
 
         if (!assistantName.trim()) {
             alert("Please enter assistant name");
             return;
         }
+
 
         if (!backendImage && !selectedImage) {
             alert(
@@ -51,31 +63,40 @@ const Customize2 = () => {
             return;
         }
 
+
         setLoading(true);
+
 
         try {
 
+
             const formData = new FormData();
+
 
             formData.append(
                 "assistantName",
                 assistantName.trim()
             );
 
+
             if (backendImage) {
+
 
                 formData.append(
                     "assistantImage",
                     backendImage
                 );
 
+
             } else if (selectedImage) {
+
 
                 formData.append(
                     "imageUrl",
                     selectedImage
                 );
             }
+
 
             const result = await axios.put(
                 `${serverUrl}/api/user/updateassistant`,
@@ -85,40 +106,52 @@ const Customize2 = () => {
                 }
             );
 
+
             console.log(
                 "UPDATE RESPONSE:",
                 result.data
             );
 
+
             setUserData(result.data);
+
 
             navigate("/");
 
+
         } catch (error) {
+
 
             console.error(
                 "UPDATE ASSISTANT ERROR:",
                 error
             );
 
+
             console.error(
                 "Status:",
                 error.response?.status
             );
+
 
             console.error(
                 "Backend Response:",
                 error.response?.data
             );
 
+
         } finally {
 
+
             setLoading(false);
+
 
         }
     };
 
+
     return (
+
 
         <div
             className="
@@ -131,23 +164,30 @@ const Customize2 = () => {
 
                 flex
                 flex-col
-
                 justify-center
                 items-center
 
                 px-4
-                py-8
+                py-20
 
                 sm:px-6
+                sm:py-16
+
                 md:px-8
+                md:py-12
 
                 relative
 
                 overflow-x-hidden
+                overflow-y-auto
+
+                box-border
             "
         >
 
+
             {/* BACK BUTTON */}
+
 
             <button
                 type="button"
@@ -172,6 +212,9 @@ const Customize2 = () => {
                     sm:w-11
                     sm:h-11
 
+                    md:w-12
+                    md:h-12
+
                     flex
                     items-center
                     justify-center
@@ -181,147 +224,228 @@ const Customize2 = () => {
                     bg-white/5
                     hover:bg-white/10
 
+                    border
+                    border-white/10
+
                     rounded-full
 
                     cursor-pointer
 
-                    transition
+                    transition-all
+                    duration-200
+
+                    active:scale-95
+
+                    z-10
                 "
                 aria-label="Go back"
             >
 
+
                 <IoMdArrowBack
-                    className="w-6 h-6"
+                    className="
+                        w-5
+                        h-5
+
+                        sm:w-6
+                        sm:h-6
+
+                        md:w-6
+                        md:h-6
+                    "
                 />
+
 
             </button>
 
-            {/* HEADING */}
 
-            <h1
+            {/* MAIN CONTENT */}
+
+
+            <div
                 className="
-                    text-white
+                    w-full
+                    max-w-175
 
-                    font-semibold
-                    text-center
+                    flex
+                    flex-col
+                    items-center
 
-                    leading-tight
-
-                    mb-7
-
-                    text-[26px]
-                    sm:text-[32px]
-                    md:text-[38px]
+                    box-border
                 "
             >
 
-                Enter your
 
-                <span className="text-blue-200">
-                    {" "}Assistant Name
-                </span>
+                {/* HEADING */}
 
-            </h1>
 
-            {/* NAME INPUT */}
-
-            <input
-                type="text"
-                placeholder="eg. Sophia"
-                required
-                value={assistantName}
-                onChange={(e) =>
-                    setAssistantName(
-                        e.target.value
-                    )
-                }
-                className="
-                    w-full
-                    max-w-150
-
-                    h-13
-                    sm:h-14
-                    md:h-15
-
-                    outline-none
-
-                    border-2
-                    border-white
-
-                    bg-transparent
-
-                    text-white
-                    placeholder-gray-300
-
-                    px-4
-                    sm:px-5
-
-                    rounded-full
-
-                    text-base
-                    sm:text-[17px]
-                    md:text-[18px]
-
-                    focus:border-blue-400
-
-                    transition
-                "
-            />
-
-            {/* CREATE BUTTON */}
-
-            {assistantName.trim() && (
-
-                <button
-                    type="button"
-                    disabled={loading}
-                    onClick={
-                        handleUpdateAssistant
-                    }
+                <h1
                     className="
                         w-full
-                        max-w-75
 
-                        min-h-12.5
-                        sm:min-h-14
+                        text-white
 
-                        mt-7
-
-                        px-6
-
-                        text-black
                         font-semibold
+                        text-center
 
-                        bg-white
-                        rounded-full
+                        leading-[1.15]
 
-                        text-sm
-                        sm:text-base
-                        md:text-[18px]
+                        mb-6
+                        sm:mb-7
+                        md:mb-8
 
-                        cursor-pointer
+                        px-2
 
-                        hover:bg-gray-200
-                        active:scale-95
+                        text-[clamp(24px,7vw,38px)]
 
-                        transition
-
-                        disabled:opacity-50
-                        disabled:cursor-not-allowed
+                        wrap-break-word
                     "
                 >
 
-                    {loading
-                        ? "Loading..."
-                        : "Finally Create your Assistant"}
 
-                </button>
+                    Enter your
 
-            )}
+                    <span className="text-blue-200">
+                        {" "}Assistant Name
+                    </span>
+
+
+                </h1>
+
+
+                {/* NAME INPUT */}
+
+
+                <input
+                    type="text"
+                    placeholder="eg. Sophia"
+                    required
+                    value={assistantName}
+                    onChange={(e) =>
+                        setAssistantName(
+                            e.target.value
+                        )
+                    }
+                    className="
+                        w-full
+
+                        max-w-150
+
+                        h-12
+                        sm:h-13
+                        md:h-15
+
+                        outline-none
+
+                        border-2
+                        border-white
+
+                        bg-transparent
+
+                        text-white
+                        placeholder-gray-300
+
+                        px-4
+                        sm:px-5
+                        md:px-6
+
+                        rounded-full
+
+                        text-[15px]
+                        sm:text-base
+                        md:text-[18px]
+
+                        focus:border-blue-400
+
+                        transition-all
+                        duration-200
+
+                        box-border
+
+                        min-w-0
+                    "
+                />
+
+
+                {/* CREATE BUTTON */}
+
+
+                {assistantName.trim() && (
+
+
+                    <button
+                        type="button"
+                        disabled={loading}
+                        onClick={
+                            handleUpdateAssistant
+                        }
+                        className="
+                            w-full
+
+                            max-w-75
+
+                            min-h-12
+
+                            sm:min-h-13
+
+                            md:min-h-14
+
+                            mt-6
+                            sm:mt-7
+                            md:mt-8
+
+                            px-5
+                            sm:px-6
+
+                            text-black
+                            font-semibold
+
+                            bg-white
+
+                            rounded-full
+
+                            text-[14px]
+                            sm:text-base
+                            md:text-[18px]
+
+                            cursor-pointer
+
+                            hover:bg-gray-200
+
+                            active:scale-95
+
+                            transition-all
+                            duration-200
+
+                            disabled:opacity-50
+                            disabled:cursor-not-allowed
+
+                            box-border
+
+                            whitespace-normal
+                        "
+                    >
+
+
+                        {loading
+                            ? "Loading..."
+                            : "Finally Create your Assistant"}
+
+
+                    </button>
+
+
+                )}
+
+
+            </div>
+
 
         </div>
 
+
     );
 };
+
 
 export default Customize2;
