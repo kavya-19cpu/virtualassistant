@@ -1,3 +1,4 @@
+
 import React,{useContext,useEffect,useRef,useState} from "react";
 import {userDataContext} from "../context/UserContext";
 import {useNavigate} from "react-router-dom";
@@ -7,6 +8,7 @@ import aiImg from "../assets/ai.gif";
 import {IoMdMenu,IoMdClose} from "react-icons/io";
 
 function Home(){
+
     const {userData,serverUrl,setUserData,getGeminiResponse}=useContext(userDataContext);
     const navigate=useNavigate();
 
@@ -27,19 +29,30 @@ function Home(){
     const restartTimeoutRef=useRef(null);
 
     useEffect(()=>{
-        setHistoryItems(Array.isArray(userData?.history)?userData.history:[]);
+        setHistoryItems(
+            Array.isArray(userData?.history)
+                ?userData.history
+                :[]
+        );
     },[userData?.history]);
 
     const addHistory=(command,answer)=>{
-        setHistoryItems(prev=>[{command,answer},...prev].slice(0,50));
+        setHistoryItems(prev=>[
+            {command,answer},
+            ...prev
+        ].slice(0,50));
     };
 
     const speak=(text)=>{
+
         if(!text)return;
 
         window.speechSynthesis.cancel();
 
-        const utterance=new SpeechSynthesisUtterance(String(text));
+        const utterance=
+            new SpeechSynthesisUtterance(
+                String(text)
+            );
 
         utterance.rate=1;
         utterance.pitch=1;
@@ -70,10 +83,14 @@ function Home(){
             setIsAIActive(false);
         };
 
-        window.speechSynthesis.speak(utterance);
+        window.speechSynthesis.speak(
+            utterance
+        );
     };
 
+
     const websiteMap={
+
         google:"https://www.google.com",
         youtube:"https://www.youtube.com",
         instagram:"https://www.instagram.com",
@@ -112,54 +129,110 @@ function Home(){
         udemy:"https://www.udemy.com",
         coursera:"https://www.coursera.org",
         gate:"https://gate2027.iitm.ac.in"
+
     };
 
+
     const createSiteSearchUrl=(site,query)=>{
+
         const q=encodeURIComponent(query);
 
         const searchUrls={
-            google:`https://www.google.com/search?q=${q}`,
-            youtube:`https://www.youtube.com/results?search_query=${q}`,
-            instagram:`https://www.instagram.com/explore/search/keyword/?q=${q}`,
-            facebook:`https://www.facebook.com/search/top?q=${q}`,
-            wikipedia:`https://www.wikipedia.org/w/index.php?search=${q}`,
-            spotify:`https://open.spotify.com/search/${q}`,
-            github:`https://github.com/search?q=${q}`,
-            reddit:`https://www.reddit.com/search/?q=${q}`,
-            linkedin:`https://www.linkedin.com/search/results/all/?keywords=${q}`,
-            amazon:`https://www.amazon.in/s?k=${q}`,
-            flipkart:`https://www.flipkart.com/search?q=${q}`,
-            bing:`https://www.bing.com/search?q=${q}`,
-            yahoo:`https://search.yahoo.com/search?p=${q}`,
-            stackoverflow:`https://stackoverflow.com/search?q=${q}`,
-            pinterest:`https://www.pinterest.com/search/pins/?q=${q}`,
-            quora:`https://www.quora.com/search?q=${q}`,
-            twitch:`https://www.twitch.tv/search?term=${q}`,
-            imdb:`https://www.imdb.com/find/?q=${q}`,
-            soundcloud:`https://soundcloud.com/search?q=${q}`,
-            deezer:`https://www.deezer.com/search/${q}`,
-            udemy:`https://www.udemy.com/courses/search/?q=${q}`,
-            coursera:`https://www.coursera.org/search?query=${q}`,
-            canva:`https://www.canva.com/search?q=${q}`
+
+            google:
+                `https://www.google.com/search?q=${q}`,
+
+            youtube:
+                `https://www.youtube.com/results?search_query=${q}`,
+
+            instagram:
+                `https://www.instagram.com/explore/search/keyword/?q=${q}`,
+
+            facebook:
+                `https://www.facebook.com/search/top?q=${q}`,
+
+            wikipedia:
+                `https://www.wikipedia.org/w/index.php?search=${q}`,
+
+            spotify:
+                `https://open.spotify.com/search/${q}`,
+
+            github:
+                `https://github.com/search?q=${q}`,
+
+            reddit:
+                `https://www.reddit.com/search/?q=${q}`,
+
+            linkedin:
+                `https://www.linkedin.com/search/results/all/?keywords=${q}`,
+
+            amazon:
+                `https://www.amazon.in/s?k=${q}`,
+
+            flipkart:
+                `https://www.flipkart.com/search?q=${q}`,
+
+            bing:
+                `https://www.bing.com/search?q=${q}`,
+
+            yahoo:
+                `https://search.yahoo.com/search?p=${q}`,
+
+            stackoverflow:
+                `https://stackoverflow.com/search?q=${q}`,
+
+            pinterest:
+                `https://www.pinterest.com/search/pins/?q=${q}`,
+
+            quora:
+                `https://www.quora.com/search?q=${q}`,
+
+            twitch:
+                `https://www.twitch.tv/search?term=${q}`,
+
+            imdb:
+                `https://www.imdb.com/find/?q=${q}`,
+
+            soundcloud:
+                `https://soundcloud.com/search?q=${q}`,
+
+            deezer:
+                `https://www.deezer.com/search/${q}`,
+
+            udemy:
+                `https://www.udemy.com/courses/search/?q=${q}`,
+
+            coursera:
+                `https://www.coursera.org/search?query=${q}`,
+
+            canva:
+                `https://www.canva.com/search?q=${q}`
+
         };
 
         return searchUrls[site]||null;
     };
 
+
     const getSearchUrl=(command)=>{
-        const text=command.trim().replace(/[?!.]+$/,"");
+
+        const text=
+            command.trim().replace(/[?!.]+$/,"");
 
         const match=text.match(
             /^(?:search|find|look for|look up)\s+(.+?)\s+(?:on|in|at|using)\s+([a-zA-Z0-9]+)$/i
         );
 
         if(match){
+
             return{
                 url:createSiteSearchUrl(
                     match[2].toLowerCase(),
                     match[1].trim()
                 ),
+
                 site:match[2].trim(),
+
                 query:match[1].trim()
             };
         }
@@ -169,12 +242,15 @@ function Home(){
         );
 
         if(reverse){
+
             return{
                 url:createSiteSearchUrl(
                     reverse[1].toLowerCase(),
                     reverse[2].trim()
                 ),
+
                 site:reverse[1].trim(),
+
                 query:reverse[2].trim()
             };
         }
@@ -182,7 +258,9 @@ function Home(){
         return null;
     };
 
+
     const getDirectUrl=(command)=>{
+
         const text=command.trim();
 
         const domainMatch=text.match(
@@ -190,7 +268,12 @@ function Home(){
         );
 
         if(domainMatch){
-            let url=domainMatch[1].replace(/[.,!?]+$/,"");
+
+            let url=
+                domainMatch[1].replace(
+                    /[.,!?]+$/,
+                    ""
+                );
 
             if(!/^https?:\/\//i.test(url)){
                 url=`https://${url}`;
@@ -214,7 +297,9 @@ function Home(){
         return websiteMap[siteName]||null;
     };
 
+
     const openUrl=(url)=>{
+
         if(!url)return false;
 
         let finalUrl=String(url).trim();
@@ -224,6 +309,7 @@ function Home(){
         }
 
         try{
+
             const parsed=new URL(finalUrl);
 
             if(
@@ -239,87 +325,143 @@ function Home(){
             );
 
             if(!newTab){
-                console.warn("Browser blocked the new tab.");
+
+                console.warn(
+                    "Browser blocked the new tab."
+                );
+
                 return false;
             }
 
             return true;
+
         }catch(error){
-            console.error("Invalid URL:",url);
+
+            console.error(
+                "Invalid URL:",
+                url
+            );
+
             return false;
         }
     };
 
+
     const handleSpecialCommand=(data,shouldSpeak)=>{
+
         if(!data)return false;
 
         const type=data.type;
         const response=data.response||"";
+
         let handled=true;
 
         switch(type){
 
             case "google_open":
-                openUrl("https://www.google.com");
+
+                openUrl(
+                    "https://www.google.com"
+                );
+
                 break;
 
+
             case "google_search":
+
                 if(data.query){
+
                     openUrl(
                         `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
                     );
                 }
+
                 break;
+
 
             case "youtube_open":
-                openUrl("https://www.youtube.com");
+
+                openUrl(
+                    "https://www.youtube.com"
+                );
+
                 break;
 
+
             case "youtube_search":
+
             case "youtube_play":
+
                 if(data.query){
+
                     openUrl(
                         `https://www.youtube.com/results?search_query=${encodeURIComponent(data.query)}`
                     );
                 }
+
                 break;
 
+
             case "calculator_open":
+
                 openUrl(
                     "https://www.google.com/search?q=calculator"
                 );
+
                 break;
 
+
             case "calculator_calculate":
+
                 if(data.query){
+
                     openUrl(
                         `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
                     );
                 }
+
                 break;
+
 
             case "instagram_open":
-                openUrl("https://www.instagram.com");
+
+                openUrl(
+                    "https://www.instagram.com"
+                );
+
                 break;
+
 
             case "facebook_open":
-                openUrl("https://www.facebook.com");
+
+                openUrl(
+                    "https://www.facebook.com"
+                );
+
                 break;
+
 
             case "weather_show":
+
                 openUrl(
                     data.query
-                        ? `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
-                        : "https://www.google.com/search?q=weather"
+                        ?`https://www.google.com/search?q=${encodeURIComponent(data.query)}`
+                        :"https://www.google.com/search?q=weather"
                 );
+
                 break;
 
+
             default:
+
                 handled=false;
+
                 break;
         }
 
+
         if(response){
+
             setAiText(response);
             setShowAIText(true);
 
@@ -328,6 +470,7 @@ function Home(){
             }
         }
 
+
         if(!shouldSpeak){
             setIsAIActive(false);
         }
@@ -335,10 +478,21 @@ function Home(){
         return handled;
     };
 
-    const processCommand=async(command,shouldSpeak=true)=>{
-        const cleanedCommand=String(command||"").trim();
 
-        if(!cleanedCommand||processingRef.current)return;
+    const processCommand=async(
+        command,
+        shouldSpeak=true
+    )=>{
+
+        const cleanedCommand=
+            String(command||"").trim();
+
+        if(
+            !cleanedCommand||
+            processingRef.current
+        ){
+            return;
+        }
 
         processingRef.current=true;
 
@@ -350,7 +504,8 @@ function Home(){
 
         try{
 
-            const siteSearch=getSearchUrl(cleanedCommand);
+            const siteSearch=
+                getSearchUrl(cleanedCommand);
 
             if(siteSearch?.url){
 
@@ -376,13 +531,16 @@ function Home(){
                 return;
             }
 
-            const googleMatch=cleanedCommand.match(
-                /^(?:open|search|find)\s+(.+?)\s+(?:at|on|in)\s+google$/i
-            );
+
+            const googleMatch=
+                cleanedCommand.match(
+                    /^(?:open|search|find)\s+(.+?)\s+(?:at|on|in)\s+google$/i
+                );
 
             if(googleMatch){
 
-                const query=googleMatch[1].trim();
+                const query=
+                    googleMatch[1].trim();
 
                 const message=
                     `Searching Google for ${query}.`;
@@ -408,16 +566,17 @@ function Home(){
                 return;
             }
 
-            const directUrl=getDirectUrl(cleanedCommand);
+
+            const directUrl=
+                getDirectUrl(cleanedCommand);
 
             if(directUrl){
 
-                const siteName=cleanedCommand
-                    .replace(
+                const siteName=
+                    cleanedCommand.replace(
                         /^(open|launch|visit|go to|take me to)\s+/i,
                         ""
-                    )
-                    .trim();
+                    ).trim();
 
                 const message=
                     `Opening ${siteName}.`;
@@ -441,34 +600,43 @@ function Home(){
                 return;
             }
 
-            const result=await getGeminiResponse(
-                cleanedCommand
-            );
+
+            const result=
+                await getGeminiResponse(
+                    cleanedCommand
+                );
 
             let parsedResult=result;
 
             if(typeof result==="string"){
 
-                let cleanResult=result
-                    .replace(/```json/gi,"")
-                    .replace(/```/g,"")
-                    .trim();
+                let cleanResult=
+                    result
+                        .replace(/```json/gi,"")
+                        .replace(/```/g,"")
+                        .trim();
 
                 try{
-                    parsedResult=JSON.parse(
-                        cleanResult
-                    );
+
+                    parsedResult=
+                        JSON.parse(cleanResult);
+
                 }catch{
 
                     const jsonMatch=
-                        cleanResult.match(/{[\s\S]*}/);
+                        cleanResult.match(
+                            /{[\s\S]*}/
+                        );
 
                     if(jsonMatch){
 
                         try{
-                            parsedResult=JSON.parse(
-                                jsonMatch[0]
-                            );
+
+                            parsedResult=
+                                JSON.parse(
+                                    jsonMatch[0]
+                                );
+
                         }catch{
 
                             parsedResult={
@@ -487,7 +655,11 @@ function Home(){
                 }
             }
 
-            if(!parsedResult||parsedResult.error){
+
+            if(
+                !parsedResult||
+                parsedResult.error
+            ){
 
                 const errorText=
                     parsedResult?.error||
@@ -510,11 +682,13 @@ function Home(){
                 return;
             }
 
+
             const responseText=
                 parsedResult.response||
                 parsedResult.answer||
                 parsedResult.text||
                 "";
+
 
             if(!responseText){
 
@@ -538,6 +712,7 @@ function Home(){
                 return;
             }
 
+
             setAiText(responseText);
             setShowAIText(true);
 
@@ -545,6 +720,7 @@ function Home(){
                 cleanedCommand,
                 responseText
             );
+
 
             if(
                 handleSpecialCommand(
@@ -557,6 +733,7 @@ function Home(){
             ){
                 return;
             }
+
 
             if(shouldSpeak){
                 speak(responseText);
@@ -604,10 +781,17 @@ function Home(){
         }
     };
 
+
     const handleSendText=async()=>{
+
         const command=typedText.trim();
 
-        if(!command||isSending)return;
+        if(
+            !command||
+            isSending
+        ){
+            return;
+        }
 
         if(isListening){
 
@@ -626,7 +810,9 @@ function Home(){
         );
     };
 
+
     const handleInputKeyDown=(event)=>{
+
         if(event.key==="Enter"){
 
             event.preventDefault();
@@ -634,6 +820,7 @@ function Home(){
             handleSendText();
         }
     };
+
 
     useEffect(()=>{
 
@@ -654,12 +841,14 @@ function Home(){
         recognitionRef.current=
             recognition;
 
+
         recognition.onstart=()=>{
 
             listeningRef.current=true;
 
             setIsListening(true);
         };
+
 
         recognition.onresult=async(event)=>{
 
@@ -673,10 +862,14 @@ function Home(){
             if(
                 !lastResult||
                 !lastResult[0]
-            )return;
+            ){
+                return;
+            }
 
             const transcript=
-                lastResult[0].transcript.trim();
+                lastResult[0]
+                    .transcript
+                    .trim();
 
             if(!transcript)return;
 
@@ -692,6 +885,7 @@ function Home(){
                 "stop listening",
                 "cancel"
             ];
+
 
             if(
                 stopCommands.includes(
@@ -714,9 +908,11 @@ function Home(){
                 return;
             }
 
+
             setUserText(transcript);
             setAiText("");
             setShowAIText(false);
+
 
             if(
                 lowerTranscript==="hey"||
@@ -737,15 +933,18 @@ function Home(){
                 return;
             }
 
+
             try{
                 recognition.stop();
             }catch{}
+
 
             await processCommand(
                 transcript,
                 true
             );
         };
+
 
         recognition.onend=()=>{
 
@@ -777,6 +976,7 @@ function Home(){
             }
         };
 
+
         recognition.onerror=(event)=>{
 
             console.log(
@@ -796,6 +996,7 @@ function Home(){
             }
         };
 
+
         return()=>{
 
             listeningRef.current=false;
@@ -814,6 +1015,7 @@ function Home(){
         };
 
     },[getGeminiResponse]);
+
 
     const startListening=()=>{
 
@@ -844,6 +1046,7 @@ function Home(){
         }catch{}
     };
 
+
     const stopListening=()=>{
 
         listeningRef.current=false;
@@ -864,6 +1067,7 @@ function Home(){
         }catch{}
     };
 
+
     const toggleMic=()=>{
 
         if(isListening){
@@ -872,6 +1076,7 @@ function Home(){
             startListening();
         }
     };
+
 
     const handleLogout=async()=>{
 
@@ -894,6 +1099,7 @@ function Home(){
 
             window.speechSynthesis.cancel();
 
+
             await axios.post(
                 `${serverUrl}/api/auth/logout`,
                 {},
@@ -912,9 +1118,12 @@ function Home(){
         }
     };
 
+
     const handleCustomize=()=>{
+
         navigate("/customize2");
     };
+
 
     const handleHistoryClick=(item)=>{
 
@@ -934,33 +1143,45 @@ function Home(){
         setUserText(question);
         setAiText(answer);
         setShowAIText(Boolean(answer));
+
         setShowMenu(false);
+
         setIsAIActive(false);
     };
+
 
     const assistantImage=
         userData?.selectedImage||
         userData?.assistantImage||
         userData?.image;
 
+
     const assistantName=
         userData?.assistantName||
         "Assistant";
 
+
     return(
+
         <div className="relative min-h-screen w-full overflow-hidden bg-[#05060b] text-white">
 
+
+            {/* MAIN ASSISTANT */}
+
             <main
-                className={`w-full max-w-225 min-h-screen flex flex-col items-center justify-center box-border pt-10 mx-auto transition-all duration-300 ${
+                className={`w-full max-w-225 min-h-screen flex flex-col items-center justify-center box-border pt-16 pb-6 sm:pt-10 sm:pb-0 mx-auto transition-all duration-300 ${
                     showMenu
                         ?"blur-[3px] opacity-70"
                         :"blur-0 opacity-100"
                 }`}
             >
 
-                <div className="w-full flex flex-col items-center justify-center px-5 box-border">
+                <div className="w-full flex flex-col items-center justify-center px-4 sm:px-5 box-border">
 
-                    <div className="w-[clamp(190px,50vw,260px)] h-[clamp(280px,48vh,380px)] flex items-center justify-center overflow-hidden rounded-[20px]">
+
+                    {/* ASSISTANT IMAGE */}
+
+                    <div className="w-[clamp(170px,50vw,260px)] h-[clamp(240px,43vh,380px)] flex items-center justify-center overflow-hidden rounded-[20px]">
 
                         {assistantImage?(
                             <img
@@ -969,33 +1190,45 @@ function Home(){
                                 className="w-full h-full object-cover block"
                             />
                         ):(
-                            <div className="w-full h-full flex items-center justify-center text-[80px]">
+                            <div className="w-full h-full flex items-center justify-center text-[70px]">
                                 🤖
                             </div>
                         )}
 
                     </div>
 
+
+                    {/* ASSISTANT NAME */}
+
                     <div className="mt-3.5 text-white text-2xl font-semibold text-center max-sm:text-xl">
+
                         I'm {assistantName}
+
                     </div>
 
-                    <div className="w-full h-25 flex items-center justify-center mt-2 max-sm:h-22.5">
+
+                    {/* AI / USER GIF */}
+
+                    <div className="w-full h-20 sm:h-25 flex items-center justify-center mt-2">
 
                         <img
                             src={isAIActive?aiImg:userImg}
                             alt={isAIActive?"AI":"User"}
-                            className="w-22.5 h-22.5 object-contain block max-sm:w-20 max-sm:h-20"
+                            className="w-20 h-20 sm:w-22.5 sm:h-22.5 object-contain block"
                         />
 
                     </div>
 
-                    <div className="w-full min-h-15 flex items-center justify-center px-3">
 
-                        <h1 className="text-white text-[18px] font-bold text-center w-full max-w-full mt-3.75 leading-[1.6] whitespace-pre-wrap wrap-break-word">
+                    {/* RESPONSE */}
+
+                    <div className="w-full min-h-15 flex items-center justify-center px-2 sm:px-3">
+
+                        <h1 className="text-white text-[16px] sm:text-[18px] font-bold text-center w-full max-w-full mt-3.75 leading-[1.6] whitespace-pre-wrap wrap-break-word">
 
                             {showAIText?(
                                 <>
+
                                     <div>
                                         Question: {userText}
                                     </div>
@@ -1003,6 +1236,7 @@ function Home(){
                                     <div className="mt-3">
                                         Answer: {aiText}
                                     </div>
+
                                 </>
                             ):(
                                 userText
@@ -1012,19 +1246,29 @@ function Home(){
 
                     </div>
 
-                    <div className="w-full max-w-175 mt-5 px-2">
+
+                    {/* TEXT INPUT */}
+
+                    <div className="w-full max-w-175 mt-5 px-1 sm:px-2">
 
                         <div className="flex items-center gap-2 w-full">
 
                             <input
                                 type="text"
                                 value={typedText}
-                                onChange={event=>setTypedText(event.target.value)}
-                                onKeyDown={handleInputKeyDown}
+                                onChange={event=>
+                                    setTypedText(
+                                        event.target.value
+                                    )
+                                }
+                                onKeyDown={
+                                    handleInputKeyDown
+                                }
                                 placeholder="Type your question or command..."
                                 disabled={isSending}
-                                className="flex-1 min-w-0 px-4 py-3 rounded-xl bg-white/10 border border-white/10 focus:border-blue-400/50 outline-none text-white placeholder:text-gray-500 text-sm transition-all duration-200 disabled:opacity-50"
+                                className="flex-1 min-w-0 px-3 sm:px-4 py-3 rounded-xl bg-white/10 border border-white/10 focus:border-blue-400/50 outline-none text-white placeholder:text-gray-500 text-sm transition-all duration-200 disabled:opacity-50"
                             />
+
 
                             <button
                                 onClick={handleSendText}
@@ -1032,14 +1276,21 @@ function Home(){
                                     isSending||
                                     !typedText.trim()
                                 }
-                                className="px-5 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold cursor-pointer disabled:cursor-not-allowed transition-all duration-200 active:scale-95"
+                                className="px-4 sm:px-5 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold cursor-pointer disabled:cursor-not-allowed transition-all duration-200 active:scale-95"
                             >
-                                {isSending?"...":"Send"}
+
+                                {isSending
+                                    ?"..."
+                                    :"Send"}
+
                             </button>
 
                         </div>
 
                     </div>
+
+
+                    {/* MIC BUTTON */}
 
                     <button
                         onClick={toggleMic}
@@ -1049,33 +1300,34 @@ function Home(){
                                 :"bg-green-500 hover:bg-green-600"
                         }`}
                     >
+
                         {isListening
                             ?"Stop Mic"
                             :"Start Mic"}
+
                     </button>
 
+
+                    {/* MIC MESSAGE */}
+
                     <div className="mt-3 text-gray-300 text-sm text-center max-w-[90%]">
+
                         {isListening
                             ?"Listening... Speak now."
                             :"Press the mic to start a conversation."
                         }
+
                     </div>
+
 
                 </div>
 
             </main>
 
-            {!showMenu&&(
-                <button
-                    onClick={()=>setShowMenu(true)}
-                    className="fixed top-5 left-5 z-1200 flex items-center justify-center w-11 h-11 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-[29px] cursor-pointer backdrop-blur-xl shadow-lg transition-all duration-200 active:scale-95"
-                    aria-label="Open assistant menu"
-                >
-                    <IoMdMenu/>
-                </button>
-            )}
 
-            <div className="fixed top-5 right-5 z-1200 flex flex-col items-end gap-3">
+            {/* DESKTOP CONTROLS */}
+
+            <div className="fixed top-5 right-5 z-1200 hidden sm:flex flex-col items-end gap-3">
 
                 <button
                     onClick={handleLogout}
@@ -1083,6 +1335,7 @@ function Home(){
                 >
                     Log Out
                 </button>
+
 
                 <button
                     onClick={handleCustomize}
@@ -1093,14 +1346,37 @@ function Home(){
 
             </div>
 
+
+            {/* MENU OPEN BUTTON */}
+
+            {!showMenu&&(
+                <button
+                    onClick={()=>
+                        setShowMenu(true)
+                    }
+                    className="fixed top-5 left-5 z-1200 flex items-center justify-center w-11 h-11 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-[29px] cursor-pointer backdrop-blur-xl shadow-lg transition-all duration-200 active:scale-95"
+                    aria-label="Open assistant menu"
+                >
+                    <IoMdMenu/>
+                </button>
+            )}
+
+
+            {/* BACKDROP */}
+
             <div
-                onClick={()=>setShowMenu(false)}
+                onClick={()=>
+                    setShowMenu(false)
+                }
                 className={`fixed inset-0 z-1050 bg-transparent transition-all duration-300 ${
                     showMenu
                         ?"visible backdrop-blur-[2px]"
                         :"invisible pointer-events-none"
                 }`}
             />
+
+
+            {/* SIDE MENU */}
 
             <aside
                 className={`fixed top-0 left-0 bottom-0 z-1100 w-[min(25vw,380px)] min-w-75 max-sm:min-w-0 max-sm:w-[86vw] bg-[#0b0d14]/97 backdrop-blur-2xl border-r border-white/10 shadow-[20px_0_60px_rgba(0,0,0,0.3)] flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
@@ -1109,6 +1385,9 @@ function Home(){
                         :"-translate-x-full"
                 }`}
             >
+
+
+                {/* MENU HEADER */}
 
                 <div className="flex items-center justify-between px-5 py-5 border-b border-white/10 shrink-0">
 
@@ -1124,8 +1403,11 @@ function Home(){
 
                     </div>
 
+
                     <button
-                        onClick={()=>setShowMenu(false)}
+                        onClick={()=>
+                            setShowMenu(false)
+                        }
                         className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-2xl cursor-pointer transition-all duration-200 active:scale-95"
                         aria-label="Close assistant menu"
                     >
@@ -1134,6 +1416,69 @@ function Home(){
 
                 </div>
 
+
+                {/* MOBILE ASSISTANT PROFILE + CONTROLS */}
+
+                <div className="sm:hidden px-5 py-5 border-b border-white/10 shrink-0">
+
+                    <div className="flex items-center gap-4">
+
+                        <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0 bg-white/5 flex items-center justify-center">
+
+                            {assistantImage?(
+                                <img
+                                    src={assistantImage}
+                                    alt={assistantName}
+                                    className="w-full h-full object-cover"
+                                />
+                            ):(
+                                <span className="text-3xl">
+                                    🤖
+                                </span>
+                            )}
+
+                        </div>
+
+
+                        <div className="min-w-0">
+
+                            <p className="text-gray-400 text-xs m-0">
+                                Your Assistant
+                            </p>
+
+                            <h3 className="text-white text-lg font-semibold truncate m-0 mt-1">
+                                {assistantName}
+                            </h3>
+
+                        </div>
+
+                    </div>
+
+
+                    <div className="flex flex-col gap-2 mt-4">
+
+                        <button
+                            onClick={handleCustomize}
+                            className="w-full px-4 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold cursor-pointer transition-all duration-200 active:scale-95"
+                        >
+                            Customize your Assistant
+                        </button>
+
+
+                        <button
+                            onClick={handleLogout}
+                            className="w-full px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold cursor-pointer transition-all duration-200 active:scale-95"
+                        >
+                            Log Out
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                {/* HISTORY HEADER */}
+
                 <div className="px-5 pt-5 pb-3 flex items-center justify-between shrink-0">
 
                     <h3 className="text-white text-base font-semibold m-0">
@@ -1141,76 +1486,91 @@ function Home(){
                     </h3>
 
                     <span className="text-gray-500 text-xs">
+
                         {historyItems.length}{" "}
+
                         {historyItems.length===1
                             ?"item"
                             :"items"}
+
                     </span>
 
                 </div>
+
+
+                {/* HISTORY */}
 
                 <div className="flex-1 overflow-y-auto px-4 pb-5 dark-scrollbar">
 
                     {historyItems.length?(
                         <div className="flex flex-col gap-2">
 
-                            {historyItems.map((item,index)=>(
-                                <div
-                                    key={`${index}-${typeof item==="string"?item:item?.command||index}`}
-                                    onClick={()=>
-                                        handleHistoryClick(item)
-                                    }
-                                    className="group px-4 py-3 rounded-xl bg-white/4 hover:bg-white/7 border border-white/6 hover:border-white/12 text-gray-300 hover:text-white text-sm leading-relaxed wrap-break-word transition-all duration-200 cursor-pointer"
-                                >
+                            {historyItems.map(
+                                (item,index)=>(
+                                    <div
+                                        key={`${index}-${typeof item==="string"?item:item?.command||index}`}
+                                        onClick={()=>
+                                            handleHistoryClick(
+                                                item
+                                            )
+                                        }
+                                        className="group px-4 py-3 rounded-xl bg-white/4 hover:bg-white/7 border border-white/6 hover:border-white/12 text-gray-300 hover:text-white text-sm leading-relaxed wrap-break-word transition-all duration-200 cursor-pointer"
+                                    >
 
-                                    <div className="flex gap-3">
+                                        <div className="flex gap-3">
 
-                                        <span className="text-gray-600 text-xs pt-1 shrink-0">
-                                            {index+1}
-                                        </span>
+                                            <span className="text-gray-600 text-xs pt-1 shrink-0">
+                                                {index+1}
+                                            </span>
 
-                                        <div className="flex flex-col gap-3 min-w-0 w-full">
 
-                                            <div>
+                                            <div className="flex flex-col gap-3 min-w-0 w-full">
 
-                                                <span className="text-gray-500 text-xs">
-                                                    Question:
-                                                </span>
-
-                                                <div className="text-white font-medium mt-1 whitespace-pre-wrap wrap-break-word">
-                                                    {typeof item==="string"
-                                                        ?item
-                                                        :item?.command||
-                                                         item?.text||
-                                                         item?.query||
-                                                         ""
-                                                    }
-                                                </div>
-
-                                            </div>
-
-                                            {typeof item!=="string"&&item?.answer&&(
                                                 <div>
 
                                                     <span className="text-gray-500 text-xs">
-                                                        Answer:
+                                                        Question:
                                                     </span>
 
-                                                    <div className="text-gray-400 text-sm leading-relaxed mt-1 whitespace-pre-wrap wrap-break-word">
-                                                        {item.answer}
+                                                    <div className="text-white font-medium mt-1 whitespace-pre-wrap wrap-break-word">
+
+                                                        {typeof item==="string"
+                                                            ?item
+                                                            :item?.command||
+                                                             item?.text||
+                                                             item?.query||
+                                                             ""
+                                                        }
+
                                                     </div>
 
                                                 </div>
-                                            )}
+
+
+                                                {typeof item!=="string"&&item?.answer&&(
+                                                    <div>
+
+                                                        <span className="text-gray-500 text-xs">
+                                                            Answer:
+                                                        </span>
+
+                                                        <div className="text-gray-400 text-sm leading-relaxed mt-1 whitespace-pre-wrap wrap-break-word">
+                                                            {item.answer}
+                                                        </div>
+
+                                                    </div>
+                                                )}
+
+                                            </div>
 
                                         </div>
 
                                     </div>
-
-                                </div>
-                            ))}
+                                )
+                            )}
 
                         </div>
+
                     ):(
                         <div className="h-full min-h-62.5 flex flex-col items-center justify-center text-center px-5">
 
