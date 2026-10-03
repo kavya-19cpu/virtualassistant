@@ -174,174 +174,144 @@ function Home() {
        TEXT TO SPEECH
     ========================================================= */
 
-    const speak = (text) => {
+const speak = (text) => {
+    if (!text) {
+        console.log("Nothing to speak");
+        return;
+    }
 
-        if (!text) {
-            return;
-        }
+    if (
+        typeof window === "undefined" ||
+        !window.speechSynthesis
+    ) {
+        console.error(
+            "Speech Synthesis is not supported in this browser."
+        );
+        return;
+    }
 
-        if (
-            typeof window === "undefined" ||
-            !("speechSynthesis" in window)
-        ) {
+    const speech = window.speechSynthesis;
 
-            console.error(
-                "Speech synthesis is not supported in this browser."
+    const cleanText = String(text)
+        .replace(/[*#_`]/g, "")
+        .replace(/\n+/g, " ")
+        .trim();
+
+    if (!cleanText) {
+        return;
+    }
+
+    console.log("Trying to speak:", cleanText);
+
+    // Stop previous speech
+    speech.cancel();
+
+    const utterance =
+        new SpeechSynthesisUtterance(cleanText);
+
+    utterance.lang = "en-US";
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    // Get available voices
+    const voices = speech.getVoices();
+
+    if (voices.length > 0) {
+        const englishVoice =
+            voices.find(
+                voice =>
+                    voice.lang === "en-US"
+            ) ||
+            voices.find(
+                voice =>
+                    voice.lang.startsWith("en")
             );
 
-            return;
+        if (englishVoice) {
+            utterance.voice = englishVoice;
         }
+    }
 
+    utterance.onstart = () => {
+        console.log("========== AI SPEECH STARTED ==========");
 
-        const speech = window.speechSynthesis;
+        speakingRef.current = true;
 
+        setIsAIActive(true);
 
-        /* Stop previous speech */
-
-        speech.cancel();
-
-
-        const cleanText = String(text)
-            .replace(/[*#_`]/g, "")
-            .replace(/\n+/g, " ")
-            .trim();
-
-
-        if (!cleanText) {
-            return;
-        }
-
-
-        const utterance =
-            new SpeechSynthesisUtterance(cleanText);
-
-
-        utterance.lang = "en-US";
-
-        utterance.rate = 0.95;
-
-        utterance.pitch = 1;
-
-        utterance.volume = 1;
-
-
-        /* Try to select English voice */
-
-        const voices = speech.getVoices();
-
-        if (voices.length > 0) {
-
-            const preferredVoice =
-                voices.find(
-                    voice =>
-                        voice.lang === "en-US"
-                ) ||
-                voices.find(
-                    voice =>
-                        voice.lang.startsWith("en")
-                );
-
-            if (preferredVoice) {
-                utterance.voice = preferredVoice;
-            }
-        }
-
-
-        utterance.onstart = () => {
-
+        // Stop microphone while AI is talking
+        try {
+            recognitionRef.current?.stop();
+        } catch (error) {
             console.log(
-                "AI SPEECH STARTED"
+                "Recognition stop:",
+                error.message
             );
-
-            speakingRef.current = true;
-
-            setIsAIActive(true);
-        };
-
-
-        utterance.onend = () => {
-
-            console.log(
-                "AI SPEECH FINISHED"
-            );
-
-            speakingRef.current = false;
-
-            setIsAIActive(false);
-
-
-            /*
-             * Restart microphone after AI finishes speaking
-             */
-
-            if (
-                listeningRef.current &&
-                !processingRef.current &&
-                recognitionRef.current
-            ) {
-
-                clearTimeout(
-                    restartTimeoutRef.current
-                );
-
-                restartTimeoutRef.current =
-                    setTimeout(() => {
-
-                        try {
-
-                            recognitionRef.current.start();
-
-                        } catch (error) {
-
-                            console.log(
-                                "Recognition restart:",
-                                error.message
-                            );
-                        }
-
-                    }, 300);
-            }
-        };
-
-
-        utterance.onerror = event => {
-
-            console.error(
-                "Speech synthesis error:",
-                event.error
-            );
-
-            speakingRef.current = false;
-
-            setIsAIActive(false);
-        };
-
-
-        /*
-         * Chrome sometimes needs a small delay
-         * before speaking.
-         */
-
-        setTimeout(() => {
-
-            try {
-
-                speech.speak(utterance);
-
-            } catch (error) {
-
-                console.error(
-                    "Speech error:",
-                    error
-                );
-
-                speakingRef.current = false;
-
-                setIsAIActive(false);
-            }
-
-        }, 100);
+        }
     };
+
+    utterance.onend = () => {
+        console.log("========== AI SPEECH FINISHED ==========");
+
+        speakingRef.current = false;
+
+        setIsAIActive(false);
+
+        // Start microphone again after AI finishes
+        if (
+            listeningRef.current &&
+            recognitionRef.current
+        ) {
+            setTimeout(() => {
+                try {
+                    recognitionRef.current.start();
+
+                    console.log(
+                        "Microphone restarted after AI speech"
+                    );
+                } catch (error) {
+                    console.log(
+                        "Microphone restart:",
+                        error.message
+                    );
+                }
+            }, 400);
+        }
+    };
+
+    utterance.onerror = (event) => {
+        console.error(
+            "========== SPEECH ERROR ==========",
+            event.error
+        );
+
+        speakingRef.current = false;
+
+        setIsAIActive(false);
+    };
+
+    // IMPORTANT:
+    // speak directly instead of delaying it
+    try {
+        speech.speak(utterance);
+
+        console.log(
+            "speech.speak() was called successfully"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "speech.speak() failed:",
+            error
+        );
+
+        speakingRef.current = false;
+
+        setIsAIActive(false);
+    }
+};
 
 
     /* =========================================================
@@ -1590,32 +1560,37 @@ function Home() {
                GREETING
             ================================================= */
 
-            if (
-                lowerTranscript === "hey" ||
-                lowerTranscript === "hi" ||
-                lowerTranscript === "hello"
-            ) {
+          if (
+    lowerTranscript === "hey" ||
+    lowerTranscript === "hi" ||
+    lowerTranscript === "hello"
+) {
 
-                const answer =
-                    "Yes, I am listening.";
+    const answer =
+        "Yes, I am listening.";
 
+    setAiText(answer);
+    setShowAIText(true);
 
-                setAiText(answer);
+    await saveHistory(
+        transcript,
+        answer
+    );
 
-                setShowAIText(true);
+    // Stop microphone before AI speaks
+    try {
+        recognition.stop();
+    } catch (error) {
+        console.log(
+            "Recognition stop:",
+            error.message
+        );
+    }
 
+    speak(answer);
 
-                await saveHistory(
-                    transcript,
-                    answer
-                );
-
-
-                speak(answer);
-
-
-                return;
-            }
+    return;
+}
 
 
             /* =================================================
