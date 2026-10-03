@@ -4,9 +4,7 @@ import React, {
     useRef
 } from "react";
 
-
 import Card from "../components/Card";
-
 
 import image1 from "../assets/image1.webp";
 import image2 from "../assets/image2.webp";
@@ -14,21 +12,17 @@ import image3 from "../assets/image3.png";
 import image4 from "../assets/image4.webp";
 import image6 from "../assets/image6.webp";
 
-
 import {
     useNavigate
 } from "react-router-dom";
-
 
 import {
     BiImageAdd
 } from "react-icons/bi";
 
-
 import {
     userDataContext
 } from "../context/UserContext";
-
 
 import {
     IoMdArrowBack
@@ -36,7 +30,6 @@ import {
 
 
 const Customize = () => {
-
 
     const {
         backendImage,
@@ -50,21 +43,16 @@ const Customize = () => {
 
     const navigate = useNavigate();
 
-
     const inputImage = useRef();
 
 
     const handleImage = (e) => {
 
-
         const file = e.target.files[0];
-
 
         if (!file) return;
 
-
         setBackendImage(file);
-
 
         setFrontendImage(
             URL.createObjectURL(file)
@@ -75,15 +63,14 @@ const Customize = () => {
 
     return (
 
-
         <div
             className="
                 w-full
                 min-h-screen
 
-                bg-linear-to-t
+             bg-linear-to-t
                 from-black
-                to-[#030353]
+                to-[#070B14]
 
                 flex
                 flex-col
@@ -103,7 +90,6 @@ const Customize = () => {
 
 
             {/* BACK BUTTON */}
-
 
             <button
                 type="button"
@@ -132,13 +118,14 @@ const Customize = () => {
                     items-center
                     justify-center
 
-                    text-white
+                    text-cyan-300
 
-                    bg-white/5
-                    hover:bg-white/10
+                    bg-cyan-400/5
+                    hover:bg-cyan-400/15
 
                     border
-                    border-white/10
+                    border-cyan-400/20
+                    hover:border-cyan-400/40
 
                     rounded-full
 
@@ -154,7 +141,6 @@ const Customize = () => {
                 aria-label="Go back"
             >
 
-
                 <IoMdArrowBack
                     className="
                         w-6
@@ -162,12 +148,10 @@ const Customize = () => {
                     "
                 />
 
-
             </button>
 
 
             {/* HEADING */}
-
 
             <h1
                 className="
@@ -190,19 +174,20 @@ const Customize = () => {
                 "
             >
 
-
                 Select your
 
-                <span className="text-blue-200">
+                <span
+                    className="
+                        text-cyan-300
+                    "
+                >
                     {" "}Assistant Image
                 </span>
-
 
             </h1>
 
 
             {/* IMAGE GRID */}
-
 
             <div
                 className="
@@ -228,7 +213,6 @@ const Customize = () => {
 
                 {/* PRESET IMAGES */}
 
-
                 <Card image={image1} />
 
                 <Card image={image2} />
@@ -241,7 +225,6 @@ const Customize = () => {
 
 
                 {/* UPLOAD CARD */}
-
 
                 <div
                     onClick={() => {
@@ -264,10 +247,10 @@ const Customize = () => {
                         lg:w-37.5
                         lg:h-62.5
 
-                        bg-[#020220]
+                        bg-[#020810]
 
                         border-2
-                        border-blue-600
+                        border-cyan-400
 
                         rounded-2xl
 
@@ -282,17 +265,17 @@ const Customize = () => {
                         shrink-0
 
                         hover:border-4
-                        hover:border-white
+                        hover:border-cyan-300
 
                         hover:shadow-2xl
-                        hover:shadow-blue-950
+                        hover:shadow-cyan-950
 
                         transition-all
                         duration-200
 
                         ${
                             selectedImage === "input"
-                                ? "border-4 border-white shadow-2xl shadow-blue-950"
+                                ? "border-4 border-cyan-300 shadow-2xl shadow-cyan-950"
                                 : ""
                         }
                     `}
@@ -301,13 +284,11 @@ const Customize = () => {
 
                     {/* UPLOAD ICON */}
 
-
                     {!frontendImage && (
-
 
                         <BiImageAdd
                             className="
-                                text-white
+                                text-cyan-300
 
                                 w-8
                                 h-8
@@ -317,15 +298,12 @@ const Customize = () => {
                             "
                         />
 
-
                     )}
 
 
                     {/* UPLOADED IMAGE */}
 
-
                     {frontendImage && (
-
 
                         <img
                             src={frontendImage}
@@ -338,15 +316,12 @@ const Customize = () => {
                             "
                         />
 
-
                     )}
-
 
                 </div>
 
 
                 {/* FILE INPUT */}
-
 
                 <input
                     type="file"
@@ -356,15 +331,12 @@ const Customize = () => {
                     onChange={handleImage}
                 />
 
-
             </div>
 
 
             {/* NEXT BUTTON */}
 
-
             {selectedImage && (
-
 
                 <button
                     type="button"
@@ -389,7 +361,8 @@ const Customize = () => {
                         text-black
                         font-semibold
 
-                        bg-white
+                        bg-cyan-400
+                        hover:bg-cyan-300
 
                         rounded-full
 
@@ -401,24 +374,21 @@ const Customize = () => {
 
                         cursor-pointer
 
-                        hover:bg-gray-200
-
                         active:scale-95
 
                         transition-all
                         duration-200
+
+                        shadow-lg
+                        shadow-cyan-950/30
                     "
                 >
 
-
                     Next
-
 
                 </button>
 
-
             )}
-
 
         </div>
 

@@ -1,55 +1,45 @@
-
-import React,{useContext,useState} from "react";
-import {IoEye,IoEyeOff} from "react-icons/io5";
-import {useNavigate} from "react-router-dom";
+import React, { useContext, useState } from "react";
+import { IoEye, IoEyeOff } from "react-icons/io5";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import {userDataContext} from "../context/UserContext.jsx";
+import { userDataContext } from "../context/UserContext.jsx";
 
 
-const SignIn=()=>{
+const SignIn = () => {
 
-
-    const [showPassword,setShowPassword]=
+    const [showPassword, setShowPassword] =
         useState(false);
 
-
-    const [email,setEmail]=
+    const [email, setEmail] =
         useState("");
 
-
-    const [password,setPassword]=
+    const [password, setPassword] =
         useState("");
 
-
-    const [loading,setLoading]=
+    const [loading, setLoading] =
         useState(false);
 
-
-    const [err,setErr]=
+    const [err, setErr] =
         useState("");
-
 
     const {
         serverUrl,
         setUserData
-    }=useContext(userDataContext);
+    } = useContext(userDataContext);
+
+    const navigate = useNavigate();
 
 
-    const navigate=useNavigate();
+    const handleSignIn = async e => {
 
-
-    const handleSignIn=async e=>{
         e.preventDefault();
-
 
         setErr("");
         setLoading(true);
 
+        try {
 
-        try{
-
-
-            const result=
+            const result =
                 await axios.post(
                     `${serverUrl}/api/auth/signin`,
                     {
@@ -58,42 +48,38 @@ const SignIn=()=>{
                         password
                     },
                     {
-                        withCredentials:true
+                        withCredentials: true
                     }
                 );
 
-
             setUserData(result.data);
-
 
             navigate("/");
 
-
-        }catch(error){
-
+        } catch (error) {
 
             console.error(
                 "SIGN IN ERROR:",
                 error
             );
 
-
             setUserData(null);
 
-
             setErr(
-                error.response?.data?.message||
+                error.response?.data?.message ||
                 "Something went wrong"
             );
 
+        } finally {
 
-        }finally{
             setLoading(false);
+
         }
     };
 
 
-    return(
+    return (
+
         <div
             className="
                 relative
@@ -103,91 +89,132 @@ const SignIn=()=>{
                 items-center
                 justify-center
                 overflow-hidden
-                bg-[#050B14]
+
+                bg-[#070B14]
+
                 px-4
                 py-6
+
                 sm:px-6
                 md:px-8
             "
         >
 
+            {/* CYAN GLOW - TOP LEFT */}
 
-            {/* Subtle blue glow */}
             <div
                 className="
                     pointer-events-none
                     absolute
+
                     -left-32
                     -top-32
+
                     h-80
                     w-80
+
                     rounded-full
-                    bg-blue-600/10
+
+                    bg-cyan-400/10
+
                     blur-3xl
                 "
             />
 
+
+            {/* CYAN GLOW - BOTTOM RIGHT */}
 
             <div
                 className="
                     pointer-events-none
                     absolute
+
                     -bottom-32
                     -right-32
+
                     h-80
                     w-80
+
                     rounded-full
-                    bg-blue-500/10
+
+                    bg-cyan-500/10
+
                     blur-3xl
                 "
             />
 
+
+            {/* SIGN IN CARD */}
 
             <form
                 onSubmit={handleSignIn}
                 className="
                     relative
                     z-10
+
                     flex
                     w-full
                     max-w-lg
+
                     flex-col
                     items-center
                     justify-center
+
                     gap-4
+
                     rounded-2xl
+
                     border
-                    border-[#243247]
-                    bg-[#0A1220]
+                    border-white/10
+
+                    bg-[#0A1020]
+
                     px-5
                     py-8
+
                     shadow-2xl
                     shadow-black/50
+
                     sm:gap-5
                     sm:px-8
                     sm:py-10
+
                     md:px-10
                 "
             >
 
+                {/* HEADING */}
 
                 <h1
                     className="
                         mb-3
+
                         text-center
+
                         text-2xl
                         font-semibold
                         leading-tight
+
                         text-white
+
                         sm:text-3xl
                     "
                 >
+
                     Sign In to{" "}
-                    <span className="text-blue-400">
+
+                    <span
+                        className="
+                            text-cyan-300
+                        "
+                    >
                         Virtual Assistant
                     </span>
+
                 </h1>
 
+
+                {/* EMAIL */}
 
                 <input
                     type="email"
@@ -195,25 +222,35 @@ const SignIn=()=>{
                     autoComplete="email"
                     required
                     value={email}
-                    onChange={e=>
+                    onChange={e =>
                         setEmail(e.target.value)
                     }
                     className="
                         h-13
                         w-full
+
                         rounded-full
+
                         border-2
-                        border-[#334155]
-                        bg-[#050B14]
+                        border-white/15
+
+                        bg-[#070B14]
+
                         px-4
+
                         text-base
                         text-white
+
                         outline-none
+
                         transition
+
                         placeholder:text-gray-400
-                        focus:border-blue-500
+
+                        focus:border-cyan-400
                         focus:ring-2
-                        focus:ring-blue-500/20
+                        focus:ring-cyan-400/20
+
                         sm:h-14
                         sm:px-5
                         sm:text-lg
@@ -221,36 +258,45 @@ const SignIn=()=>{
                 />
 
 
+                {/* PASSWORD */}
+
                 <div
                     className="
                         relative
+
                         h-13
                         w-full
+
                         rounded-full
+
                         border-2
-                        border-[#334155]
-                        bg-[#050B14]
+                        border-white/15
+
+                        bg-[#070B14]
+
                         text-white
+
                         transition
-                        focus-within:border-blue-500
+
+                        focus-within:border-cyan-400
                         focus-within:ring-2
-                        focus-within:ring-blue-500/20
+                        focus-within:ring-cyan-400/20
+
                         sm:h-14
                     "
                 >
 
-
                     <input
                         type={
                             showPassword
-                                ?"text"
-                                :"password"
+                                ? "text"
+                                : "password"
                         }
                         placeholder="Password"
                         autoComplete="current-password"
                         required
                         value={password}
-                        onChange={e=>
+                        onChange={e =>
                             setPassword(
                                 e.target.value
                             )
@@ -258,84 +304,119 @@ const SignIn=()=>{
                         className="
                             h-full
                             w-full
+
                             rounded-full
+
                             bg-transparent
+
                             px-4
                             pr-14
+
                             text-base
                             text-white
+
                             outline-none
+
                             placeholder:text-gray-400
+
                             sm:px-5
                             sm:text-lg
                         "
                     />
 
 
+                    {/* PASSWORD VISIBILITY */}
+
                     <button
                         type="button"
                         aria-label={
                             showPassword
-                                ?"Hide password"
-                                :"Show password"
+                                ? "Hide password"
+                                : "Show password"
                         }
-                        onClick={()=>
+                        onClick={() =>
                             setShowPassword(
-                                prev=>!prev
+                                prev => !prev
                             )
                         }
                         className="
                             absolute
+
                             right-4
                             top-1/2
+
                             -translate-y-1/2
+
                             cursor-pointer
+
                             text-gray-300
+
                             transition
-                            hover:text-blue-400
+
+                            hover:text-cyan-300
+
                             sm:right-5
                         "
                     >
-                        {showPassword?(
+
+                        {showPassword ? (
+
                             <IoEyeOff
                                 className="
                                     h-5
                                     w-5
+
                                     sm:h-6
                                     sm:w-6
                                 "
                             />
-                        ):(
+
+                        ) : (
+
                             <IoEye
                                 className="
                                     h-5
                                     w-5
+
                                     sm:h-6
                                     sm:w-6
                                 "
                             />
-                        )}
-                    </button>
 
+                        )}
+
+                    </button>
 
                 </div>
 
 
-                <div className="flex w-full justify-end">
+                {/* FORGOT / CHANGE PASSWORD */}
+
+                <div
+                    className="
+                        flex
+                        w-full
+                        justify-end
+                    "
+                >
 
                     <button
                         type="button"
-                        onClick={()=>
+                        onClick={() =>
                             navigate(
                                 "/change-password"
                             )
                         }
                         className="
                             text-sm
-                            text-blue-400
+
+                            text-cyan-300
+
                             transition
-                            hover:text-blue-300
+
+                            hover:text-cyan-200
                             hover:underline
+
                             sm:text-base
                         "
                     >
@@ -345,57 +426,90 @@ const SignIn=()=>{
                 </div>
 
 
-                {err&&(
+                {/* ERROR */}
+
+                {err && (
+
                     <p
                         className="
                             w-full
+
                             wrap-break-word
+
                             text-center
+
                             text-sm
+
                             text-red-400
+
                             sm:text-base
                         "
                     >
                         *{err}
                     </p>
+
                 )}
 
+
+                {/* SIGN IN BUTTON */}
 
                 <button
                     type="submit"
                     disabled={loading}
                     className="
                         mt-2
+
                         h-12
+
                         min-w-35
+
                         rounded-full
-                        bg-blue-500
+
+                        bg-cyan-400
+
                         px-6
+
                         text-base
                         font-semibold
-                        text-white
+
+                        text-black
+
                         transition
-                        hover:bg-blue-400
+
+                        hover:bg-cyan-300
+
                         active:scale-95
+
                         disabled:cursor-not-allowed
                         disabled:opacity-60
+
                         sm:h-14
                         sm:min-w-38
                         sm:text-lg
+
+                        shadow-lg
+                        shadow-cyan-950/30
                     "
                 >
+
                     {loading
-                        ?"Loading..."
-                        :"Sign In"}
+                        ? "Loading..."
+                        : "Sign In"}
+
                 </button>
 
+
+                {/* SIGN UP */}
 
                 <p
                     className="
                         mt-1
+
                         text-center
+
                         text-sm
                         text-gray-300
+
                         sm:text-base
                     "
                 >
@@ -404,13 +518,15 @@ const SignIn=()=>{
 
                     <button
                         type="button"
-                        onClick={()=>
+                        onClick={() =>
                             navigate("/signup")
                         }
                         className="
-                            text-blue-400
+                            text-cyan-300
+
                             transition
-                            hover:text-blue-300
+
+                            hover:text-cyan-200
                             hover:underline
                         "
                     >
@@ -418,7 +534,6 @@ const SignIn=()=>{
                     </button>
 
                 </p>
-
 
             </form>
 

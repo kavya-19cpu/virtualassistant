@@ -1809,7 +1809,7 @@ function Home() {
 
     return (
 
-        <div className="relative min-h-screen w-full overflow-hidden bg-[#05060b] text-white">
+        <div className="relative min-h-screen w-full overflow-hidden bg-[#070B14] text-white">
 
 
             {/* MAIN ASSISTANT */}
@@ -1928,7 +1928,7 @@ function Home() {
                                 }
                                 placeholder="Type your question or command..."
                                 disabled={isSending}
-                                className="flex-1 min-w-0 px-3 sm:px-4 py-3 rounded-xl bg-white/10 border border-white/10 focus:border-blue-400/50 outline-none text-white placeholder:text-gray-500 text-sm transition-all duration-200 disabled:opacity-50"
+                                className="flex-1 min-w-0 px-3 sm:px-4 py-3 rounded-xl bg-white/10 border border-white/10 focus:border-cyan-400/60 outline-none text-white placeholder:text-gray-500 text-sm transition-all duration-200 disabled:opacity-50"
                             />
 
 
@@ -1938,7 +1938,7 @@ function Home() {
                                     isSending ||
                                     !typedText.trim()
                                 }
-                                className="px-4 sm:px-5 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold cursor-pointer disabled:cursor-not-allowed transition-all duration-200 active:scale-95"
+                                className="px-4 sm:px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold cursor-pointer disabled:cursor-not-allowed transition-all duration-200 active:scale-95"
                             >
 
                                 {isSending
@@ -1957,9 +1957,9 @@ function Home() {
                     <button
                         onClick={toggleMic}
                         className={`mt-5 px-6 py-3 border-none rounded-xl text-white text-base font-semibold cursor-pointer min-w-32.5 transition-all duration-200 active:scale-95 ${
-                            isListening
-                                ? "bg-red-500 hover:bg-red-600"
-                                : "bg-green-500 hover:bg-green-600"
+                           isListening
+    ? "bg-rose-500 hover:bg-rose-600"
+    : "bg-cyan-500 hover:bg-cyan-400"
                         }`}
                     >
 
@@ -1993,7 +1993,7 @@ function Home() {
 
                 <button
                     onClick={handleLogout}
-                    className="px-4.5 py-2.5 border-none rounded-[10px] bg-red-500 hover:bg-red-600 text-white text-sm font-semibold cursor-pointer whitespace-nowrap transition-all duration-200 active:scale-95 shadow-lg"
+                  className="px-3 py-2.5 border-none rounded-[10px] bg-red-500 hover:bg-red-600 text-white text-sm font-semibold cursor-pointer whitespace-nowrap transition-all duration-200 active:scale-95 shadow-lg"
                 >
                     Log Out
                 </button>
@@ -2001,7 +2001,7 @@ function Home() {
 
                 <button
                     onClick={handleCustomize}
-                    className="px-3 py-2.5 border-none rounded-[10px] bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold cursor-pointer whitespace-nowrap transition-all duration-200 active:scale-95 shadow-lg"
+                    className="px-3 py-2.5 border-none rounded-[10px] bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-semibold cursor-pointer whitespace-nowrap transition-all duration-200 active:scale-95 shadow-lg"
                 >
                     Customize your Assistant
                 </button>
@@ -2017,8 +2017,7 @@ function Home() {
                     onClick={() =>
                         setShowMenu(true)
                     }
-                    className="fixed top-5 left-5 z-1200 flex items-center justify-center w-11 h-11 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-[29px] cursor-pointer backdrop-blur-xl shadow-lg transition-all duration-200 active:scale-95"
-                    aria-label="Open assistant menu"
+                   className="fixed top-5 left-5 z-1200 flex items-center justify-center w-11 h-11 rounded-xl bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-400/10 text-white text-[29px] cursor-pointer backdrop-blur-xl shadow-lg transition-all duration-200 active:scale-95"
                 >
 
                     <IoMdMenu />
@@ -2045,7 +2044,7 @@ function Home() {
             {/* SIDE MENU */}
 
             <aside
-                className={`fixed top-0 left-0 bottom-0 z-1100 w-[min(25vw,380px)] min-w-75 max-sm:min-w-0 max-sm:w-[86vw] bg-[#0b0d14]/97 backdrop-blur-2xl border-r border-white/10 shadow-[20px_0_60px_rgba(0,0,0,0.3)] flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                className={`fixed top-0 left-0 bottom-0 z-1100 w-[min(25vw,380px)] min-w-75 max-sm:min-w-0 max-sm:w-[86vw] bg-[#0A1020]/97 backdrop-blur-2xl border-r border-white/10 shadow-[20px_0_60px_rgba(0,0,0,0.3)] flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                     showMenu
                         ? "translate-x-0"
                         : "-translate-x-full"
@@ -2066,7 +2065,7 @@ function Home() {
                         onClick={() =>
                             setShowMenu(false)
                         }
-                        className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-2xl cursor-pointer transition-all duration-200 active:scale-95"
+                       className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-cyan-400/5 hover:bg-cyan-400/15 border border-cyan-400/10 text-white text-2xl cursor-pointer transition-all duration-200 active:scale-95"
                         aria-label="Close assistant menu"
                     >
 
@@ -2125,7 +2124,7 @@ function Home() {
 
                         <button
                             onClick={handleCustomize}
-                            className="w-full min-w-0 px-2.5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold cursor-pointer transition-all duration-200 active:scale-95 shadow-md"
+                            className="w-full min-w-0 px-2.5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-semibold cursor-pointer transition-all duration-200 active:scale-95 shadow-md"
                         >
                             Customize
                         </button>
@@ -2133,7 +2132,7 @@ function Home() {
 
                         <button
                             onClick={handleLogout}
-                            className="w-full min-w-0 px-2.5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-semibold cursor-pointer transition-all duration-200 active:scale-95 shadow-md"
+                          className="w-full min-w-0 px-2.5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-semibold cursor-pointer transition-all duration-200 active:scale-95 shadow-md"
                         >
                             Log Out
                         </button>
@@ -2186,7 +2185,7 @@ function Home() {
                                                 item
                                             )
                                         }
-                                        className="group px-3.5 py-3 rounded-xl bg-white/4 hover:bg-white/7 border border-white/6 hover:border-white/12 text-gray-300 hover:text-white text-sm leading-relaxed wrap-break-word transition-all duration-200 cursor-pointer"
+                                        className="group px-3.5 py-3 rounded-xl bg-cyan-400/5 hover:bg-cyan-400/10 border border-cyan-400/10 hover:border-cyan-400/20 text-gray-300 hover:text-white text-sm leading-relaxed wrap-break-word transition-all duration-200 cursor-pointer"
                                     >
 
                                         <div className="flex gap-3">

@@ -133,7 +133,7 @@ const ChangePassword = () => {
                 items-center
                 justify-center
                 overflow-hidden
-                bg-[#050B14]
+                bg-[#070B14]
                 px-4
                 py-6
                 sm:px-6
@@ -141,7 +141,7 @@ const ChangePassword = () => {
             "
         >
 
-            {/* Subtle blue glow */}
+            {/* CYAN GLOW - TOP LEFT */}
 
             <div
                 className="
@@ -152,11 +152,13 @@ const ChangePassword = () => {
                     h-80
                     w-80
                     rounded-full
-                    bg-blue-600/10
+                    bg-cyan-400/10
                     blur-3xl
                 "
             />
 
+
+            {/* CYAN GLOW - BOTTOM RIGHT */}
 
             <div
                 className="
@@ -167,11 +169,13 @@ const ChangePassword = () => {
                     h-80
                     w-80
                     rounded-full
-                    bg-blue-500/10
+                    bg-cyan-500/10
                     blur-3xl
                 "
             />
 
+
+            {/* CHANGE PASSWORD CARD */}
 
             <form
                 onSubmit={handleChangePassword}
@@ -187,8 +191,8 @@ const ChangePassword = () => {
                     gap-4
                     rounded-2xl
                     border
-                    border-[#243247]
-                    bg-[#0A1220]
+                    border-white/10
+                    bg-[#0A1020]
                     px-5
                     py-8
                     shadow-2xl
@@ -213,7 +217,10 @@ const ChangePassword = () => {
                         sm:text-3xl
                     "
                 >
-                    Change Password
+                    Change{" "}
+                    <span className="text-cyan-300">
+                        Password
+                    </span>
                 </h1>
 
 
@@ -249,17 +256,17 @@ const ChangePassword = () => {
                         w-full
                         rounded-full
                         border-2
-                        border-[#334155]
-                        bg-[#050B14]
+                        border-white/15
+                        bg-[#070B14]
                         px-4
                         text-base
                         text-white
                         outline-none
                         transition
                         placeholder:text-gray-400
-                        focus:border-blue-500
+                        focus:border-cyan-400
                         focus:ring-2
-                        focus:ring-blue-500/20
+                        focus:ring-cyan-400/20
                         sm:h-14
                         sm:px-5
                         sm:text-lg
@@ -283,17 +290,17 @@ const ChangePassword = () => {
                         w-full
                         rounded-full
                         border-2
-                        border-[#334155]
-                        bg-[#050B14]
+                        border-white/15
+                        bg-[#070B14]
                         px-4
                         text-base
                         text-white
                         outline-none
                         transition
                         placeholder:text-gray-400
-                        focus:border-blue-500
+                        focus:border-cyan-400
                         focus:ring-2
-                        focus:ring-blue-500/20
+                        focus:ring-cyan-400/20
                         sm:h-14
                         sm:px-5
                         sm:text-lg
@@ -310,13 +317,13 @@ const ChangePassword = () => {
                         w-full
                         rounded-full
                         border-2
-                        border-[#334155]
-                        bg-[#050B14]
+                        border-white/15
+                        bg-[#070B14]
                         text-white
                         transition
-                        focus-within:border-blue-500
+                        focus-within:border-cyan-400
                         focus-within:ring-2
-                        focus-within:ring-blue-500/20
+                        focus-within:ring-cyan-400/20
                         sm:h-14
                     "
                 >
@@ -354,6 +361,8 @@ const ChangePassword = () => {
                     />
 
 
+                    {/* PASSWORD VISIBILITY */}
+
                     <button
                         type="button"
                         aria-label={
@@ -374,7 +383,7 @@ const ChangePassword = () => {
                             cursor-pointer
                             text-gray-300
                             transition
-                            hover:text-blue-400
+                            hover:text-cyan-300
                             sm:right-5
                         "
                     >
@@ -458,19 +467,21 @@ const ChangePassword = () => {
                         h-12
                         min-w-40
                         rounded-full
-                        bg-blue-500
+                        bg-cyan-400
                         px-6
                         text-base
                         font-semibold
-                        text-white
+                        text-black
                         transition
-                        hover:bg-blue-400
+                        hover:bg-cyan-300
                         active:scale-95
                         disabled:cursor-not-allowed
                         disabled:opacity-60
                         sm:h-14
                         sm:min-w-44
                         sm:text-lg
+                        shadow-lg
+                        shadow-cyan-950/30
                     "
                 >
                     {loading
@@ -488,9 +499,9 @@ const ChangePassword = () => {
                     }
                     className="
                         text-sm
-                        text-blue-400
+                        text-cyan-300
                         transition
-                        hover:text-blue-300
+                        hover:text-cyan-200
                         hover:underline
                         sm:text-base
                     "

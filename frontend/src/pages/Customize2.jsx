@@ -1,23 +1,18 @@
-
 import React, {
     useContext,
     useEffect,
     useState
 } from "react";
 
-
 import {
     userDataContext
 } from "../context/UserContext";
-
 
 import {
     useNavigate
 } from "react-router-dom";
 
-
 import axios from "axios";
-
 
 import {
     IoMdArrowBack
@@ -25,7 +20,6 @@ import {
 
 
 const Customize2 = () => {
-
 
     const {
         userData,
@@ -70,7 +64,6 @@ const Customize2 = () => {
             setUploadedImageUrl(null);
 
             return;
-
         }
 
 
@@ -115,7 +108,6 @@ const Customize2 = () => {
     const handleUpdateAssistant =
         async () => {
 
-
             if (!assistantName.trim()) {
 
                 alert(
@@ -123,7 +115,6 @@ const Customize2 = () => {
                 );
 
                 return;
-
             }
 
 
@@ -137,7 +128,6 @@ const Customize2 = () => {
                 );
 
                 return;
-
             }
 
 
@@ -145,7 +135,6 @@ const Customize2 = () => {
 
 
             try {
-
 
                 const formData =
                     new FormData();
@@ -202,7 +191,6 @@ const Customize2 = () => {
 
             } catch (error) {
 
-
                 console.error(
                     "UPDATE ASSISTANT ERROR:",
                     error
@@ -232,15 +220,14 @@ const Customize2 = () => {
 
     return (
 
-
         <div
             className="
                 w-full
                 min-h-screen
 
-                bg-linear-to-t
+               bg-linear-to-t 
                 from-black
-                to-[#030353]
+                to-[#070B14]
 
                 flex
                 flex-col
@@ -265,9 +252,7 @@ const Customize2 = () => {
             "
         >
 
-
             {/* BACK BUTTON */}
-
 
             <button
                 type="button"
@@ -299,13 +284,14 @@ const Customize2 = () => {
                     items-center
                     justify-center
 
-                    text-white
+                    text-cyan-300
 
-                    bg-white/5
-                    hover:bg-white/10
+                    bg-cyan-400/5
+                    hover:bg-cyan-400/15
 
                     border
-                    border-white/10
+                    border-cyan-400/20
+                    hover:border-cyan-400/40
 
                     rounded-full
 
@@ -339,7 +325,6 @@ const Customize2 = () => {
 
             {/* MAIN CONTENT */}
 
-
             <div
                 className="
                     w-full
@@ -353,9 +338,7 @@ const Customize2 = () => {
                 "
             >
 
-
                 {/* SELECTED / UPLOADED IMAGE */}
-
 
                 {previewImage && (
 
@@ -373,10 +356,10 @@ const Customize2 = () => {
                             lg:w-37.5
                             lg:h-62.5
 
-                            bg-[#020220]
+                            bg-[#020810]
 
                             border-2
-                            border-blue-600
+                            border-cyan-400
 
                             rounded-2xl
 
@@ -393,7 +376,8 @@ const Customize2 = () => {
                             md:mb-8
 
                             shadow-2xl
-                            shadow-blue-950
+                            shadow-cyan-950
+
                         "
                     >
 
@@ -414,7 +398,6 @@ const Customize2 = () => {
 
 
                 {/* HEADING */}
-
 
                 <h1
                     className="
@@ -442,7 +425,9 @@ const Customize2 = () => {
                     Enter your
 
                     <span
-                        className="text-blue-200"
+                        className="
+                            text-cyan-300
+                        "
                     >
                         {" "}Assistant Name
                     </span>
@@ -451,7 +436,6 @@ const Customize2 = () => {
 
 
                 {/* NAME INPUT */}
-
 
                 <input
                     type="text"
@@ -475,12 +459,13 @@ const Customize2 = () => {
                         outline-none
 
                         border-2
-                        border-white
+                        border-white/20
+                        hover:border-white/30
 
-                        bg-transparent
+                        bg-white/5
 
                         text-white
-                        placeholder-gray-300
+                        placeholder-gray-400
 
                         px-4
                         sm:px-5
@@ -492,7 +477,8 @@ const Customize2 = () => {
                         sm:text-base
                         md:text-[18px]
 
-                        focus:border-blue-400
+                        focus:border-cyan-400
+                        focus:bg-white/10
 
                         transition-all
                         duration-200
@@ -505,7 +491,6 @@ const Customize2 = () => {
 
 
                 {/* CREATE BUTTON */}
-
 
                 {assistantName.trim() && (
 
@@ -536,7 +521,8 @@ const Customize2 = () => {
                             text-black
                             font-semibold
 
-                            bg-white
+                            bg-cyan-400
+                            hover:bg-cyan-300
 
                             rounded-full
 
@@ -545,8 +531,6 @@ const Customize2 = () => {
                             md:text-[18px]
 
                             cursor-pointer
-
-                            hover:bg-gray-200
 
                             active:scale-95
 
@@ -559,6 +543,9 @@ const Customize2 = () => {
                             box-border
 
                             whitespace-normal
+
+                            shadow-lg
+                            shadow-cyan-950/40
                         "
                     >
 
@@ -573,7 +560,6 @@ const Customize2 = () => {
             </div>
 
         </div>
-
     );
 };
 
