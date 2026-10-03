@@ -330,96 +330,91 @@ function Home(){
     };
 
     const handleSpecialCommand=(data,shouldSpeak)=>{
-        if(!data)return false;
+    if(!data)return false;
 
-        const type=data.type;
-        const response=data.response||"";
-        let handled=true;
+    const type=data.type;
+    const response=data.response||"";
+    let handled=true;
 
-        switch(type){
-            case "google_open":
+    switch(type){
+
+        case "google_open":
+            openUrl("https://www.google.com");
+            break;
+
+        case "google_search":
+            if(data.query){
                 openUrl(
-                    "https://www.google.com"
+                    `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
                 );
-                break;
-
-            case "google_search":
-                if(data.query){
-                    openUrl(
-                        `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
-                    );
-                }
-                break;
-
-            case "youtube_open":
-                openUrl(
-                    "https://www.youtube.com"
-                );
-                break;
-
-            case "youtube_search":
-            case "youtube_play":
-                if(data.query){
-                    openUrl(
-                        `https://www.youtube.com/results?search_query=${encodeURIComponent(data.query)}`
-                    );
-                }
-                break;
-
-            case "calculator_open":
-                openUrl(
-                    "https://www.google.com/search?q=calculator"
-                );
-                break;
-
-            case "calculator_calculate":
-                if(data.query){
-                    openUrl(
-                        `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
-                    );
-                }
-                break;
-
-            case "instagram_open":
-                openUrl(
-                    "https://www.instagram.com"
-                );
-                break;
-
-            case "facebook_open":
-                openUrl(
-                    "https://www.facebook.com"
-                );
-                break;
-
-            case "weather_show":
-                openUrl(
-                    data.query
-                        ?`https://www.google.com/search?q=${encodeURIComponent(data.query)}`
-                        :"https://www.google.com/search?q=weather"
-                );
-                break;
-
-            default:
-                handled=false;
-                break;
-        }
-
-        if(response){
-            setAiText(response);
-            setShowAIText(true);
-
-            if(shouldSpeak){
-                speak(response);
             }
-        }
+            break;
 
-        if(!shouldSpeak){
-            setIsAIActive(false);
-        }
+        case "youtube_open":
+            openUrl("https://www.youtube.com");
+            break;
 
-        return handled;
-    };
+        case "youtube_search":
+        case "youtube_play":
+            if(data.query){
+                openUrl(
+                    `https://www.youtube.com/results?search_query=${encodeURIComponent(data.query)}`
+                );
+            }
+            break;
+
+        case "calculator_open":
+            openUrl(
+                "https://www.google.com/search?q=calculator"
+            );
+            break;
+
+        case "calculator_calculate":
+            if(data.query){
+                openUrl(
+                    `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
+                );
+            }
+            break;
+
+        case "instagram_open":
+            openUrl("https://www.instagram.com");
+            break;
+
+        case "facebook_open":
+            openUrl("https://www.facebook.com");
+            break;
+
+        case "weather_show":
+            openUrl(
+                data.query
+                    ? `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
+                    : "https://www.google.com/search?q=weather"
+            );
+            break;
+
+        default:
+            handled=false;
+            break;
+    }
+
+    if(response){
+        setAiText(response);
+        setShowAIText(true);
+
+        // ONLY voice commands should speak
+        if(shouldSpeak){
+            speak(response);
+        }
+    }
+
+    // Typed command should never activate speaking
+    if(!shouldSpeak){
+        setIsAIActive(false);
+    }
+
+    return handled;
+};
 
     const processCommand=async(
         command,
