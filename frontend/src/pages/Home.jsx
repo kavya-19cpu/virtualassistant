@@ -1,4 +1,3 @@
-
 import React,{useContext,useEffect,useRef,useState} from "react";
 import {userDataContext} from "../context/UserContext";
 import {useNavigate} from "react-router-dom";
@@ -1327,7 +1326,7 @@ function Home(){
 
             {/* DESKTOP CONTROLS */}
 
-            <div className="fixed top-5 right-5 z-1200 hidden sm:flex flex-col items-end gap-3">
+            <div className="fixed top-5 right-5 z-[1200] hidden sm:flex flex-col items-end gap-3">
 
                 <button
                     onClick={handleLogout}
@@ -1354,7 +1353,7 @@ function Home(){
                     onClick={()=>
                         setShowMenu(true)
                     }
-                    className="fixed top-5 left-5 z-1200 flex items-center justify-center w-11 h-11 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-[29px] cursor-pointer backdrop-blur-xl shadow-lg transition-all duration-200 active:scale-95"
+                    className="fixed top-5 left-5 z-[1200] flex items-center justify-center w-11 h-11 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-[29px] cursor-pointer backdrop-blur-xl shadow-lg transition-all duration-200 active:scale-95"
                     aria-label="Open assistant menu"
                 >
                     <IoMdMenu/>
@@ -1368,7 +1367,7 @@ function Home(){
                 onClick={()=>
                     setShowMenu(false)
                 }
-                className={`fixed inset-0 z-1050 bg-transparent transition-all duration-300 ${
+                className={`fixed inset-0 z-[1050] bg-transparent transition-all duration-300 ${
                     showMenu
                         ?"visible backdrop-blur-[2px]"
                         :"invisible pointer-events-none"
@@ -1379,7 +1378,7 @@ function Home(){
             {/* SIDE MENU */}
 
             <aside
-                className={`fixed top-0 left-0 bottom-0 z-1100 w-[min(25vw,380px)] min-w-75 max-sm:min-w-0 max-sm:w-[86vw] bg-[#0b0d14]/97 backdrop-blur-2xl border-r border-white/10 shadow-[20px_0_60px_rgba(0,0,0,0.3)] flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                className={`fixed top-0 left-0 bottom-0 z-[1100] w-[min(25vw,380px)] min-w-75 max-sm:min-w-0 max-sm:w-[86vw] bg-[#0b0d14]/97 backdrop-blur-2xl border-r border-white/10 shadow-[20px_0_60px_rgba(0,0,0,0.3)] flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                     showMenu
                         ?"translate-x-0"
                         :"-translate-x-full"
@@ -1389,26 +1388,18 @@ function Home(){
 
                 {/* MENU HEADER */}
 
-                <div className="flex items-center justify-between px-5 py-5 border-b border-white/10 shrink-0">
+                <div className="flex items-center justify-between px-5 py-4 sm:py-5 border-b border-white/10 shrink-0">
 
-                    <div>
-
-                        <h2 className="text-white text-lg sm:text-xl font-bold m-0">
-                            Assistant Menu
-                        </h2>
-
-                        <p className="text-gray-500 text-xs mt-1 m-0">
-                            Your recent activity
-                        </p>
-
-                    </div>
+                    <h2 className="text-white text-lg sm:text-xl font-bold m-0">
+                        Assistant Menu
+                    </h2>
 
 
                     <button
                         onClick={()=>
                             setShowMenu(false)
                         }
-                        className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-2xl cursor-pointer transition-all duration-200 active:scale-95"
+                        className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-2xl cursor-pointer transition-all duration-200 active:scale-95"
                         aria-label="Close assistant menu"
                     >
                         <IoMdClose/>
@@ -1417,13 +1408,13 @@ function Home(){
                 </div>
 
 
-                {/* MOBILE ASSISTANT PROFILE + CONTROLS */}
+                {/* MOBILE ASSISTANT PROFILE */}
 
-                <div className="sm:hidden px-5 py-5 border-b border-white/10 shrink-0">
+                <div className="sm:hidden px-4 py-4 border-b border-white/10 shrink-0">
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
 
-                        <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0 bg-white/5 flex items-center justify-center">
+                        <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-white/5 border border-white/10 flex items-center justify-center">
 
                             {assistantImage?(
                                 <img
@@ -1432,7 +1423,7 @@ function Home(){
                                     className="w-full h-full object-cover"
                                 />
                             ):(
-                                <span className="text-3xl">
+                                <span className="text-2xl">
                                     🤖
                                 </span>
                             )}
@@ -1440,13 +1431,13 @@ function Home(){
                         </div>
 
 
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
 
-                            <p className="text-gray-400 text-xs m-0">
-                                Your Assistant
+                            <p className="text-gray-500 text-[11px] m-0">
+                                Assistant
                             </p>
 
-                            <h3 className="text-white text-lg font-semibold truncate m-0 mt-1">
+                            <h3 className="text-white text-base font-semibold truncate m-0 mt-0.5">
                                 {assistantName}
                             </h3>
 
@@ -1455,19 +1446,21 @@ function Home(){
                     </div>
 
 
-                    <div className="flex flex-col gap-2 mt-4">
+                    {/* MOBILE BUTTONS */}
+
+                    <div className="grid grid-cols-2 gap-2.5 mt-3.5">
 
                         <button
                             onClick={handleCustomize}
-                            className="w-full px-4 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold cursor-pointer transition-all duration-200 active:scale-95"
+                            className="w-full min-w-0 px-2.5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold cursor-pointer transition-all duration-200 active:scale-95 shadow-md"
                         >
-                            Customize your Assistant
+                            Customize
                         </button>
 
 
                         <button
                             onClick={handleLogout}
-                            className="w-full px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold cursor-pointer transition-all duration-200 active:scale-95"
+                            className="w-full min-w-0 px-2.5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-semibold cursor-pointer transition-all duration-200 active:scale-95 shadow-md"
                         >
                             Log Out
                         </button>
@@ -1479,7 +1472,7 @@ function Home(){
 
                 {/* HISTORY HEADER */}
 
-                <div className="px-5 pt-5 pb-3 flex items-center justify-between shrink-0">
+                <div className="px-4 sm:px-5 pt-4 pb-3 flex items-center justify-between shrink-0">
 
                     <h3 className="text-white text-base font-semibold m-0">
                         History
@@ -1500,7 +1493,7 @@ function Home(){
 
                 {/* HISTORY */}
 
-                <div className="flex-1 overflow-y-auto px-4 pb-5 dark-scrollbar">
+                <div className="flex-1 overflow-y-auto px-3.5 sm:px-4 pb-5 dark-scrollbar">
 
                     {historyItems.length?(
                         <div className="flex flex-col gap-2">
@@ -1514,7 +1507,7 @@ function Home(){
                                                 item
                                             )
                                         }
-                                        className="group px-4 py-3 rounded-xl bg-white/4 hover:bg-white/7 border border-white/6 hover:border-white/12 text-gray-300 hover:text-white text-sm leading-relaxed wrap-break-word transition-all duration-200 cursor-pointer"
+                                        className="group px-3.5 py-3 rounded-xl bg-white/4 hover:bg-white/7 border border-white/6 hover:border-white/12 text-gray-300 hover:text-white text-sm leading-relaxed wrap-break-word transition-all duration-200 cursor-pointer"
                                     >
 
                                         <div className="flex gap-3">
