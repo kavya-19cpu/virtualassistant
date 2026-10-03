@@ -36,26 +36,40 @@ function Home(){
 
     const speak=(text)=>{
         if(!text)return;
+
         window.speechSynthesis.cancel();
+
         const utterance=new SpeechSynthesisUtterance(String(text));
+
         utterance.rate=1;
         utterance.pitch=1;
         utterance.volume=1;
+
         utterance.onstart=()=>{
             speakingRef.current=true;
             setIsAIActive(true);
         };
+
         utterance.onend=()=>{
             speakingRef.current=false;
             setIsAIActive(false);
-            if(listeningRef.current&&!processingRef.current&&recognitionRef.current){
-                try{recognitionRef.current.start();}catch{}
+
+            if(
+                listeningRef.current&&
+                !processingRef.current&&
+                recognitionRef.current
+            ){
+                try{
+                    recognitionRef.current.start();
+                }catch{}
             }
         };
+
         utterance.onerror=()=>{
             speakingRef.current=false;
             setIsAIActive(false);
         };
+
         window.speechSynthesis.speak(utterance);
     };
 
@@ -102,6 +116,7 @@ function Home(){
 
     const createSiteSearchUrl=(site,query)=>{
         const q=encodeURIComponent(query);
+
         const searchUrls={
             google:`https://www.google.com/search?q=${q}`,
             youtube:`https://www.youtube.com/results?search_query=${q}`,
@@ -127,6 +142,7 @@ function Home(){
             coursera:`https://www.coursera.org/search?query=${q}`,
             canva:`https://www.canva.com/search?q=${q}`
         };
+
         return searchUrls[site]||null;
     };
 
@@ -139,7 +155,10 @@ function Home(){
 
         if(match){
             return{
-                url:createSiteSearchUrl(match[2].toLowerCase(),match[1].trim()),
+                url:createSiteSearchUrl(
+                    match[2].toLowerCase(),
+                    match[1].trim()
+                ),
                 site:match[2].trim(),
                 query:match[1].trim()
             };
@@ -151,7 +170,10 @@ function Home(){
 
         if(reverse){
             return{
-                url:createSiteSearchUrl(reverse[1].toLowerCase(),reverse[2].trim()),
+                url:createSiteSearchUrl(
+                    reverse[1].toLowerCase(),
+                    reverse[2].trim()
+                ),
                 site:reverse[1].trim(),
                 query:reverse[2].trim()
             };
@@ -169,7 +191,11 @@ function Home(){
 
         if(domainMatch){
             let url=domainMatch[1].replace(/[.,!?]+$/,"");
-            if(!/^https?:\/\//i.test(url))url=`https://${url}`;
+
+            if(!/^https?:\/\//i.test(url)){
+                url=`https://${url}`;
+            }
+
             return url;
         }
 
@@ -200,11 +226,17 @@ function Home(){
         try{
             const parsed=new URL(finalUrl);
 
-            if(parsed.protocol!=="http:"&&parsed.protocol!=="https:"){
+            if(
+                parsed.protocol!=="http:"&&
+                parsed.protocol!=="https:"
+            ){
                 return false;
             }
 
-            const newTab=window.open(parsed.href,"_blank");
+            const newTab=window.open(
+                parsed.href,
+                "_blank"
+            );
 
             if(!newTab){
                 console.warn("Browser blocked the new tab.");
@@ -226,13 +258,16 @@ function Home(){
         let handled=true;
 
         switch(type){
+
             case "google_open":
                 openUrl("https://www.google.com");
                 break;
 
             case "google_search":
                 if(data.query){
-                    openUrl(`https://www.google.com/search?q=${encodeURIComponent(data.query)}`);
+                    openUrl(
+                        `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
+                    );
                 }
                 break;
 
@@ -243,17 +278,23 @@ function Home(){
             case "youtube_search":
             case "youtube_play":
                 if(data.query){
-                    openUrl(`https://www.youtube.com/results?search_query=${encodeURIComponent(data.query)}`);
+                    openUrl(
+                        `https://www.youtube.com/results?search_query=${encodeURIComponent(data.query)}`
+                    );
                 }
                 break;
 
             case "calculator_open":
-                openUrl("https://www.google.com/search?q=calculator");
+                openUrl(
+                    "https://www.google.com/search?q=calculator"
+                );
                 break;
 
             case "calculator_calculate":
                 if(data.query){
-                    openUrl(`https://www.google.com/search?q=${encodeURIComponent(data.query)}`);
+                    openUrl(
+                        `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
+                    );
                 }
                 break;
 
@@ -281,10 +322,15 @@ function Home(){
         if(response){
             setAiText(response);
             setShowAIText(true);
-            if(shouldSpeak)speak(response);
+
+            if(shouldSpeak){
+                speak(response);
+            }
         }
 
-        if(!shouldSpeak)setIsAIActive(false);
+        if(!shouldSpeak){
+            setIsAIActive(false);
+        }
 
         return handled;
     };
@@ -295,6 +341,7 @@ function Home(){
         if(!cleanedCommand||processingRef.current)return;
 
         processingRef.current=true;
+
         setIsSending(true);
         setUserText(cleanedCommand);
         setAiText("");
@@ -302,18 +349,29 @@ function Home(){
         setIsAIActive(true);
 
         try{
+
             const siteSearch=getSearchUrl(cleanedCommand);
 
             if(siteSearch?.url){
-                const message=`Searching ${siteSearch.site} for ${siteSearch.query}.`;
+
+                const message=
+                    `Searching ${siteSearch.site} for ${siteSearch.query}.`;
 
                 setAiText(message);
                 setShowAIText(true);
-                addHistory(cleanedCommand,message);
+
+                addHistory(
+                    cleanedCommand,
+                    message
+                );
+
                 openUrl(siteSearch.url);
 
-                if(shouldSpeak)speak(message);
-                else setIsAIActive(false);
+                if(shouldSpeak){
+                    speak(message);
+                }else{
+                    setIsAIActive(false);
+                }
 
                 return;
             }
@@ -323,16 +381,29 @@ function Home(){
             );
 
             if(googleMatch){
+
                 const query=googleMatch[1].trim();
-                const message=`Searching Google for ${query}.`;
+
+                const message=
+                    `Searching Google for ${query}.`;
 
                 setAiText(message);
                 setShowAIText(true);
-                addHistory(cleanedCommand,message);
-                openUrl(`https://www.google.com/search?q=${encodeURIComponent(query)}`);
 
-                if(shouldSpeak)speak(message);
-                else setIsAIActive(false);
+                addHistory(
+                    cleanedCommand,
+                    message
+                );
+
+                openUrl(
+                    `https://www.google.com/search?q=${encodeURIComponent(query)}`
+                );
+
+                if(shouldSpeak){
+                    speak(message);
+                }else{
+                    setIsAIActive(false);
+                }
 
                 return;
             }
@@ -340,47 +411,74 @@ function Home(){
             const directUrl=getDirectUrl(cleanedCommand);
 
             if(directUrl){
+
                 const siteName=cleanedCommand
-                    .replace(/^(open|launch|visit|go to|take me to)\s+/i,"")
+                    .replace(
+                        /^(open|launch|visit|go to|take me to)\s+/i,
+                        ""
+                    )
                     .trim();
 
-                const message=`Opening ${siteName}.`;
+                const message=
+                    `Opening ${siteName}.`;
 
                 setAiText(message);
                 setShowAIText(true);
-                addHistory(cleanedCommand,message);
+
+                addHistory(
+                    cleanedCommand,
+                    message
+                );
+
                 openUrl(directUrl);
 
-                if(shouldSpeak)speak(message);
-                else setIsAIActive(false);
+                if(shouldSpeak){
+                    speak(message);
+                }else{
+                    setIsAIActive(false);
+                }
 
                 return;
             }
 
-            const result=await getGeminiResponse(cleanedCommand);
+            const result=await getGeminiResponse(
+                cleanedCommand
+            );
+
             let parsedResult=result;
 
             if(typeof result==="string"){
+
                 let cleanResult=result
                     .replace(/```json/gi,"")
                     .replace(/```/g,"")
                     .trim();
 
                 try{
-                    parsedResult=JSON.parse(cleanResult);
+                    parsedResult=JSON.parse(
+                        cleanResult
+                    );
                 }catch{
-                    const jsonMatch=cleanResult.match(/{[\s\S]*}/);
+
+                    const jsonMatch=
+                        cleanResult.match(/{[\s\S]*}/);
 
                     if(jsonMatch){
+
                         try{
-                            parsedResult=JSON.parse(jsonMatch[0]);
+                            parsedResult=JSON.parse(
+                                jsonMatch[0]
+                            );
                         }catch{
+
                             parsedResult={
                                 type:"general",
                                 response:cleanResult
                             };
                         }
+
                     }else{
+
                         parsedResult={
                             type:"general",
                             response:cleanResult
@@ -390,14 +488,24 @@ function Home(){
             }
 
             if(!parsedResult||parsedResult.error){
-                const errorText=parsedResult?.error||"Sorry, I could not process that request.";
+
+                const errorText=
+                    parsedResult?.error||
+                    "Sorry, I could not process that request.";
 
                 setAiText(errorText);
                 setShowAIText(true);
-                addHistory(cleanedCommand,errorText);
 
-                if(shouldSpeak)speak(errorText);
-                else setIsAIActive(false);
+                addHistory(
+                    cleanedCommand,
+                    errorText
+                );
+
+                if(shouldSpeak){
+                    speak(errorText);
+                }else{
+                    setIsAIActive(false);
+                }
 
                 return;
             }
@@ -409,33 +517,59 @@ function Home(){
                 "";
 
             if(!responseText){
-                const errorText="Sorry, I did not get an answer.";
+
+                const errorText=
+                    "Sorry, I did not get an answer.";
 
                 setAiText(errorText);
                 setShowAIText(true);
-                addHistory(cleanedCommand,errorText);
 
-                if(shouldSpeak)speak(errorText);
-                else setIsAIActive(false);
+                addHistory(
+                    cleanedCommand,
+                    errorText
+                );
+
+                if(shouldSpeak){
+                    speak(errorText);
+                }else{
+                    setIsAIActive(false);
+                }
 
                 return;
             }
 
             setAiText(responseText);
             setShowAIText(true);
-            addHistory(cleanedCommand,responseText);
 
-            if(handleSpecialCommand(
-                {...parsedResult,response:responseText},
-                shouldSpeak
-            )){
+            addHistory(
+                cleanedCommand,
+                responseText
+            );
+
+            if(
+                handleSpecialCommand(
+                    {
+                        ...parsedResult,
+                        response:responseText
+                    },
+                    shouldSpeak
+                )
+            ){
                 return;
             }
 
-            if(shouldSpeak)speak(responseText);
-            else setIsAIActive(false);
+            if(shouldSpeak){
+                speak(responseText);
+            }else{
+                setIsAIActive(false);
+            }
+
         }catch(error){
-            console.error("Assistant error:",error);
+
+            console.error(
+                "Assistant error:",
+                error
+            );
 
             const errorText=
                 error.response?.data?.message||
@@ -444,15 +578,27 @@ function Home(){
 
             setAiText(errorText);
             setShowAIText(true);
-            addHistory(cleanedCommand,errorText);
 
-            if(shouldSpeak)speak(errorText);
-            else setIsAIActive(false);
+            addHistory(
+                cleanedCommand,
+                errorText
+            );
+
+            if(shouldSpeak){
+                speak(errorText);
+            }else{
+                setIsAIActive(false);
+            }
+
         }finally{
+
             processingRef.current=false;
             setIsSending(false);
 
-            if(!speakingRef.current&&!shouldSpeak){
+            if(
+                !speakingRef.current&&
+                !shouldSpeak
+            ){
                 setIsAIActive(false);
             }
         }
@@ -464,54 +610,78 @@ function Home(){
         if(!command||isSending)return;
 
         if(isListening){
+
             listeningRef.current=false;
-            try{recognitionRef.current?.stop();}catch{}
+
+            try{
+                recognitionRef.current?.stop();
+            }catch{}
         }
 
         setTypedText("");
-        await processCommand(command,false);
+
+        await processCommand(
+            command,
+            false
+        );
     };
 
     const handleInputKeyDown=(event)=>{
         if(event.key==="Enter"){
+
             event.preventDefault();
+
             handleSendText();
         }
     };
 
     useEffect(()=>{
+
         const SpeechRecognition=
             window.SpeechRecognition||
             window.webkitSpeechRecognition;
 
         if(!SpeechRecognition)return;
 
-        const recognition=new SpeechRecognition();
+        const recognition=
+            new SpeechRecognition();
 
         recognition.continuous=true;
         recognition.lang="en-US";
         recognition.interimResults=false;
         recognition.maxAlternatives=1;
 
-        recognitionRef.current=recognition;
+        recognitionRef.current=
+            recognition;
 
         recognition.onstart=()=>{
+
             listeningRef.current=true;
+
             setIsListening(true);
         };
 
         recognition.onresult=async(event)=>{
+
             if(processingRef.current)return;
 
-            const lastResult=event.results[event.results.length-1];
+            const lastResult=
+                event.results[
+                    event.results.length-1
+                ];
 
-            if(!lastResult||!lastResult[0])return;
+            if(
+                !lastResult||
+                !lastResult[0]
+            )return;
 
-            const transcript=lastResult[0].transcript.trim();
+            const transcript=
+                lastResult[0].transcript.trim();
 
             if(!transcript)return;
 
-            const lowerTranscript=transcript.toLowerCase();
+            const lowerTranscript=
+                transcript.toLowerCase();
 
             const stopCommands=[
                 "thank you",
@@ -523,15 +693,24 @@ function Home(){
                 "cancel"
             ];
 
-            if(stopCommands.includes(lowerTranscript)){
+            if(
+                stopCommands.includes(
+                    lowerTranscript
+                )
+            ){
+
                 listeningRef.current=false;
                 speakingRef.current=false;
+
                 setIsListening(false);
                 setIsAIActive(false);
 
-                try{recognition.stop();}catch{}
+                try{
+                    recognition.stop();
+                }catch{}
 
                 window.speechSynthesis.cancel();
+
                 return;
             }
 
@@ -544,79 +723,129 @@ function Home(){
                 lowerTranscript==="hi"||
                 lowerTranscript==="hello"
             ){
-                const answer="Yes, I am listening.";
 
-                addHistory(transcript,answer);
+                const answer=
+                    "Yes, I am listening.";
+
+                addHistory(
+                    transcript,
+                    answer
+                );
+
                 speak(answer);
+
                 return;
             }
 
-            try{recognition.stop();}catch{}
+            try{
+                recognition.stop();
+            }catch{}
 
-            await processCommand(transcript,true);
+            await processCommand(
+                transcript,
+                true
+            );
         };
 
         recognition.onend=()=>{
+
             if(
                 listeningRef.current&&
                 !speakingRef.current&&
                 !processingRef.current
             ){
-                clearTimeout(restartTimeoutRef.current);
 
-                restartTimeoutRef.current=setTimeout(()=>{
-                    try{recognition.start();}catch{}
-                },400);
-            }else if(!listeningRef.current){
+                clearTimeout(
+                    restartTimeoutRef.current
+                );
+
+                restartTimeoutRef.current=
+                    setTimeout(()=>{
+
+                        try{
+                            recognition.start();
+                        }catch{}
+
+                    },400);
+
+            }else if(
+                !listeningRef.current
+            ){
+
                 setIsListening(false);
                 setIsAIActive(false);
             }
         };
 
         recognition.onerror=(event)=>{
-            console.log("Speech recognition error:",event.error);
+
+            console.log(
+                "Speech recognition error:",
+                event.error
+            );
 
             if(
                 event.error==="not-allowed"||
                 event.error==="audio-capture"
             ){
+
                 listeningRef.current=false;
+
                 setIsListening(false);
                 setIsAIActive(false);
             }
         };
 
         return()=>{
+
             listeningRef.current=false;
             processingRef.current=false;
             speakingRef.current=false;
 
-            clearTimeout(restartTimeoutRef.current);
+            clearTimeout(
+                restartTimeoutRef.current
+            );
 
-            try{recognition.stop();}catch{}
+            try{
+                recognition.stop();
+            }catch{}
 
             window.speechSynthesis.cancel();
         };
+
     },[getGeminiResponse]);
 
     const startListening=()=>{
+
         if(!recognitionRef.current){
-            alert("Speech recognition is not supported in this browser.");
+
+            alert(
+                "Speech recognition is not supported in this browser."
+            );
+
             return;
         }
 
         try{
+
             window.speechSynthesis.cancel();
+
             speakingRef.current=false;
             processingRef.current=false;
+
             setIsAIActive(false);
+
             listeningRef.current=true;
+
             setIsListening(true);
+
             recognitionRef.current.start();
+
         }catch{}
     };
 
     const stopListening=()=>{
+
         listeningRef.current=false;
         processingRef.current=false;
         speakingRef.current=false;
@@ -624,19 +853,30 @@ function Home(){
         setIsListening(false);
         setIsAIActive(false);
 
-        clearTimeout(restartTimeoutRef.current);
+        clearTimeout(
+            restartTimeoutRef.current
+        );
+
         window.speechSynthesis.cancel();
 
-        try{recognitionRef.current?.stop();}catch{}
+        try{
+            recognitionRef.current?.stop();
+        }catch{}
     };
 
     const toggleMic=()=>{
-        if(isListening)stopListening();
-        else startListening();
+
+        if(isListening){
+            stopListening();
+        }else{
+            startListening();
+        }
     };
 
     const handleLogout=async()=>{
+
         try{
+
             listeningRef.current=false;
             processingRef.current=false;
             speakingRef.current=false;
@@ -644,21 +884,30 @@ function Home(){
             setIsListening(false);
             setIsAIActive(false);
 
-            clearTimeout(restartTimeoutRef.current);
+            clearTimeout(
+                restartTimeoutRef.current
+            );
 
-            try{recognitionRef.current?.stop();}catch{}
+            try{
+                recognitionRef.current?.stop();
+            }catch{}
 
             window.speechSynthesis.cancel();
 
             await axios.post(
                 `${serverUrl}/api/auth/logout`,
                 {},
-                {withCredentials:true}
+                {
+                    withCredentials:true
+                }
             );
 
             setUserData(null);
+
             navigate("/signin");
+
         }catch(error){
+
             console.error(error);
         }
     };
@@ -667,18 +916,52 @@ function Home(){
         navigate("/customize2");
     };
 
+    const handleHistoryClick=(item)=>{
+
+        const question=
+            typeof item==="string"
+                ?item
+                :item?.command||
+                 item?.text||
+                 item?.query||
+                 "";
+
+        const answer=
+            typeof item==="string"
+                ?""
+                :item?.answer||"";
+
+        setUserText(question);
+        setAiText(answer);
+        setShowAIText(Boolean(answer));
+        setShowMenu(false);
+        setIsAIActive(false);
+    };
+
     const assistantImage=
         userData?.selectedImage||
         userData?.assistantImage||
         userData?.image;
 
-    const assistantName=userData?.assistantName||"Assistant";
+    const assistantName=
+        userData?.assistantName||
+        "Assistant";
 
     return(
         <div className="relative min-h-screen w-full overflow-hidden bg-[#05060b] text-white">
-            <main className={`w-full max-w-225 min-h-screen flex flex-col items-center justify-center box-border pt-10 mx-auto transition-all duration-300 ${showMenu?"blur-[3px] opacity-70":"blur-0 opacity-100"}`}>
+
+            <main
+                className={`w-full max-w-225 min-h-screen flex flex-col items-center justify-center box-border pt-10 mx-auto transition-all duration-300 ${
+                    showMenu
+                        ?"blur-[3px] opacity-70"
+                        :"blur-0 opacity-100"
+                }`}
+            >
+
                 <div className="w-full flex flex-col items-center justify-center px-5 box-border">
+
                     <div className="w-[clamp(190px,50vw,260px)] h-[clamp(280px,48vh,380px)] flex items-center justify-center overflow-hidden rounded-[20px]">
+
                         {assistantImage?(
                             <img
                                 src={assistantImage}
@@ -690,6 +973,7 @@ function Home(){
                                 🤖
                             </div>
                         )}
+
                     </div>
 
                     <div className="mt-3.5 text-white text-2xl font-semibold text-center max-sm:text-xl">
@@ -697,21 +981,41 @@ function Home(){
                     </div>
 
                     <div className="w-full h-25 flex items-center justify-center mt-2 max-sm:h-22.5">
+
                         <img
                             src={isAIActive?aiImg:userImg}
                             alt={isAIActive?"AI":"User"}
                             className="w-22.5 h-22.5 object-contain block max-sm:w-20 max-sm:h-20"
                         />
+
                     </div>
 
                     <div className="w-full min-h-15 flex items-center justify-center px-3">
-                        <h1 className="text-white text-[18px] font-bold text-center w-full max-w-full mt-3.75 leading-[1.4] whitespace-pre-wrap wrap-break-word">
-                            {showAIText?aiText:userText}
+
+                        <h1 className="text-white text-[18px] font-bold text-center w-full max-w-full mt-3.75 leading-[1.6] whitespace-pre-wrap wrap-break-word">
+
+                            {showAIText?(
+                                <>
+                                    <div>
+                                        Question: {userText}
+                                    </div>
+
+                                    <div className="mt-3">
+                                        Answer: {aiText}
+                                    </div>
+                                </>
+                            ):(
+                                userText
+                            )}
+
                         </h1>
+
                     </div>
 
                     <div className="w-full max-w-175 mt-5 px-2">
+
                         <div className="flex items-center gap-2 w-full">
+
                             <input
                                 type="text"
                                 value={typedText}
@@ -724,25 +1028,41 @@ function Home(){
 
                             <button
                                 onClick={handleSendText}
-                                disabled={isSending||!typedText.trim()}
+                                disabled={
+                                    isSending||
+                                    !typedText.trim()
+                                }
                                 className="px-5 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold cursor-pointer disabled:cursor-not-allowed transition-all duration-200 active:scale-95"
                             >
                                 {isSending?"...":"Send"}
                             </button>
+
                         </div>
+
                     </div>
 
                     <button
                         onClick={toggleMic}
-                        className={`mt-5 px-6 py-3 border-none rounded-xl text-white text-base font-semibold cursor-pointer min-w-32.5 transition-all duration-200 active:scale-95 ${isListening?"bg-red-500 hover:bg-red-600":"bg-green-500 hover:bg-green-600"}`}
+                        className={`mt-5 px-6 py-3 border-none rounded-xl text-white text-base font-semibold cursor-pointer min-w-32.5 transition-all duration-200 active:scale-95 ${
+                            isListening
+                                ?"bg-red-500 hover:bg-red-600"
+                                :"bg-green-500 hover:bg-green-600"
+                        }`}
                     >
-                        {isListening?"Stop Mic":"Start Mic"}
+                        {isListening
+                            ?"Stop Mic"
+                            :"Start Mic"}
                     </button>
 
                     <div className="mt-3 text-gray-300 text-sm text-center max-w-[90%]">
-                        {isListening?"Listening... Speak now.":"Press the mic to start a conversation."}
+                        {isListening
+                            ?"Listening... Speak now."
+                            :"Press the mic to start a conversation."
+                        }
                     </div>
+
                 </div>
+
             </main>
 
             {!showMenu&&(
@@ -756,6 +1076,7 @@ function Home(){
             )}
 
             <div className="fixed top-5 right-5 z-1200 flex flex-col items-end gap-3">
+
                 <button
                     onClick={handleLogout}
                     className="px-4.5 py-2.5 border-none rounded-[10px] bg-red-500 hover:bg-red-600 text-white text-sm font-semibold cursor-pointer whitespace-nowrap transition-all duration-200 active:scale-95 shadow-lg"
@@ -769,24 +1090,38 @@ function Home(){
                 >
                     Customize your Assistant
                 </button>
+
             </div>
 
             <div
                 onClick={()=>setShowMenu(false)}
-                className={`fixed inset-0 z-1050 bg-transparent transition-all duration-300 ${showMenu?"visible backdrop-blur-[2px]":"invisible pointer-events-none"}`}
+                className={`fixed inset-0 z-1050 bg-transparent transition-all duration-300 ${
+                    showMenu
+                        ?"visible backdrop-blur-[2px]"
+                        :"invisible pointer-events-none"
+                }`}
             />
 
             <aside
-                className={`fixed top-0 left-0 bottom-0 z-1100 w-[min(25vw,380px)] min-w-75 max-sm:min-w-0 max-sm:w-[86vw] bg-[#0b0d14]/97 backdrop-blur-2xl border-r border-white/10 shadow-[20px_0_60px_rgba(0,0,0,0.3)] flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${showMenu?"translate-x-0":"-translate-x-full"}`}
+                className={`fixed top-0 left-0 bottom-0 z-1100 w-[min(25vw,380px)] min-w-75 max-sm:min-w-0 max-sm:w-[86vw] bg-[#0b0d14]/97 backdrop-blur-2xl border-r border-white/10 shadow-[20px_0_60px_rgba(0,0,0,0.3)] flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                    showMenu
+                        ?"translate-x-0"
+                        :"-translate-x-full"
+                }`}
             >
+
                 <div className="flex items-center justify-between px-5 py-5 border-b border-white/10 shrink-0">
+
                     <div>
+
                         <h2 className="text-white text-lg sm:text-xl font-bold m-0">
                             Assistant Menu
                         </h2>
+
                         <p className="text-gray-500 text-xs mt-1 m-0">
                             Your recent activity
                         </p>
+
                     </div>
 
                     <button
@@ -796,66 +1131,89 @@ function Home(){
                     >
                         <IoMdClose/>
                     </button>
+
                 </div>
 
                 <div className="px-5 pt-5 pb-3 flex items-center justify-between shrink-0">
+
                     <h3 className="text-white text-base font-semibold m-0">
                         History
                     </h3>
 
                     <span className="text-gray-500 text-xs">
                         {historyItems.length}{" "}
-                        {historyItems.length===1?"item":"items"}
+                        {historyItems.length===1
+                            ?"item"
+                            :"items"}
                     </span>
+
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-4 pb-5 dark-scrollbar">
+
                     {historyItems.length?(
                         <div className="flex flex-col gap-2">
+
                             {historyItems.map((item,index)=>(
                                 <div
                                     key={`${index}-${typeof item==="string"?item:item?.command||index}`}
-                                    className="group px-4 py-3 rounded-xl bg-white/4 hover:bg-white/7 border border-white/6 hover:border-white/12 text-gray-300 hover:text-white text-sm leading-relaxed wrap-break-word transition-all duration-200"
+                                    onClick={()=>
+                                        handleHistoryClick(item)
+                                    }
+                                    className="group px-4 py-3 rounded-xl bg-white/4 hover:bg-white/7 border border-white/6 hover:border-white/12 text-gray-300 hover:text-white text-sm leading-relaxed wrap-break-word transition-all duration-200 cursor-pointer"
                                 >
+
                                     <div className="flex gap-3">
+
                                         <span className="text-gray-600 text-xs pt-1 shrink-0">
                                             {index+1}
                                         </span>
 
                                         <div className="flex flex-col gap-3 min-w-0 w-full">
+
                                             <div>
+
                                                 <span className="text-gray-500 text-xs">
-                                                    You:
+                                                    Question:
                                                 </span>
 
-                                                <div className="text-white font-medium mt-1">
+                                                <div className="text-white font-medium mt-1 whitespace-pre-wrap wrap-break-word">
                                                     {typeof item==="string"
                                                         ?item
                                                         :item?.command||
                                                          item?.text||
                                                          item?.query||
-                                                         ""}
+                                                         ""
+                                                    }
                                                 </div>
+
                                             </div>
 
                                             {typeof item!=="string"&&item?.answer&&(
                                                 <div>
+
                                                     <span className="text-gray-500 text-xs">
                                                         Answer:
                                                     </span>
 
-                                                    <div className="text-gray-400 text-sm leading-relaxed mt-1">
+                                                    <div className="text-gray-400 text-sm leading-relaxed mt-1 whitespace-pre-wrap wrap-break-word">
                                                         {item.answer}
                                                     </div>
+
                                                 </div>
                                             )}
+
                                         </div>
+
                                     </div>
+
                                 </div>
                             ))}
+
                         </div>
                     ):(
                         <div className="h-full min-h-62.5 flex flex-col items-center justify-center text-center px-5">
+
                             <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-500 text-xl mb-4">
                                 ✦
                             </div>
@@ -867,10 +1225,14 @@ function Home(){
                             <p className="text-gray-600 text-xs mt-2 max-w-55 leading-relaxed">
                                 Your searches and commands will appear here.
                             </p>
+
                         </div>
                     )}
+
                 </div>
+
             </aside>
+
         </div>
     );
 }
