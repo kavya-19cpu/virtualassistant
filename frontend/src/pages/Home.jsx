@@ -46,6 +46,14 @@ function Home(){
 
         if(!text)return;
 
+        console.log(
+            "🔊 SPEAK FUNCTION CALLED:",
+            window.__commandStart
+                ?((performance.now()-window.__commandStart)/1000).toFixed(2)
+                :"N/A",
+            "seconds after command start"
+        );
+
         window.speechSynthesis.cancel();
 
         const utterance=
@@ -60,11 +68,27 @@ function Home(){
         utterance.onstart=()=>{
             speakingRef.current=true;
             setIsAIActive(true);
+
+            console.log(
+                "🔊 SPEECH ACTUALLY STARTED:",
+                window.__commandStart
+                    ?((performance.now()-window.__commandStart)/1000).toFixed(2)
+                    :"N/A",
+                "seconds after command start"
+            );
         };
 
         utterance.onend=()=>{
             speakingRef.current=false;
             setIsAIActive(false);
+
+            console.log(
+                "🔊 SPEECH ENDED:",
+                window.__commandStart
+                    ?((performance.now()-window.__commandStart)/1000).toFixed(2)
+                    :"N/A",
+                "seconds after command start"
+            );
 
             if(
                 listeningRef.current&&
@@ -80,6 +104,14 @@ function Home(){
         utterance.onerror=()=>{
             speakingRef.current=false;
             setIsAIActive(false);
+
+            console.log(
+                "❌ SPEECH ERROR:",
+                window.__commandStart
+                    ?((performance.now()-window.__commandStart)/1000).toFixed(2)
+                    :"N/A",
+                "seconds after command start"
+            );
         };
 
         window.speechSynthesis.speak(
@@ -495,6 +527,32 @@ function Home(){
 
         processingRef.current=true;
 
+        /*
+         * =====================================================
+         * DELAY DIAGNOSTIC START
+         * =====================================================
+         */
+
+        const commandStart=performance.now();
+
+        window.__commandStart=commandStart;
+
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        console.log(
+            "⚡ COMMAND START:",
+            cleanedCommand
+        );
+        console.log(
+            "⏱️ Command started at:",
+            new Date().toLocaleTimeString()
+        );
+
+        /*
+         * =====================================================
+         * DELAY DIAGNOSTIC END
+         * =====================================================
+         */
+
         setIsSending(true);
         setUserText(cleanedCommand);
         setAiText("");
@@ -517,6 +575,12 @@ function Home(){
                 addHistory(
                     cleanedCommand,
                     message
+                );
+
+                console.log(
+                    "🌐 DIRECT SITE SEARCH DETECTED:",
+                    ((performance.now()-commandStart)/1000).toFixed(2),
+                    "seconds"
                 );
 
                 openUrl(siteSearch.url);
@@ -550,6 +614,12 @@ function Home(){
                 addHistory(
                     cleanedCommand,
                     message
+                );
+
+                console.log(
+                    "🔎 GOOGLE SEARCH DETECTED:",
+                    ((performance.now()-commandStart)/1000).toFixed(2),
+                    "seconds"
                 );
 
                 openUrl(
@@ -588,6 +658,11 @@ function Home(){
                     message
                 );
 
+                console.log(
+                    "🌐 DIRECT URL DETECTED:",
+                    directUrl
+                );
+
                 openUrl(directUrl);
 
                 if(shouldSpeak){
@@ -600,12 +675,42 @@ function Home(){
             }
 
 
+            console.log(
+                "📡 SENDING REQUEST TO BACKEND...",
+                ((performance.now()-commandStart)/1000).toFixed(2),
+                "seconds after command start"
+            );
+
+            const backendStart=performance.now();
+
             const result=
                 await getGeminiResponse(
                     cleanedCommand
                 );
 
+            const backendTime=
+                (performance.now()-backendStart)/1000;
+
+            console.log(
+                "📡 BACKEND RESPONSE RECEIVED IN:",
+                backendTime.toFixed(2),
+                "seconds"
+            );
+
+            console.log(
+                "⏱️ TOTAL TIME AFTER BACKEND:",
+                ((performance.now()-commandStart)/1000).toFixed(2),
+                "seconds"
+            );
+
+
             let parsedResult=result;
+
+            console.log(
+                "🧩 PARSING RESPONSE...",
+                ((performance.now()-commandStart)/1000).toFixed(2),
+                "seconds"
+            );
 
             if(typeof result==="string"){
 
@@ -712,6 +817,12 @@ function Home(){
             }
 
 
+            console.log(
+                "🤖 ANSWER READY:",
+                ((performance.now()-commandStart)/1000).toFixed(2),
+                "seconds after command start"
+            );
+
             setAiText(responseText);
             setShowAIText(true);
 
@@ -735,8 +846,17 @@ function Home(){
 
 
             if(shouldSpeak){
+
+                console.log(
+                    "🔊 CALLING SPEAK:",
+                    ((performance.now()-commandStart)/1000).toFixed(2),
+                    "seconds after command start"
+                );
+
                 speak(responseText);
+
             }else{
+
                 setIsAIActive(false);
             }
 
@@ -745,6 +865,12 @@ function Home(){
             console.error(
                 "Assistant error:",
                 error
+            );
+
+            console.error(
+                "❌ ERROR AFTER:",
+                ((performance.now()-commandStart)/1000).toFixed(2),
+                "seconds"
             );
 
             const errorText=
@@ -767,6 +893,12 @@ function Home(){
             }
 
         }finally{
+
+            console.log(
+                "🏁 COMMAND FINISHED:",
+                ((performance.now()-commandStart)/1000).toFixed(2),
+                "seconds total"
+            );
 
             processingRef.current=false;
             setIsSending(false);
@@ -844,14 +976,23 @@ function Home(){
         recognition.onstart=()=>{
 
             listeningRef.current=true;
-
             setIsListening(true);
+
+            console.log(
+                "🎤 MICROPHONE STARTED:",
+                new Date().toLocaleTimeString()
+            );
         };
 
 
         recognition.onresult=async(event)=>{
 
             if(processingRef.current)return;
+
+            console.log(
+                "🎤 SPEECH RESULT RECEIVED:",
+                new Date().toLocaleTimeString()
+            );
 
             const lastResult=
                 event.results[
@@ -871,6 +1012,11 @@ function Home(){
                     .trim();
 
             if(!transcript)return;
+
+            console.log(
+                "🎤 USER SAID:",
+                transcript
+            );
 
             const lowerTranscript=
                 transcript.toLowerCase();
@@ -938,6 +1084,10 @@ function Home(){
             }catch{}
 
 
+            console.log(
+                "🎤 SENDING TRANSCRIPT TO processCommand()"
+            );
+
             await processCommand(
                 transcript,
                 true
@@ -946,6 +1096,11 @@ function Home(){
 
 
         recognition.onend=()=>{
+
+            console.log(
+                "🎤 MICROPHONE ENDED:",
+                new Date().toLocaleTimeString()
+            );
 
             if(
                 listeningRef.current&&
@@ -959,6 +1114,10 @@ function Home(){
 
                 restartTimeoutRef.current=
                     setTimeout(()=>{
+
+                        console.log(
+                            "🎤 RESTARTING MICROPHONE"
+                        );
 
                         try{
                             recognition.start();
@@ -979,7 +1138,7 @@ function Home(){
         recognition.onerror=(event)=>{
 
             console.log(
-                "Speech recognition error:",
+                "❌ Speech recognition error:",
                 event.error
             );
 
@@ -1037,8 +1196,12 @@ function Home(){
             setIsAIActive(false);
 
             listeningRef.current=true;
-
             setIsListening(true);
+
+            console.log(
+                "🎤 START LISTENING BUTTON CLICKED:",
+                new Date().toLocaleTimeString()
+            );
 
             recognitionRef.current.start();
 
@@ -1119,7 +1282,6 @@ function Home(){
 
 
     const handleCustomize=()=>{
-
         navigate("/customize2");
     };
 
@@ -1541,6 +1703,7 @@ function Home(){
 
 
                                                 {typeof item!=="string"&&item?.answer&&(
+
                                                     <div>
 
                                                         <span className="text-gray-500 text-xs">
@@ -1548,10 +1711,13 @@ function Home(){
                                                         </span>
 
                                                         <div className="text-gray-400 text-sm leading-relaxed mt-1 whitespace-pre-wrap wrap-break-word">
+
                                                             {item.answer}
+
                                                         </div>
 
                                                     </div>
+
                                                 )}
 
                                             </div>
