@@ -17,7 +17,6 @@ import {
     IoMdArrowBack
 } from "react-icons/io";
 
-
 const Customize2 = () => {
 
     const {
@@ -28,19 +27,15 @@ const Customize2 = () => {
         setUserData
     } = useContext(userDataContext);
 
-
     const [assistantName, setAssistantName] =
         useState(
             userData?.assistantName || ""
         );
 
-
     const [loading, setLoading] =
         useState(false);
 
-
     const navigate = useNavigate();
-
 
     const handleUpdateAssistant = async () => {
 
@@ -49,7 +44,6 @@ const Customize2 = () => {
             return;
         }
 
-
         if (!backendImage && !selectedImage) {
             alert(
                 "Please select an assistant image"
@@ -57,20 +51,16 @@ const Customize2 = () => {
             return;
         }
 
-
         setLoading(true);
-
 
         try {
 
             const formData = new FormData();
 
-
             formData.append(
                 "assistantName",
                 assistantName.trim()
             );
-
 
             if (backendImage) {
 
@@ -87,27 +77,22 @@ const Customize2 = () => {
                 );
             }
 
-
             const result = await axios.put(
-                `${serverUrl}/api/user/update`,
+                `${serverUrl}/api/user/updateassistant`,
                 formData,
                 {
                     withCredentials: true
                 }
             );
 
-
             console.log(
                 "UPDATE RESPONSE:",
                 result.data
             );
 
-
             setUserData(result.data);
 
-
             navigate("/");
-
 
         } catch (error) {
 
@@ -116,18 +101,15 @@ const Customize2 = () => {
                 error
             );
 
-
             console.error(
                 "Status:",
                 error.response?.status
             );
 
-
             console.error(
                 "Backend Response:",
                 error.response?.data
             );
-
 
         } finally {
 
@@ -135,7 +117,6 @@ const Customize2 = () => {
 
         }
     };
-
 
     return (
 
@@ -215,7 +196,6 @@ const Customize2 = () => {
 
             </button>
 
-
             {/* HEADING */}
 
             <h1
@@ -242,7 +222,6 @@ const Customize2 = () => {
                 </span>
 
             </h1>
-
 
             {/* NAME INPUT */}
 
@@ -288,7 +267,6 @@ const Customize2 = () => {
                     transition
                 "
             />
-
 
             {/* CREATE BUTTON */}
 
@@ -345,6 +323,5 @@ const Customize2 = () => {
 
     );
 };
-
 
 export default Customize2;
