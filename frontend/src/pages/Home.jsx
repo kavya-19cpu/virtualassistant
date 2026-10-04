@@ -52,7 +52,7 @@ function Home() {
 
 
   // =====================================================
-  // STATE
+  // STATES
   // =====================================================
 
   const [isListening, setIsListening] =
@@ -93,7 +93,7 @@ function Home() {
 
 
   // =====================================================
-  // IMAGE STATE
+  // IMAGE
   // =====================================================
 
   const [selectedImage, setSelectedImage] =
@@ -110,7 +110,7 @@ function Home() {
 
 
   // =====================================================
-  // PDF STATE
+  // PDF
   // =====================================================
 
   const [selectedPdf, setSelectedPdf] =
@@ -160,9 +160,20 @@ function Home() {
   const getGeminiResponseRef =
     useRef(getGeminiResponse);
 
+  // =====================================================
+  // IMPORTANT:
+  // Every speech/request gets a generation number.
+  //
+  // When Stop is pressed, generation changes.
+  // Old speech chunks/timers can then NEVER continue.
+  // =====================================================
+
+  const speechGenerationRef =
+    useRef(0);
+
 
   // =====================================================
-  // KEEP LATEST GEMINI FUNCTION
+  // LATEST GEMINI FUNCTION
   // =====================================================
 
   useEffect(() => {
@@ -205,7 +216,7 @@ function Home() {
   // CLEAN AI RESPONSE
   // =====================================================
 
-  const cleanAIResponse = text => {
+  const cleanAIResponse = (text) => {
 
     if (!text) {
       return "";
@@ -431,21 +442,6 @@ function Home() {
         );
 
     cleaned =
-      cleaned
-        .replace(
-          /sin\^\{-1\}/g,
-          "sin⁻¹"
-        )
-        .replace(
-          /cos\^\{-1\}/g,
-          "cos⁻¹"
-        )
-        .replace(
-          /tan\^\{-1\}/g,
-          "tan⁻¹"
-        );
-
-    cleaned =
       cleaned.replace(
         /[{}]/g,
         ""
@@ -478,7 +474,7 @@ function Home() {
   // =====================================================
 
   const imageFileToDataUrl =
-    file => {
+    (file) => {
 
       return new Promise(
         (resolve, reject) => {
@@ -712,7 +708,7 @@ function Home() {
   // =====================================================
 
   const deleteHistory =
-    async historyId => {
+    async (historyId) => {
 
       if (!historyId) {
         return;
@@ -818,66 +814,105 @@ function Home() {
 
   // =====================================================
   // STOP SPEAKING
+  //
+  // THIS COMPLETELY INVALIDATES THE OLD REQUEST.
   // =====================================================
 
   const stopSpeaking =
     () => {
 
+      // -----------------------------------------------
+      // INVALIDATE OLD SPEECH
+      // -----------------------------------------------
+
+      speechGenerationRef.current += 1;
+
+      // -----------------------------------------------
+      // CANCEL ALL OLD TIMERS
+      // -----------------------------------------------
+
       clearTimeout(
         speechTimeoutRef.current
       );
 
-      window.speechSynthesis.cancel();
+      clearTimeout(
+        restartTimeoutRef.current
+      );
+
+      speechTimeoutRef.current =
+        null;
+
+      restartTimeoutRef.current =
+        null;
+
+      // -----------------------------------------------
+      // CANCEL BROWSER SPEECH
+      // -----------------------------------------------
+
+      try {
+
+        window.speechSynthesis.cancel();
+
+      } catch {}
+
+      try {
+
+        window.speechSynthesis.pause();
+
+      } catch {}
+
+      // -----------------------------------------------
+      // KILL OLD SPEECH STATE
+      // -----------------------------------------------
 
       speakingRef.current =
         false;
 
       setIsSpeaking(false);
 
-      if (
-        !processingRef.current
-      ) {
+      setIsAIActive(false);
 
-        setIsAIActive(false);
-      }
+      // -----------------------------------------------
+      // ALSO KILL OLD LISTENING SESSION
+      // -----------------------------------------------
+
+      listeningRef.current =
+        false;
+
+      setIsListening(false);
 
       if (
-        listeningRef.current &&
-        !processingRef.current &&
         recognitionRef.current
       ) {
 
-        setTimeout(() => {
+        try {
 
-          if (
-            listeningRef.current &&
-            !processingRef.current &&
-            !speakingRef.current &&
-            recognitionRef.current
-          ) {
+          recognitionRef.current.abort();
 
-            try {
+        } catch {}
 
-              recognitionRef.current.start();
+        try {
 
-              setIsListening(true);
+          recognitionRef.current.stop();
 
-            } catch {
-              // Already running.
-            }
-          }
-
-        }, 300);
+        } catch {}
       }
+
+      console.log(
+        "OLD SPEECH COMPLETELY STOPPED"
+      );
     };
 
 
   // =====================================================
   // SPEAK
+  //
+  // Every speech gets a generation number.
+  // Old chunks can never continue.
   // =====================================================
 
   const speak =
-    text => {
+    (text) => {
 
       if (!text) {
         return;
@@ -890,11 +925,29 @@ function Home() {
         return;
       }
 
+      // -----------------------------------------------
+      // CREATE NEW SPEECH GENERATION
+      // -----------------------------------------------
+
+      const generation =
+        speechGenerationRef.current + 1;
+
+      speechGenerationRef.current =
+        generation;
+
       clearTimeout(
         speechTimeoutRef.current
       );
 
-      window.speechSynthesis.cancel();
+      try {
+
+        window.speechSynthesis.cancel();
+
+      } catch {}
+
+      // -----------------------------------------------
+      // SPLIT ANSWER INTO SMALL CHUNKS
+      // -----------------------------------------------
 
       const sentences =
         speechText.match(
@@ -918,7 +971,8 @@ function Home() {
           }
 
           if (
-            cleanSentence.length > 160
+            cleanSentence.length >
+            160
           ) {
 
             const words =
@@ -929,34 +983,37 @@ function Home() {
             let wordChunk =
               "";
 
-            words.forEach(word => {
+            words.forEach(
+              word => {
 
-              const combined =
-                `${wordChunk} ${word}`
-                  .trim();
-
-              if (
-                combined.length > 160
-              ) {
+                const combined =
+                  `${wordChunk} ${word}`
+                    .trim();
 
                 if (
-                  wordChunk.trim()
+                  combined.length >
+                  160
                 ) {
 
-                  chunks.push(
+                  if (
                     wordChunk.trim()
-                  );
+                  ) {
+
+                    chunks.push(
+                      wordChunk.trim()
+                    );
+                  }
+
+                  wordChunk =
+                    word;
+
+                } else {
+
+                  wordChunk =
+                    combined;
                 }
-
-                wordChunk =
-                  word;
-
-              } else {
-
-                wordChunk =
-                  combined;
               }
-            });
+            );
 
             if (
               wordChunk.trim()
@@ -975,7 +1032,8 @@ function Home() {
               .trim();
 
           if (
-            combined.length > 160
+            combined.length >
+            160
           ) {
 
             if (
@@ -998,6 +1056,7 @@ function Home() {
         }
       );
 
+
       if (
         currentChunk.trim()
       ) {
@@ -1007,6 +1066,7 @@ function Home() {
         );
       }
 
+
       if (
         chunks.length === 0
       ) {
@@ -1015,6 +1075,7 @@ function Home() {
           speechText
         );
       }
+
 
       let currentIndex =
         0;
@@ -1026,9 +1087,20 @@ function Home() {
 
       setIsAIActive(true);
 
+
+      // -----------------------------------------------
+      // STOP MICROPHONE WHILE SPEAKING
+      // -----------------------------------------------
+
       if (
         recognitionRef.current
       ) {
+
+        try {
+
+          recognitionRef.current.abort();
+
+        } catch {}
 
         try {
 
@@ -1037,67 +1109,73 @@ function Home() {
         } catch {}
       }
 
+
+      // -----------------------------------------------
+      // SPEAK NEXT CHUNK
+      // -----------------------------------------------
+
       const speakNextChunk =
         () => {
+
+          // ===========================================
+          // OLD GENERATION?
+          // STOP IMMEDIATELY.
+          // ===========================================
+
+          if (
+            generation !==
+            speechGenerationRef.current
+          ) {
+
+            return;
+          }
+
+
+          // ===========================================
+          // SPEECH WAS STOPPED?
+          // ===========================================
 
           if (
             !speakingRef.current
           ) {
+
             return;
           }
+
+
+          // ===========================================
+          // FINISHED
+          // ===========================================
 
           if (
             currentIndex >=
             chunks.length
           ) {
 
+            if (
+              generation !==
+              speechGenerationRef.current
+            ) {
+
+              return;
+            }
+
             speakingRef.current =
               false;
 
             setIsSpeaking(false);
 
-            if (
-              !processingRef.current
-            ) {
-
-              setIsAIActive(false);
-            }
-
-            if (
-              listeningRef.current &&
-              !processingRef.current &&
-              recognitionRef.current
-            ) {
-
-              setTimeout(() => {
-
-                if (
-                  listeningRef.current &&
-                  !processingRef.current &&
-                  !speakingRef.current
-                ) {
-
-                  try {
-
-                    recognitionRef.current.start();
-
-                    setIsListening(
-                      true
-                    );
-
-                  } catch {}
-                }
-
-              }, 400);
-            }
+            setIsAIActive(false);
 
             return;
           }
+
 
           const utterance =
             new SpeechSynthesisUtterance(
               chunks[currentIndex]
             );
+
 
           utterance.rate =
             1;
@@ -1111,29 +1189,60 @@ function Home() {
           utterance.lang =
             "en-US";
 
+
+          // ===========================================
+          // SPEECH START
+          // ===========================================
+
           utterance.onstart =
             () => {
 
               if (
+                generation !==
+                speechGenerationRef.current ||
                 !speakingRef.current
               ) {
 
-                window.speechSynthesis.cancel();
+                try {
+
+                  window.speechSynthesis.cancel();
+
+                } catch {}
 
                 return;
               }
 
-              setIsSpeaking(true);
+              setIsSpeaking(
+                true
+              );
 
-              setIsAIActive(true);
+              setIsAIActive(
+                true
+              );
             };
+
+
+          // ===========================================
+          // SPEECH END
+          // ===========================================
 
           utterance.onend =
             () => {
 
+              // OLD REQUEST?
+              if (
+                generation !==
+                speechGenerationRef.current
+              ) {
+
+                return;
+              }
+
+              // STOPPED?
               if (
                 !speakingRef.current
               ) {
+
                 return;
               }
 
@@ -1143,24 +1252,54 @@ function Home() {
                 setTimeout(
                   () => {
 
+                    // CHECK AGAIN
+                    if (
+                      generation !==
+                      speechGenerationRef.current
+                    ) {
+
+                      return;
+                    }
+
+                    if (
+                      !speakingRef.current
+                    ) {
+
+                      return;
+                    }
+
                     speakNextChunk();
 
                   },
                   80
                 );
             };
+
+
+          // ===========================================
+          // SPEECH ERROR
+          // ===========================================
 
           utterance.onerror =
             event => {
 
-              console.error(
-                "Speech synthesis error:",
+              console.log(
+                "Speech error:",
                 event.error
               );
 
               if (
+                generation !==
+                speechGenerationRef.current
+              ) {
+
+                return;
+              }
+
+              if (
                 !speakingRef.current
               ) {
+
                 return;
               }
 
@@ -1170,12 +1309,42 @@ function Home() {
                 setTimeout(
                   () => {
 
+                    if (
+                      generation !==
+                      speechGenerationRef.current
+                    ) {
+
+                      return;
+                    }
+
+                    if (
+                      !speakingRef.current
+                    ) {
+
+                      return;
+                    }
+
                     speakNextChunk();
 
                   },
                   80
                 );
             };
+
+
+          // ===========================================
+          // FINAL SAFETY CHECK
+          // ===========================================
+
+          if (
+            generation !==
+            speechGenerationRef.current ||
+            !speakingRef.current
+          ) {
+
+            return;
+          }
+
 
           try {
 
@@ -1183,10 +1352,22 @@ function Home() {
 
           } catch {}
 
-          window.speechSynthesis.speak(
-            utterance
-          );
+
+          try {
+
+            window.speechSynthesis.speak(
+              utterance
+            );
+
+          } catch (error) {
+
+            console.error(
+              "Speech start error:",
+              error
+            );
+          }
         };
+
 
       speakNextChunk();
     };
@@ -1197,7 +1378,7 @@ function Home() {
   // =====================================================
 
   const openUrl =
-    url => {
+    (url) => {
 
       if (!url) {
         return;
@@ -1216,7 +1397,7 @@ function Home() {
   // =====================================================
 
   const googleSearch =
-    query => {
+    (query) => {
 
       if (!query?.trim()) {
         return;
@@ -1235,7 +1416,7 @@ function Home() {
   // =====================================================
 
   const youtubeSearch =
-    query => {
+    (query) => {
 
       if (!query?.trim()) {
         return;
@@ -1321,7 +1502,7 @@ function Home() {
 
 
   // =====================================================
-  // WEBSITE SEARCH
+  // WEBSITE SEARCH URL
   // =====================================================
 
   const getWebsiteSearchUrl =
@@ -1391,7 +1572,7 @@ function Home() {
   // =====================================================
 
   const extractSearchCommand =
-    command => {
+    (command) => {
 
       if (!command) {
         return null;
@@ -1502,12 +1683,10 @@ function Home() {
           siteAliases
         ).join("|");
 
-      let match;
-
 
       // search cats on google
 
-      match =
+      let match =
         text.match(
           new RegExp(
             `^(?:search|find|look\\s+up)\\s+(?:for\\s+)?(.+?)\\s+(?:on|in|using)\\s+(${siteNames})$`,
@@ -1655,6 +1834,9 @@ function Home() {
         return;
       }
 
+      // Every NEW command invalidates any old speech.
+      speechGenerationRef.current += 1;
+
       setHistoryImage("");
 
       setHistoryFileName("");
@@ -1690,8 +1872,7 @@ function Home() {
           const {
             site,
             query
-          } =
-            searchCommand;
+          } = searchCommand;
 
           const siteName =
             site === "x"
@@ -1704,9 +1885,13 @@ function Home() {
           const answer =
             `Searching ${siteName} for ${query}.`;
 
-          setAiText(answer);
+          setAiText(
+            answer
+          );
 
-          setShowAIText(true);
+          setShowAIText(
+            true
+          );
 
           await addHistory(
             cleanedCommand,
@@ -1727,9 +1912,13 @@ function Home() {
             );
           }
 
-          if (shouldSpeak) {
+          if (
+            shouldSpeak
+          ) {
 
-            speak(answer);
+            speak(
+              answer
+            );
           }
 
           return;
@@ -1753,9 +1942,13 @@ function Home() {
           const answer =
             `Searching Google for ${query}.`;
 
-          setAiText(answer);
+          setAiText(
+            answer
+          );
 
-          setShowAIText(true);
+          setShowAIText(
+            true
+          );
 
           await addHistory(
             cleanedCommand,
@@ -1767,9 +1960,13 @@ function Home() {
             query
           );
 
-          if (shouldSpeak) {
+          if (
+            shouldSpeak
+          ) {
 
-            speak(answer);
+            speak(
+              answer
+            );
           }
 
           return;
@@ -1793,9 +1990,13 @@ function Home() {
           const answer =
             `Searching YouTube for ${query}.`;
 
-          setAiText(answer);
+          setAiText(
+            answer
+          );
 
-          setShowAIText(true);
+          setShowAIText(
+            true
+          );
 
           await addHistory(
             cleanedCommand,
@@ -1807,9 +2008,13 @@ function Home() {
             query
           );
 
-          if (shouldSpeak) {
+          if (
+            shouldSpeak
+          ) {
 
-            speak(answer);
+            speak(
+              answer
+            );
           }
 
           return;
@@ -1836,7 +2041,9 @@ function Home() {
                 ""
               );
 
-          if (websites[site]) {
+          if (
+            websites[site]
+          ) {
 
             const displayName =
               site === "x"
@@ -1849,9 +2056,13 @@ function Home() {
             const answer =
               `Opening ${displayName}.`;
 
-            setAiText(answer);
+            setAiText(
+              answer
+            );
 
-            setShowAIText(true);
+            setShowAIText(
+              true
+            );
 
             await addHistory(
               cleanedCommand,
@@ -1863,9 +2074,13 @@ function Home() {
               websites[site]
             );
 
-            if (shouldSpeak) {
+            if (
+              shouldSpeak
+            ) {
 
-              speak(answer);
+              speak(
+                answer
+              );
             }
 
             return;
@@ -1881,6 +2096,19 @@ function Home() {
           await getGeminiResponseRef.current(
             cleanedCommand
           );
+
+        // -----------------------------------------------
+        // IMPORTANT:
+        // If user stopped/restarted while Gemini was
+        // processing, ignore the OLD response.
+        // -----------------------------------------------
+
+        if (
+          !processingRef.current
+        ) {
+
+          return;
+        }
 
         let parsedResult =
           result;
@@ -2029,10 +2257,12 @@ function Home() {
 
 
         // =================================================
-        // SPEAK VOICE ANSWER
+        // SPEAK
         // =================================================
 
-        if (shouldSpeak) {
+        if (
+          shouldSpeak
+        ) {
 
           speak(
             response
@@ -2057,7 +2287,9 @@ function Home() {
           true
         );
 
-        if (shouldSpeak) {
+        if (
+          shouldSpeak
+        ) {
 
           speak(
             errorMessage
@@ -2081,42 +2313,6 @@ function Home() {
             false
           );
         }
-
-        if (
-          listeningRef.current &&
-          !speakingRef.current &&
-          recognitionRef.current
-        ) {
-
-          clearTimeout(
-            restartTimeoutRef.current
-          );
-
-          restartTimeoutRef.current =
-            setTimeout(() => {
-
-              if (
-                listeningRef.current &&
-                !processingRef.current &&
-                !speakingRef.current &&
-                recognitionRef.current
-              ) {
-
-                try {
-
-                  recognitionRef.current.start();
-
-                  setIsListening(
-                    true
-                  );
-
-                } catch {
-                  // Already running.
-                }
-              }
-
-            }, 500);
-        }
       }
     };
 
@@ -2126,7 +2322,7 @@ function Home() {
   // =====================================================
 
   const handleSend =
-    async e => {
+    async (e) => {
 
       e?.preventDefault();
 
@@ -2170,7 +2366,7 @@ function Home() {
   // =====================================================
 
   const handleImageSelect =
-    e => {
+    (e) => {
 
       const file =
         e.target.files?.[0];
@@ -2234,7 +2430,7 @@ function Home() {
   // =====================================================
 
   const handlePdfSelect =
-    e => {
+    (e) => {
 
       const file =
         e.target.files?.[0];
@@ -2288,7 +2484,7 @@ function Home() {
   // =====================================================
 
   const handlePaste =
-    event => {
+    (event) => {
 
       const clipboardItems =
         event.clipboardData?.items;
@@ -2732,10 +2928,6 @@ function Home() {
     recognition.onstart =
       () => {
 
-        console.log(
-          "Microphone started"
-        );
-
         setIsListening(
           true
         );
@@ -2747,7 +2939,7 @@ function Home() {
     // ===================================================
 
     recognition.onresult =
-      async event => {
+      async (event) => {
 
         let finalTranscript =
           "";
@@ -2803,11 +2995,6 @@ function Home() {
         const transcript =
           finalTranscript.trim();
 
-        console.log(
-          "Final recognized speech:",
-          transcript
-        );
-
         const lowerTranscript =
           transcript
             .toLowerCase()
@@ -2849,6 +3036,10 @@ function Home() {
         }
 
 
+        // =================================================
+        // NEW VOICE REQUEST
+        // =================================================
+
         processCommand(
           transcript,
           "voice",
@@ -2863,10 +3054,6 @@ function Home() {
 
     recognition.onend =
       () => {
-
-        console.log(
-          "Microphone ended"
-        );
 
         if (
           !listeningRef.current
@@ -2902,33 +3089,31 @@ function Home() {
         );
 
         restartTimeoutRef.current =
-          setTimeout(() => {
+          setTimeout(
+            () => {
 
-            if (
-              listeningRef.current &&
-              !processingRef.current &&
-              !speakingRef.current &&
-              recognitionRef.current
-            ) {
+              if (
+                listeningRef.current &&
+                !processingRef.current &&
+                !speakingRef.current &&
+                recognitionRef.current
+              ) {
 
-              try {
+                try {
 
-                recognitionRef.current.start();
+                  recognitionRef.current.start();
 
-                setIsListening(
-                  true
-                );
+                  setIsListening(
+                    true
+                  );
 
-                console.log(
-                  "Listening again..."
-                );
+                } catch {}
 
-              } catch {
-                // Already active.
               }
-            }
 
-          }, 400);
+            },
+            400
+          );
       };
 
 
@@ -2983,16 +3168,6 @@ function Home() {
 
           return;
         }
-
-        if (
-          event.error ===
-            "no-speech" ||
-          event.error ===
-            "aborted"
-        ) {
-
-          return;
-        }
       };
 
 
@@ -3015,7 +3190,7 @@ function Home() {
 
       try {
 
-        recognition.stop();
+        recognition.abort();
 
       } catch {}
 
@@ -3044,20 +3219,35 @@ function Home() {
         return;
       }
 
-      if (
-        speakingRef.current ||
-        window.speechSynthesis.speaking
-      ) {
-
-        stopSpeaking();
-      }
+      // New listening session = new generation
+      speechGenerationRef.current += 1;
 
       clearTimeout(
         restartTimeoutRef.current
       );
 
+      clearTimeout(
+        speechTimeoutRef.current
+      );
+
+      try {
+
+        window.speechSynthesis.cancel();
+
+      } catch {}
+
+      speakingRef.current =
+        false;
+
+      processingRef.current =
+        false;
+
       listeningRef.current =
         true;
+
+      setIsSpeaking(false);
+
+      setIsAIActive(false);
 
       setIsListening(
         true
@@ -3066,10 +3256,6 @@ function Home() {
       try {
 
         recognitionRef.current.start();
-
-        console.log(
-          "Listening for your voice..."
-        );
 
       } catch (error) {
 
@@ -3109,23 +3295,39 @@ function Home() {
 
         try {
 
+          recognitionRef.current.abort();
+
+        } catch {}
+
+        try {
+
           recognitionRef.current.stop();
 
         } catch {}
       }
 
       console.log(
-        "Microphone stopped"
+        "Microphone stopped."
       );
     };
 
 
   // =====================================================
   // MIC BUTTON
+  //
+  // ONE BUTTON:
+  //
+  // speaking  -> STOP OLD SPEECH
+  // listening -> STOP LISTENING
+  // normal    -> START NEW LISTENING
   // =====================================================
 
   const handleMicClick =
     () => {
+
+      // -----------------------------------------------
+      // CURRENTLY SPEAKING
+      // -----------------------------------------------
 
       if (
         isSpeaking ||
@@ -3138,14 +3340,52 @@ function Home() {
         return;
       }
 
-      if (isListening) {
+
+      // -----------------------------------------------
+      // CURRENTLY LISTENING
+      // -----------------------------------------------
+
+      if (
+        isListening
+      ) {
 
         stopListening();
 
-      } else {
-
-        startListening();
+        return;
       }
+
+
+      // -----------------------------------------------
+      // NEW REQUEST
+      // -----------------------------------------------
+
+      speechGenerationRef.current += 1;
+
+      clearTimeout(
+        speechTimeoutRef.current
+      );
+
+      clearTimeout(
+        restartTimeoutRef.current
+      );
+
+      try {
+
+        window.speechSynthesis.cancel();
+
+      } catch {}
+
+      speakingRef.current =
+        false;
+
+      processingRef.current =
+        false;
+
+      setIsSpeaking(false);
+
+      setIsAIActive(false);
+
+      startListening();
     };
 
 
@@ -3240,25 +3480,20 @@ function Home() {
   // =====================================================
 
   const openHistory =
-    item => {
+    (item) => {
 
+      // Stop any current speech first.
       stopSpeaking();
 
-      const command =
-        item?.command ||
-        "";
-
-      const answer =
-        item?.answer ||
-        "";
-
       setUserText(
-        command
+        item?.command ||
+        ""
       );
 
       setAiText(
         cleanAIResponse(
-          answer
+          item?.answer ||
+          ""
         )
       );
 
@@ -3311,7 +3546,7 @@ function Home() {
   // =====================================================
 
   const formatDate =
-    date => {
+    (date) => {
 
       if (!date) {
         return "";
@@ -3800,7 +4035,7 @@ function Home() {
 
 
       {/* =================================================
-          HISTORY DRAWER
+          HISTORY
       ================================================= */}
 
       {showHistory && (
@@ -4232,16 +4467,7 @@ function Home() {
 
 
           {/* =================================================
-              CHAT AREA
-
-              IMPORTANT:
-              This is the ONLY scrolling area.
-
-              flex-1 + min-h-0 + overflow-y-auto
-              means even an extremely long answer stays
-              inside this area.
-
-              pb-8 guarantees space at the bottom.
+              ONLY CHAT AREA SCROLLS
           ================================================= */}
 
           <div
@@ -4253,7 +4479,6 @@ function Home() {
               overscroll-contain
               px-1
               pb-8
-              scrollbar-thin
             "
           >
 
@@ -4272,7 +4497,7 @@ function Home() {
 
 
               {/* =================================================
-                  AI IMAGE
+                  ASSISTANT IMAGE
               ================================================= */}
 
               <div
@@ -4311,7 +4536,7 @@ function Home() {
 
 
               {/* =================================================
-                  NAME
+                  ASSISTANT NAME
               ================================================= */}
 
               <h1
@@ -4488,11 +4713,11 @@ function Home() {
               {/* =================================================
                   AI ANSWER
 
-                  mb-6 = 24px space AFTER answer.
+                  mb-6 = 24px
+                  pb-8 on parent = additional bottom space
 
-                  This space is inside the scrolling chat
-                  area, so it remains there regardless of
-                  answer length.
+                  The important part is that this is inside
+                  the scrollable chat region.
               ================================================= */}
 
               {showAIText &&
@@ -4531,8 +4756,6 @@ function Home() {
 
           {/* =================================================
               IMAGE PREVIEW
-
-              This stays OUTSIDE the scrolling chat.
           ================================================= */}
 
           {imagePreview && (
@@ -4597,6 +4820,7 @@ function Home() {
                   </p>
 
                 </div>
+
 
                 <button
                   type="button"
@@ -4737,10 +4961,7 @@ function Home() {
           {/* =================================================
               FIXED INPUT AREA
 
-              shrink-0 is VERY IMPORTANT.
-
-              It prevents the input area from being pushed
-              away by a huge answer.
+              shrink-0 = NEVER GETS PUSHED DOWN BY ANSWER
           ================================================= */}
 
           <div
@@ -4773,7 +4994,7 @@ function Home() {
 
 
               {/* =================================================
-                  IMAGE BUTTON
+                  IMAGE
               ================================================= */}
 
               <button
@@ -4817,7 +5038,7 @@ function Home() {
 
 
               {/* =================================================
-                  PDF BUTTON
+                  PDF
               ================================================= */}
 
               <button
@@ -4861,7 +5082,7 @@ function Home() {
 
 
               {/* =================================================
-                  QUESTION INPUT
+                  QUESTION
               ================================================= */}
 
               <input
@@ -4903,18 +5124,7 @@ function Home() {
 
 
               {/* =================================================
-                  MIC / STOP
-
-                  THIS IS THE ONLY STOP BUTTON.
-
-                  Speaking:
-                    square icon = stop speaking
-
-                  Listening:
-                    mic-off = stop microphone
-
-                  Normal:
-                    microphone = start microphone
+                  ONE MIC / STOP BUTTON
               ================================================= */}
 
               <button
@@ -4933,7 +5143,6 @@ function Home() {
                   transition
                   sm:h-11
                   sm:w-11
-
                   ${
                     isSpeaking
 
