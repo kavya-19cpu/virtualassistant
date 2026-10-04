@@ -1,5 +1,11 @@
 import mongoose from "mongoose";
 
+/*
+=====================================================
+HISTORY SCHEMA
+=====================================================
+*/
+
 const historySchema = new mongoose.Schema(
   {
     command: {
@@ -16,7 +22,14 @@ const historySchema = new mongoose.Schema(
 
     type: {
       type: String,
-      enum: ["text", "voice", "image"],
+
+      enum: [
+        "text",
+        "voice",
+        "image",
+        "pdf"
+      ],
+
       default: "text"
     }
   },
@@ -24,6 +37,12 @@ const historySchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+/*
+=====================================================
+USER SCHEMA
+=====================================================
+*/
 
 const userSchema = new mongoose.Schema(
   {
@@ -65,6 +84,10 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-const User = mongoose.model("User", userSchema);
+const User =
+  mongoose.model(
+    "User",
+    userSchema
+  );
 
 export default User;

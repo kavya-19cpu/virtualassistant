@@ -8,15 +8,13 @@ import {
   saveHistory,
   deleteHistory,
   clearHistory,
-  analyzeImage
+  analyzeImage,
+  analyzePdf
 } from "../controllers/user.controllers.js";
 
 import isAuth from "../middlewares/isAuth.js";
 
-
-const userRouter =
-  express.Router();
-
+const userRouter = express.Router();
 
 /*
 =====================================================
@@ -24,47 +22,45 @@ ASSISTANT IMAGE UPLOAD
 =====================================================
 */
 
-const assistantUpload =
-  multer({
-    dest: "uploads/"
-  });
-
+const assistantUpload = multer({
+  dest: "uploads/"
+});
 
 /*
 =====================================================
-IMAGE ANALYSIS UPLOAD
+IMAGE + PDF ANALYSIS UPLOAD
 =====================================================
 */
 
-const imageUpload =
-  multer({
-    storage: multer.memoryStorage(),
+const documentUpload = multer({
+  storage: multer.memoryStorage(),
 
-    limits: {
-      fileSize: 10 * 1024 * 1024
-    },
+  limits: {
+    fileSize: 20 * 1024 * 1024
+  },
 
-    fileFilter: (
-      req,
-      file,
-      cb
-    ) => {
-      if (
-        file.mimetype.startsWith(
-          "image/"
+  fileFilter: (
+    req,
+    file,
+    cb
+  ) => {
+    const isImage =
+      file.mimetype.startsWith("image/");
+
+    const isPdf =
+      file.mimetype === "application/pdf";
+
+    if (isImage || isPdf) {
+      cb(null, true);
+    } else {
+      cb(
+        new Error(
+          "Only image and PDF files are allowed"
         )
-      ) {
-        cb(null, true);
-      } else {
-        cb(
-          new Error(
-            "Only image files are allowed"
-          )
-        );
-      }
+      );
     }
-  });
-
+  }
+});
 
 /*
 =====================================================
@@ -78,7 +74,6 @@ userRouter.get(
   getCurrentUser
 );
 
-
 /*
 =====================================================
 NORMAL AI QUESTION
@@ -91,7 +86,6 @@ userRouter.post(
   askToAssistant
 );
 
-
 /*
 =====================================================
 IMAGE ANALYSIS
@@ -101,10 +95,22 @@ IMAGE ANALYSIS
 userRouter.post(
   "/analyze-image",
   isAuth,
-  imageUpload.single("image"),
+  documentUpload.single("image"),
   analyzeImage
 );
 
+/*
+=====================================================
+PDF ANALYSIS
+=====================================================
+*/
+
+userRouter.post(
+  "/analyze-pdf",
+  isAuth,
+  documentUpload.single("pdf"),
+  analyzePdf
+);
 
 /*
 =====================================================
@@ -118,7 +124,6 @@ userRouter.post(
   saveHistory
 );
 
-
 /*
 =====================================================
 DELETE ONE HISTORY ITEM
@@ -130,7 +135,6 @@ userRouter.delete(
   isAuth,
   deleteHistory
 );
-
 
 /*
 =====================================================
@@ -144,7 +148,6 @@ userRouter.delete(
   clearHistory
 );
 
-
 /*
 =====================================================
 UPDATE ASSISTANT
@@ -154,11 +157,8 @@ UPDATE ASSISTANT
 userRouter.put(
   "/updateassistant",
   isAuth,
-  assistantUpload.single(
-    "assistantImage"
-  ),
+  assistantUpload.single("assistantImage"),
   updateAssistant
 );
-
 
 export default userRouter;

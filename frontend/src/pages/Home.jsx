@@ -5,8 +5,14 @@ import React, {
   useState
 } from "react";
 
-import { userDataContext } from "../context/UserContext";
-import { useNavigate } from "react-router-dom";
+import {
+  userDataContext
+} from "../context/UserContext";
+
+import {
+  useNavigate
+} from "react-router-dom";
+
 import axios from "axios";
 
 import aiImg from "../assets/ai.gif";
@@ -90,6 +96,18 @@ function Home() {
   const [isImageAnalyzing, setIsImageAnalyzing] =
     useState(false);
 
+  /*
+  -----------------------------------------------------
+  NEW:
+  Image belonging to an opened history item.
+  This is separate from imagePreview so that an old
+  image cannot accidentally be submitted again.
+  -----------------------------------------------------
+  */
+
+  const [historyImage, setHistoryImage] =
+    useState("");
+
 
   // =====================================================
   // REFS
@@ -150,23 +168,6 @@ function Home() {
 
   // =====================================================
   // CLEAN GEMINI RESPONSE
-  //
-  // Makes Gemini output look like normal ChatGPT text.
-  //
-  // Removes:
-  // **
-  // *
-  // __
-  // $
-  // $$
-  // \frac{}
-  // \dfrac{}
-  // \tfrac{}
-  // \left
-  // \right
-  // Markdown headings
-  // Markdown bullets
-  // code fences
   // =====================================================
 
   const cleanAIResponse = text => {
@@ -178,12 +179,10 @@ function Home() {
     let cleaned = String(text);
 
 
-    // ---------------------------------------------------
     // Remove code fences
-    // ---------------------------------------------------
 
     cleaned = cleaned.replace(
-      /```(?:json|javascript|js|text|markdown)?/gi,
+      /```(?:json|javascript|js|text|markdown|md)?/gi,
       ""
     );
 
@@ -193,9 +192,7 @@ function Home() {
     );
 
 
-    // ---------------------------------------------------
-    // Remove Markdown bold
-    // ---------------------------------------------------
+    // Remove bold
 
     cleaned = cleaned.replace(
       /\*\*/g,
@@ -203,9 +200,7 @@ function Home() {
     );
 
 
-    // ---------------------------------------------------
-    // Remove Markdown underline/bold
-    // ---------------------------------------------------
+    // Remove underline/bold
 
     cleaned = cleaned.replace(
       /__/g,
@@ -213,51 +208,39 @@ function Home() {
     );
 
 
-    // ---------------------------------------------------
-    // Remove single Markdown *
-    // ---------------------------------------------------
+    // Remove headings
 
     cleaned = cleaned.replace(
-      /(^|[\s])\*([^*\n]+)\*(?=\s|$)/g,
-      "$1$2"
-    );
-
-
-    // ---------------------------------------------------
-    // Remove Markdown headings
-    // ---------------------------------------------------
-
-    cleaned = cleaned.replace(
-      /^#{1,6}\s*/gm,
+      /^\s*#{1,6}\s*/gm,
       ""
     );
 
 
-    // ---------------------------------------------------
-    // Convert LaTeX fractions
-    //
-    // \frac{a}{b}
-    // ->
-    // a/b
-    // ---------------------------------------------------
+    // Remove blockquote
 
-    let previous = "";
-
-    while (previous !== cleaned) {
-
-      previous = cleaned;
-
-      cleaned = cleaned.replace(
-        /\\(?:frac|dfrac|tfrac)\{([^{}]*)\}\{([^{}]*)\}/g,
-        "$1/$2"
-      );
-
-    }
+    cleaned = cleaned.replace(
+      /^\s*>\s?/gm,
+      ""
+    );
 
 
-    // ---------------------------------------------------
+    // Remove markdown bullets
+
+    cleaned = cleaned.replace(
+      /^\s*[-*+]\s+/gm,
+      ""
+    );
+
+
+    // Remove backticks
+
+    cleaned = cleaned.replace(
+      /`/g,
+      ""
+    );
+
+
     // Remove math delimiters
-    // ---------------------------------------------------
 
     cleaned = cleaned.replace(
       /\$\$/g,
@@ -269,190 +252,141 @@ function Home() {
       ""
     );
 
+    cleaned = cleaned.replace(
+      /\\\[/g,
+      ""
+    );
 
-    // ---------------------------------------------------
+    cleaned = cleaned.replace(
+      /\\\]/g,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /\\\(/g,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /\\\)/g,
+      ""
+    );
+
+
+    // Convert fractions
+
+    let previous = "";
+
+    while (previous !== cleaned) {
+
+      previous = cleaned;
+
+      cleaned = cleaned.replace(
+        /\\(?:frac|dfrac|tfrac)\{([^{}]+)\}\{([^{}]+)\}/g,
+        "$1/$2"
+      );
+    }
+
+
     // Common LaTeX symbols
-    // ---------------------------------------------------
+
+    cleaned = cleaned
+      .replace(/\\pi\b/g, "π")
+      .replace(
+        /\\sqrt\{([^{}]+)\}/g,
+        "√($1)"
+      )
+      .replace(/\\sin\b/g, "sin")
+      .replace(/\\cos\b/g, "cos")
+      .replace(/\\tan\b/g, "tan")
+      .replace(/\\cot\b/g, "cot")
+      .replace(/\\sec\b/g, "sec")
+      .replace(/\\csc\b/g, "csc")
+      .replace(/\\log\b/g, "log")
+      .replace(/\\ln\b/g, "ln")
+      .replace(/\\lim\b/g, "lim")
+      .replace(/\\infty\b/g, "∞")
+      .replace(/\\times\b/g, "×")
+      .replace(/\\cdot\b/g, "·")
+      .replace(/\\leq\b/g, "≤")
+      .replace(/\\geq\b/g, "≥")
+      .replace(/\\neq\b/g, "≠")
+      .replace(/\\pm\b/g, "±");
+
+
+    // Remove positioning commands
 
     cleaned = cleaned.replace(
-      /\\pi\b/g,
-      "π"
-    );
-
-    cleaned = cleaned.replace(
-      /\\sqrt\{([^{}]+)\}/g,
-      "√($1)"
-    );
-
-    cleaned = cleaned.replace(
-      /\\sin\b/g,
-      "sin"
-    );
-
-    cleaned = cleaned.replace(
-      /\\cos\b/g,
-      "cos"
-    );
-
-    cleaned = cleaned.replace(
-      /\\tan\b/g,
-      "tan"
-    );
-
-    cleaned = cleaned.replace(
-      /\\cot\b/g,
-      "cot"
-    );
-
-    cleaned = cleaned.replace(
-      /\\sec\b/g,
-      "sec"
-    );
-
-    cleaned = cleaned.replace(
-      /\\csc\b/g,
-      "csc"
-    );
-
-    cleaned = cleaned.replace(
-      /\\log\b/g,
-      "log"
-    );
-
-    cleaned = cleaned.replace(
-      /\\ln\b/g,
-      "ln"
-    );
-
-    cleaned = cleaned.replace(
-      /\\lim\b/g,
-      "lim"
-    );
-
-    cleaned = cleaned.replace(
-      /\\infty\b/g,
-      "∞"
-    );
-
-    cleaned = cleaned.replace(
-      /\\times\b/g,
-      "×"
-    );
-
-    cleaned = cleaned.replace(
-      /\\cdot\b/g,
-      "·"
-    );
-
-    cleaned = cleaned.replace(
-      /\\leq\b/g,
-      "≤"
-    );
-
-    cleaned = cleaned.replace(
-      /\\geq\b/g,
-      "≥"
-    );
-
-    cleaned = cleaned.replace(
-      /\\neq\b/g,
-      "≠"
-    );
-
-    cleaned = cleaned.replace(
-      /\\pm\b/g,
-      "±"
-    );
-
-
-    // ---------------------------------------------------
-    // Remove LaTeX positioning commands
-    // ---------------------------------------------------
-
-    cleaned = cleaned.replace(
-      /\\left/g,
+      /\\left\b/g,
       ""
     );
 
     cleaned = cleaned.replace(
-      /\\right/g,
+      /\\right\b/g,
       ""
     );
 
 
-    // ---------------------------------------------------
-    // Remove common LaTeX commands
-    // ---------------------------------------------------
+    // Common commands
 
-    cleaned = cleaned.replace(
-      /\\text\{([^{}]*)\}/g,
-      "$1"
-    );
-
-    cleaned = cleaned.replace(
-      /\\mathrm\{([^{}]*)\}/g,
-      "$1"
-    );
-
-    cleaned = cleaned.replace(
-      /\\mathbf\{([^{}]*)\}/g,
-      "$1"
-    );
-
-    cleaned = cleaned.replace(
-      /\\displaystyle/g,
-      ""
-    );
+    cleaned = cleaned
+      .replace(
+        /\\text\{([^{}]*)\}/g,
+        "$1"
+      )
+      .replace(
+        /\\mathrm\{([^{}]*)\}/g,
+        "$1"
+      )
+      .replace(
+        /\\mathbf\{([^{}]*)\}/g,
+        "$1"
+      )
+      .replace(
+        /\\displaystyle/g,
+        ""
+      );
 
 
-    // ---------------------------------------------------
-    // Convert common superscripts
-    // ---------------------------------------------------
+    // Superscripts
 
-    cleaned = cleaned.replace(
-      /\^\{2\}/g,
-      "²"
-    );
-
-    cleaned = cleaned.replace(
-      /\^\{3\}/g,
-      "³"
-    );
-
-    cleaned = cleaned.replace(
-      /\^2/g,
-      "²"
-    );
-
-    cleaned = cleaned.replace(
-      /\^3/g,
-      "³"
-    );
+    cleaned = cleaned
+      .replace(
+        /\^\{2\}/g,
+        "²"
+      )
+      .replace(
+        /\^\{3\}/g,
+        "³"
+      )
+      .replace(
+        /\^2/g,
+        "²"
+      )
+      .replace(
+        /\^3/g,
+        "³"
+      );
 
 
-    // ---------------------------------------------------
-    // Convert inverse trig notation
-    // ---------------------------------------------------
+    // Inverse trig
 
-    cleaned = cleaned.replace(
-      /sin\^\{-1\}/g,
-      "sin⁻¹"
-    );
-
-    cleaned = cleaned.replace(
-      /cos\^\{-1\}/g,
-      "cos⁻¹"
-    );
-
-    cleaned = cleaned.replace(
-      /tan\^\{-1\}/g,
-      "tan⁻¹"
-    );
+    cleaned = cleaned
+      .replace(
+        /sin\^\{-1\}/g,
+        "sin⁻¹"
+      )
+      .replace(
+        /cos\^\{-1\}/g,
+        "cos⁻¹"
+      )
+      .replace(
+        /tan\^\{-1\}/g,
+        "tan⁻¹"
+      );
 
 
-    // ---------------------------------------------------
-    // Remove remaining curly braces
-    // ---------------------------------------------------
+    // Remove remaining braces
 
     cleaned = cleaned.replace(
       /[{}]/g,
@@ -460,21 +394,7 @@ function Home() {
     );
 
 
-    // ---------------------------------------------------
-    // Remove Markdown bullet characters
-    //
-    // Keep normal "-" inside sentences.
-    // ---------------------------------------------------
-
-    cleaned = cleaned.replace(
-      /^\s*[-*+]\s+/gm,
-      ""
-    );
-
-
-    // ---------------------------------------------------
-    // Remove excessive spaces
-    // ---------------------------------------------------
+    // Spaces
 
     cleaned = cleaned.replace(
       /[ \t]+/g,
@@ -482,9 +402,11 @@ function Home() {
     );
 
 
-    // ---------------------------------------------------
-    // Clean excessive blank lines
-    // ---------------------------------------------------
+    cleaned = cleaned.replace(
+      /\n[ \t]+/g,
+      "\n"
+    );
+
 
     cleaned = cleaned.replace(
       /\n{3,}/g,
@@ -497,29 +419,205 @@ function Home() {
 
 
   // =====================================================
+  // IMAGE -> COMPRESSED DATA URL
+  //
+  // This is what makes the old image persistent.
+  //
+  // We resize large images before saving them to MongoDB.
+  // =====================================================
+
+  const imageFileToDataUrl = file => {
+
+    return new Promise(
+      (resolve, reject) => {
+
+        if (!file) {
+          reject(
+            new Error(
+              "No image file provided"
+            )
+          );
+
+          return;
+        }
+
+        const reader =
+          new FileReader();
+
+        reader.onload = () => {
+
+          const img =
+            new Image();
+
+          img.onload = () => {
+
+            const maxSize = 1000;
+
+            let width =
+              img.width;
+
+            let height =
+              img.height;
+
+
+            if (
+              width > maxSize ||
+              height > maxSize
+            ) {
+
+              if (
+                width > height
+              ) {
+
+                height =
+                  Math.round(
+                    (
+                      height *
+                      maxSize
+                    ) / width
+                  );
+
+                width =
+                  maxSize;
+
+              } else {
+
+                width =
+                  Math.round(
+                    (
+                      width *
+                      maxSize
+                    ) / height
+                  );
+
+                height =
+                  maxSize;
+              }
+            }
+
+
+            const canvas =
+              document.createElement(
+                "canvas"
+              );
+
+            canvas.width =
+              width;
+
+            canvas.height =
+              height;
+
+
+            const ctx =
+              canvas.getContext(
+                "2d"
+              );
+
+
+            if (!ctx) {
+
+              reject(
+                new Error(
+                  "Could not create image canvas"
+                )
+              );
+
+              return;
+            }
+
+
+            ctx.drawImage(
+              img,
+              0,
+              0,
+              width,
+              height
+            );
+
+
+            /*
+            JPEG is used because it is much
+            smaller than the original image
+            for most photos/screenshots.
+            */
+
+            const compressed =
+              canvas.toDataURL(
+                "image/jpeg",
+                0.72
+              );
+
+
+            resolve(compressed);
+          };
+
+
+          img.onerror = () => {
+
+            reject(
+              new Error(
+                "Could not load image"
+              )
+            );
+          };
+
+
+          img.src =
+            reader.result;
+        };
+
+
+        reader.onerror = () => {
+
+          reject(
+            new Error(
+              "Could not read image"
+            )
+          );
+        };
+
+
+        reader.readAsDataURL(file);
+      }
+    );
+  };
+
+
+  // =====================================================
   // SAVE HISTORY
   // =====================================================
 
   const addHistory = async (
     command,
     answer,
-    type = "text"
+    type = "text",
+    image = ""
   ) => {
 
     const temporaryItem = {
-      _id: `temp-${Date.now()}`,
+
+      _id:
+        `temp-${Date.now()}`,
+
       command,
+
       answer,
+
       type,
+
+      image,
+
       createdAt:
         new Date().toISOString()
     };
 
 
-    setHistoryItems(previous => [
-      temporaryItem,
-      ...previous
-    ]);
+    setHistoryItems(
+      previous => [
+        temporaryItem,
+        ...previous
+      ]
+    );
 
 
     try {
@@ -530,7 +628,8 @@ function Home() {
           {
             command,
             answer,
-            type
+            type,
+            image
           },
           {
             withCredentials: true
@@ -538,18 +637,23 @@ function Home() {
         );
 
 
-      if (response.data?.history) {
+      if (
+        response.data?.history
+      ) {
 
         setHistoryItems(
           response.data.history
         );
 
-        setUserData(previous => ({
-          ...previous,
-          history:
-            response.data.history
-        }));
 
+        setUserData(
+          previous => ({
+            ...previous,
+
+            history:
+              response.data.history
+          })
+        );
       }
 
     } catch (error) {
@@ -568,50 +672,54 @@ function Home() {
   // DELETE HISTORY
   // =====================================================
 
-  const deleteHistory = async historyId => {
+  const deleteHistory =
+    async historyId => {
 
-    if (!historyId) {
-      return;
-    }
+      if (!historyId) {
+        return;
+      }
 
 
-    try {
+      try {
 
-      const response =
-        await axios.delete(
-          `${serverUrl}/api/user/history/${historyId}`,
-          {
-            withCredentials: true
-          }
+        const response =
+          await axios.delete(
+            `${serverUrl}/api/user/history/${historyId}`,
+            {
+              withCredentials: true
+            }
+          );
+
+
+        const updatedHistory =
+          response.data.history ||
+          [];
+
+
+        setHistoryItems(
+          updatedHistory
         );
 
 
-      const updatedHistory =
-        response.data.history || [];
+        setUserData(
+          previous => ({
+            ...previous,
+
+            history:
+              updatedHistory
+          })
+        );
 
 
-      setHistoryItems(
-        updatedHistory
-      );
+      } catch (error) {
 
-
-      setUserData(previous => ({
-        ...previous,
-        history:
-          updatedHistory
-      }));
-
-
-    } catch (error) {
-
-      console.error(
-        "DELETE HISTORY ERROR:",
-        error.response?.data ||
-        error.message
-      );
-
-    }
-  };
+        console.error(
+          "DELETE HISTORY ERROR:",
+          error.response?.data ||
+          error.message
+        );
+      }
+    };
 
 
   // =====================================================
@@ -620,7 +728,9 @@ function Home() {
 
   const clearHistory = async () => {
 
-    if (historyItems.length === 0) {
+    if (
+      historyItems.length === 0
+    ) {
       return;
     }
 
@@ -648,11 +758,22 @@ function Home() {
 
       setHistoryItems([]);
 
+      setHistoryImage("");
 
-      setUserData(previous => ({
-        ...previous,
-        history: []
-      }));
+      setUserText("");
+
+      setAiText("");
+
+      setShowAIText(false);
+
+
+      setUserData(
+        previous => ({
+          ...previous,
+
+          history: []
+        })
+      );
 
 
     } catch (error) {
@@ -662,7 +783,6 @@ function Home() {
         error.response?.data ||
         error.message
       );
-
     }
   };
 
@@ -689,7 +809,6 @@ function Home() {
 
     window.speechSynthesis.cancel();
 
-
     clearTimeout(
       speechTimeoutRef.current
     );
@@ -706,53 +825,65 @@ function Home() {
     let currentChunk = "";
 
 
-    sentences.forEach(sentence => {
+    sentences.forEach(
+      sentence => {
 
-      const cleanSentence =
-        sentence.trim();
-
-
-      if (!cleanSentence) {
-        return;
-      }
+        const cleanSentence =
+          sentence.trim();
 
 
-      const combined =
-        `${currentChunk} ${cleanSentence}`.trim();
-
-
-      if (combined.length > 180) {
-
-        if (currentChunk.trim()) {
-          chunks.push(
-            currentChunk.trim()
-          );
+        if (!cleanSentence) {
+          return;
         }
 
-        currentChunk =
-          cleanSentence;
 
-      } else {
+        const combined =
+          `${currentChunk} ${cleanSentence}`.trim();
 
-        currentChunk =
-          combined;
 
+        if (
+          combined.length > 180
+        ) {
+
+          if (
+            currentChunk.trim()
+          ) {
+
+            chunks.push(
+              currentChunk.trim()
+            );
+          }
+
+
+          currentChunk =
+            cleanSentence;
+
+        } else {
+
+          currentChunk =
+            combined;
+        }
       }
+    );
 
-    });
 
-
-    if (currentChunk.trim()) {
+    if (
+      currentChunk.trim()
+    ) {
 
       chunks.push(
         currentChunk.trim()
       );
-
     }
 
 
-    if (chunks.length === 0) {
-      chunks.push(speechText);
+    if (
+      chunks.length === 0
+    ) {
+
+      chunks.push(
+        speechText
+      );
     }
 
 
@@ -786,7 +917,6 @@ function Home() {
           try {
             recognitionRef.current.start();
           } catch {}
-
         }
 
         return;
@@ -800,17 +930,20 @@ function Home() {
 
 
       utterance.rate = 1;
+
       utterance.pitch = 1;
+
       utterance.volume = 1;
+
       utterance.lang = "en-US";
 
 
       utterance.onstart = () => {
 
-        speakingRef.current = true;
+        speakingRef.current =
+          true;
 
         setIsAIActive(true);
-
       };
 
 
@@ -820,12 +953,12 @@ function Home() {
 
 
         speechTimeoutRef.current =
-          setTimeout(() => {
-
-            speakNextChunk();
-
-          }, 80);
-
+          setTimeout(
+            () => {
+              speakNextChunk();
+            },
+            80
+          );
       };
 
 
@@ -841,24 +974,22 @@ function Home() {
 
 
         speechTimeoutRef.current =
-          setTimeout(() => {
-
-            speakNextChunk();
-
-          }, 80);
-
+          setTimeout(
+            () => {
+              speakNextChunk();
+            },
+            80
+          );
       };
 
 
       window.speechSynthesis.speak(
         utterance
       );
-
     };
 
 
     speakNextChunk();
-
   };
 
 
@@ -878,7 +1009,6 @@ function Home() {
       "_blank",
       "noopener,noreferrer"
     );
-
   };
 
 
@@ -898,7 +1028,6 @@ function Home() {
         query.trim()
       )}`
     );
-
   };
 
 
@@ -918,7 +1047,6 @@ function Home() {
         query.trim()
       )}`
     );
-
   };
 
 
@@ -987,7 +1115,6 @@ function Home() {
 
     telegram:
       "https://web.telegram.org"
-
   };
 
 
@@ -1072,9 +1199,7 @@ function Home() {
       default:
 
         return null;
-
     }
-
   };
 
 
@@ -1099,16 +1224,20 @@ function Home() {
       let match;
 
 
-      // search photosynthesis on Google
+      /*
+      search photosynthesis on Google
+      */
 
-      match = text.match(
-        /^(?:search|find|look up)\s+(.+?)\s+(?:on|in)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s*$/i
-      );
+      match =
+        text.match(
+          /^(?:search|find|look up)\s+(.+?)\s+(?:on|in)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s*$/i
+        );
 
 
       if (match) {
 
         return {
+
           site:
             match[2]
               .trim()
@@ -1117,20 +1246,23 @@ function Home() {
           query:
             match[1].trim()
         };
-
       }
 
 
-      // search Google for photosynthesis
+      /*
+      search Google for photosynthesis
+      */
 
-      match = text.match(
-        /^(?:search|find|look up)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s+(?:for)\s+(.+)$/i
-      );
+      match =
+        text.match(
+          /^(?:search|find|look up)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s+(?:for)\s+(.+)$/i
+        );
 
 
       if (match) {
 
         return {
+
           site:
             match[1]
               .trim()
@@ -1139,20 +1271,23 @@ function Home() {
           query:
             match[2].trim()
         };
-
       }
 
 
-      // open YouTube and search Sun Savaria
+      /*
+      open YouTube and search Sun Savaria
+      */
 
-      match = text.match(
-        /^(?:open|launch|visit|go to|take me to)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)(?:\s+website|\s+site)?\s+(?:and\s+)?(?:search|find|look up)\s+(.+)$/i
-      );
+      match =
+        text.match(
+          /^(?:open|launch|visit|go to|take me to)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)(?:\s+website|\s+site)?\s+(?:and\s+)?(?:search|find|look up)\s+(.+)$/i
+        );
 
 
       if (match) {
 
         return {
+
           site:
             match[1]
               .trim()
@@ -1161,12 +1296,10 @@ function Home() {
           query:
             match[2].trim()
         };
-
       }
 
 
       return null;
-
     };
 
 
@@ -1189,12 +1322,10 @@ function Home() {
       ) {
 
         return result.query;
-
       }
 
 
       return "";
-
     };
 
 
@@ -1216,6 +1347,14 @@ function Home() {
       if (!cleanedCommand) {
         return;
       }
+
+
+      /*
+      A new question is no longer
+      the previously opened history item.
+      */
+
+      setHistoryImage("");
 
 
       setUserText(
@@ -1301,7 +1440,6 @@ function Home() {
           ) {
 
             googleSearch(query);
-
           }
 
 
@@ -1311,7 +1449,6 @@ function Home() {
 
 
           return;
-
         }
 
 
@@ -1356,7 +1493,6 @@ function Home() {
 
 
           return;
-
         }
 
 
@@ -1399,7 +1535,6 @@ function Home() {
 
 
           return;
-
         }
 
 
@@ -1454,9 +1589,7 @@ function Home() {
 
 
             return;
-
           }
-
         }
 
 
@@ -1506,13 +1639,14 @@ function Home() {
           } catch {
 
             parsedResult = {
-              type: "general",
+
+              type:
+                "general",
+
               response:
                 cleanResult
             };
-
           }
-
         }
 
 
@@ -1549,7 +1683,6 @@ function Home() {
           openUrl(
             "https://www.google.com"
           );
-
         }
 
 
@@ -1578,9 +1711,7 @@ function Home() {
           if (query?.trim()) {
 
             googleSearch(query);
-
           }
-
         }
 
 
@@ -1596,7 +1727,6 @@ function Home() {
           openUrl(
             "https://www.youtube.com"
           );
-
         }
 
 
@@ -1627,9 +1757,7 @@ function Home() {
             youtubeSearch(
               query
             );
-
           }
-
         }
 
 
@@ -1645,7 +1773,6 @@ function Home() {
           openUrl(
             "https://www.google.com/search?q=calculator"
           );
-
         }
 
 
@@ -1672,7 +1799,6 @@ function Home() {
         if (shouldSpeak) {
 
           speak(response);
-
         }
 
 
@@ -1700,7 +1826,6 @@ function Home() {
           speak(
             errorMessage
           );
-
         }
 
       } finally {
@@ -1716,11 +1841,8 @@ function Home() {
         ) {
 
           setIsAIActive(false);
-
         }
-
       }
-
     };
 
 
@@ -1728,184 +1850,182 @@ function Home() {
   // SEND TYPED MESSAGE
   // =====================================================
 
-  const handleSend = async e => {
+  const handleSend =
+    async e => {
 
-    e?.preventDefault();
-
-
-    if (selectedImage) {
-
-      await analyzeImage();
-
-      return;
-
-    }
+      e?.preventDefault();
 
 
-    if (
-      !typedText.trim() ||
-      isSending
-    ) {
+      if (selectedImage) {
 
-      return;
+        await analyzeImage();
 
-    }
+        return;
+      }
 
 
-    const command =
-      typedText.trim();
+      if (
+        !typedText.trim() ||
+        isSending
+      ) {
+
+        return;
+      }
 
 
-    setTypedText("");
+      const command =
+        typedText.trim();
 
 
-    // Typed = NEVER SPEAK
+      setTypedText("");
 
-    await processCommand(
-      command,
-      "text",
-      false
-    );
 
-  };
+      setHistoryImage("");
+
+
+      /*
+      Typed questions NEVER speak.
+      */
+
+      await processCommand(
+        command,
+        "text",
+        false
+      );
+    };
 
 
   // =====================================================
   // IMAGE SELECT
   // =====================================================
 
-  const handleImageSelect = e => {
+  const handleImageSelect =
+    e => {
 
-    const file =
-      e.target.files?.[0];
-
-
-    if (!file) {
-      return;
-    }
+      const file =
+        e.target.files?.[0];
 
 
-    if (
-      !file.type.startsWith(
-        "image/"
-      )
-    ) {
-
-      alert(
-        "Please select an image file."
-      );
-
-      return;
-
-    }
-
-
-    if (
-      file.size >
-      10 * 1024 * 1024
-    ) {
-
-      alert(
-        "Image must be smaller than 10 MB."
-      );
-
-      return;
-
-    }
-
-
-    if (imagePreview) {
-
-      URL.revokeObjectURL(
-        imagePreview
-      );
-
-    }
-
-
-    setSelectedImage(file);
-
-    setImagePreview(
-      URL.createObjectURL(file)
-    );
-
-  };
-
-
-  // =====================================================
-  // PASTE IMAGE
-  //
-  // Supports:
-  //
-  // Ctrl + V
-  // Right click -> Paste
-  //
-  // from screenshots and copied images.
-  // =====================================================
-
-  const handlePaste = event => {
-
-    const clipboardItems =
-      event.clipboardData?.items;
-
-
-    if (!clipboardItems) {
-      return;
-    }
-
-
-    for (
-      let i = 0;
-      i < clipboardItems.length;
-      i++
-    ) {
-
-      const item =
-        clipboardItems[i];
+      if (!file) {
+        return;
+      }
 
 
       if (
-        item.type &&
-        item.type.startsWith(
+        !file.type.startsWith(
           "image/"
         )
       ) {
 
-        event.preventDefault();
-
-
-        const file =
-          item.getAsFile();
-
-
-        if (!file) {
-          return;
-        }
-
-
-        if (imagePreview) {
-
-          URL.revokeObjectURL(
-            imagePreview
-          );
-
-        }
-
-
-        setSelectedImage(file);
-
-        setImagePreview(
-          URL.createObjectURL(file)
+        alert(
+          "Please select an image file."
         );
 
-
         return;
-
       }
 
-    }
 
-  };
+      if (
+        file.size >
+        10 * 1024 * 1024
+      ) {
+
+        alert(
+          "Image must be smaller than 10 MB."
+        );
+
+        return;
+      }
+
+
+      if (imagePreview) {
+
+        URL.revokeObjectURL(
+          imagePreview
+        );
+      }
+
+
+      setHistoryImage("");
+
+
+      setSelectedImage(file);
+
+
+      setImagePreview(
+        URL.createObjectURL(file)
+      );
+    };
+
+
+  // =====================================================
+  // PASTE IMAGE
+  // =====================================================
+
+  const handlePaste =
+    event => {
+
+      const clipboardItems =
+        event.clipboardData?.items;
+
+
+      if (!clipboardItems) {
+        return;
+      }
+
+
+      for (
+        let i = 0;
+        i < clipboardItems.length;
+        i++
+      ) {
+
+        const item =
+          clipboardItems[i];
+
+
+        if (
+          item.type &&
+          item.type.startsWith(
+            "image/"
+          )
+        ) {
+
+          event.preventDefault();
+
+
+          const file =
+            item.getAsFile();
+
+
+          if (!file) {
+            return;
+          }
+
+
+          if (imagePreview) {
+
+            URL.revokeObjectURL(
+              imagePreview
+            );
+          }
+
+
+          setHistoryImage("");
+
+
+          setSelectedImage(file);
+
+
+          setImagePreview(
+            URL.createObjectURL(file)
+          );
+
+
+          return;
+        }
+      }
+    };
 
 
   // =====================================================
@@ -1919,7 +2039,6 @@ function Home() {
       URL.revokeObjectURL(
         imagePreview
       );
-
     }
 
 
@@ -1928,13 +2047,13 @@ function Home() {
     setImagePreview("");
 
 
-    if (imageInputRef.current) {
+    if (
+      imageInputRef.current
+    ) {
 
       imageInputRef.current.value =
         "";
-
     }
-
   };
 
 
@@ -1942,130 +2061,175 @@ function Home() {
   // IMAGE ANALYSIS
   // =====================================================
 
-  const analyzeImage = async () => {
-
-    if (
-      !selectedImage ||
-      isImageAnalyzing
-    ) {
-
-      return;
-
-    }
-
-
-    const question =
-      typedText.trim() ||
-      "Analyze this image and explain what you see.";
-
-
-    setIsImageAnalyzing(true);
-
-    setUserText(question);
-
-    setAiText("");
-
-    setShowAIText(false);
-
-    setIsAIActive(true);
-
-
-    try {
-
-      const formData =
-        new FormData();
-
-
-      formData.append(
-        "image",
-        selectedImage
-      );
-
-
-      formData.append(
-        "command",
-        question
-      );
-
-
-      const response =
-        await axios.post(
-          `${serverUrl}/api/user/analyze-image`,
-          formData,
-          {
-            withCredentials: true
-          }
-        );
-
-
-      const rawAnswer =
-        response.data?.response ||
-        response.data?.answer ||
-        "I could not analyze the image.";
-
-
-      const answer =
-        cleanAIResponse(
-          rawAnswer
-        );
-
-
-      setAiText(answer);
-
-      setShowAIText(true);
-
-
-      await addHistory(
-        question,
-        answer,
-        "image"
-      );
-
-
-      removeImage();
-
-      setTypedText("");
-
-
-    } catch (error) {
-
-      console.error(
-        "IMAGE ANALYSIS ERROR:",
-        error.response?.data ||
-        error.message
-      );
-
-
-      const errorMessage =
-        error.response?.data?.message ||
-        "Unable to analyze the image.";
-
-
-      setAiText(
-        cleanAIResponse(
-          errorMessage
-        )
-      );
-
-
-      setShowAIText(true);
-
-    } finally {
-
-      setIsImageAnalyzing(false);
-
+  const analyzeImage =
+    async () => {
 
       if (
-        !speakingRef.current
+        !selectedImage ||
+        isImageAnalyzing
       ) {
 
-        setIsAIActive(false);
-
+        return;
       }
 
-    }
 
-  };
+      const question =
+        typedText.trim() ||
+        "Analyze this image and explain what you see.";
+
+
+      setHistoryImage("");
+
+
+      setIsImageAnalyzing(true);
+
+      setUserText(question);
+
+      setAiText("");
+
+      setShowAIText(false);
+
+      setIsAIActive(true);
+
+
+      try {
+
+        // =================================================
+        // SEND ORIGINAL IMAGE TO GEMINI
+        // =================================================
+
+        const formData =
+          new FormData();
+
+
+        formData.append(
+          "image",
+          selectedImage
+        );
+
+
+        formData.append(
+          "command",
+          question
+        );
+
+
+        const response =
+          await axios.post(
+            `${serverUrl}/api/user/analyze-image`,
+            formData,
+            {
+              withCredentials: true
+            }
+          );
+
+
+        const rawAnswer =
+          response.data?.response ||
+          response.data?.answer ||
+          "I could not analyze the image.";
+
+
+        const answer =
+          cleanAIResponse(
+            rawAnswer
+          );
+
+
+        setAiText(answer);
+
+        setShowAIText(true);
+
+
+        // =================================================
+        // COMPRESS IMAGE FOR HISTORY
+        // =================================================
+
+        let imageForHistory = "";
+
+
+        try {
+
+          imageForHistory =
+            await imageFileToDataUrl(
+              selectedImage
+            );
+
+        } catch (imageError) {
+
+          console.error(
+            "IMAGE HISTORY CONVERSION ERROR:",
+            imageError
+          );
+
+          /*
+          The AI answer can still work even
+          if history-image conversion fails.
+          */
+
+          imageForHistory = "";
+        }
+
+
+        // =================================================
+        // SAVE QUESTION + ANSWER + IMAGE
+        // =================================================
+
+        await addHistory(
+          question,
+          answer,
+          "image",
+          imageForHistory
+        );
+
+
+        // =================================================
+        // REMOVE CURRENT SELECTED IMAGE
+        // =================================================
+
+        removeImage();
+
+        setTypedText("");
+
+
+      } catch (error) {
+
+        console.error(
+          "IMAGE ANALYSIS ERROR:",
+          error.response?.data ||
+          error.message
+        );
+
+
+        const errorMessage =
+          error.response?.data?.message ||
+          "Unable to analyze the image.";
+
+
+        setAiText(
+          cleanAIResponse(
+            errorMessage
+          )
+        );
+
+
+        setShowAIText(true);
+
+      } finally {
+
+        setIsImageAnalyzing(
+          false
+        );
+
+
+        if (
+          !speakingRef.current
+        ) {
+
+          setIsAIActive(false);
+        }
+      }
+    };
 
 
   // =====================================================
@@ -2086,7 +2250,6 @@ function Home() {
       );
 
       return;
-
     }
 
 
@@ -2094,7 +2257,8 @@ function Home() {
       new SpeechRecognition();
 
 
-    recognition.continuous = true;
+    recognition.continuous =
+      true;
 
     recognition.lang =
       "en-US";
@@ -2110,14 +2274,14 @@ function Home() {
       recognition;
 
 
-    recognition.onstart = () => {
+    recognition.onstart =
+      () => {
 
-      listeningRef.current =
-        true;
+        listeningRef.current =
+          true;
 
-      setIsListening(true);
-
-    };
+        setIsListening(true);
+      };
 
 
     recognition.onresult =
@@ -2128,7 +2292,6 @@ function Home() {
         ) {
 
           return;
-
         }
 
 
@@ -2161,13 +2324,18 @@ function Home() {
         const stopCommands = [
 
           "thank you",
-          "thanks",
-          "stop",
-          "bye",
-          "goodbye",
-          "stop listening",
-          "cancel"
 
+          "thanks",
+
+          "stop",
+
+          "bye",
+
+          "goodbye",
+
+          "stop listening",
+
+          "cancel"
         ];
 
 
@@ -2180,7 +2348,6 @@ function Home() {
           stopListening();
 
           return;
-
         }
 
 
@@ -2189,50 +2356,53 @@ function Home() {
         );
 
 
-        // Voice = complete answer + speech
+        /*
+        Voice questions speak the
+        complete answer.
+        */
 
         await processCommand(
           transcript,
           "voice",
           true
         );
-
       };
 
 
-    recognition.onend = () => {
+    recognition.onend =
+      () => {
 
-      if (
-        listeningRef.current &&
-        !speakingRef.current &&
-        !processingRef.current
-      ) {
+        if (
+          listeningRef.current &&
+          !speakingRef.current &&
+          !processingRef.current
+        ) {
 
-        clearTimeout(
-          restartTimeoutRef.current
-        );
+          clearTimeout(
+            restartTimeoutRef.current
+          );
 
 
-        restartTimeoutRef.current =
-          setTimeout(() => {
+          restartTimeoutRef.current =
+            setTimeout(
+              () => {
 
-            try {
+                try {
 
-              recognition.start();
+                  recognition.start();
 
-            } catch {}
+                } catch {}
+              },
+              400
+            );
 
-          }, 400);
+        } else if (
+          !listeningRef.current
+        ) {
 
-      } else if (
-        !listeningRef.current
-      ) {
-
-        setIsListening(false);
-
-      }
-
-    };
+          setIsListening(false);
+        }
+      };
 
 
     recognition.onerror =
@@ -2255,9 +2425,7 @@ function Home() {
             false;
 
           setIsListening(false);
-
         }
-
       };
 
 
@@ -2292,7 +2460,6 @@ function Home() {
 
       recognitionRef.current =
         null;
-
     };
 
   }, [getGeminiResponse]);
@@ -2302,77 +2469,78 @@ function Home() {
   // START LISTENING
   // =====================================================
 
-  const startListening = () => {
+  const startListening =
+    () => {
 
-    if (
-      !recognitionRef.current
-    ) {
+      if (
+        !recognitionRef.current
+      ) {
 
-      alert(
-        "Speech recognition is not supported in this browser."
-      );
+        alert(
+          "Speech recognition is not supported in this browser."
+        );
 
-      return;
-
-    }
-
-
-    try {
-
-      window.speechSynthesis.cancel();
-
-      speakingRef.current =
-        false;
-
-      listeningRef.current =
-        true;
-
-      setIsListening(true);
+        return;
+      }
 
 
-      recognitionRef.current.start();
+      try {
 
-    } catch {
+        window.speechSynthesis.cancel();
 
-      console.log(
-        "Microphone already running."
-      );
 
-    }
+        speakingRef.current =
+          false;
 
-  };
+
+        listeningRef.current =
+          true;
+
+
+        setIsListening(true);
+
+
+        recognitionRef.current.start();
+
+      } catch {
+
+        console.log(
+          "Microphone already running."
+        );
+      }
+    };
 
 
   // =====================================================
   // STOP LISTENING
   // =====================================================
 
-  const stopListening = () => {
+  const stopListening =
+    () => {
 
-    listeningRef.current =
-      false;
-
-    setIsListening(false);
-
-
-    clearTimeout(
-      restartTimeoutRef.current
-    );
+      listeningRef.current =
+        false;
 
 
-    if (
-      recognitionRef.current
-    ) {
+      setIsListening(false);
 
-      try {
 
-        recognitionRef.current.stop();
+      clearTimeout(
+        restartTimeoutRef.current
+      );
 
-      } catch {}
 
-    }
+      if (
+        recognitionRef.current
+      ) {
 
-  };
+        try {
+
+          recognitionRef.current.stop();
+
+        } catch {}
+      }
+    };
 
 
   // =====================================================
@@ -2398,14 +2566,12 @@ function Home() {
           "LOGOUT ERROR:",
           error
         );
-
       }
 
 
       setUserData(null);
 
       navigate("/signin");
-
     };
 
 
@@ -2414,95 +2580,135 @@ function Home() {
   // =====================================================
 
   const filteredHistory =
-    historyItems.filter(item => {
+    historyItems.filter(
+      item => {
 
-      const command =
-        item?.command ||
-        item?.text ||
-        item?.query ||
-        "";
-
-
-      const answer =
-        item?.answer ||
-        "";
+        const command =
+          item?.command ||
+          item?.text ||
+          item?.query ||
+          "";
 
 
-      const search =
-        historySearch
-          .toLowerCase()
-          .trim();
+        const answer =
+          item?.answer ||
+          "";
 
 
-      if (!search) {
-        return true;
+        const search =
+          historySearch
+            .toLowerCase()
+            .trim();
+
+
+        if (!search) {
+          return true;
+        }
+
+
+        return (
+          command
+            .toLowerCase()
+            .includes(search) ||
+
+          answer
+            .toLowerCase()
+            .includes(search)
+        );
       }
-
-
-      return (
-        command
-          .toLowerCase()
-          .includes(search) ||
-        answer
-          .toLowerCase()
-          .includes(search)
-      );
-
-    });
+    );
 
 
   // =====================================================
   // OPEN HISTORY
   // =====================================================
 
-  const openHistory = item => {
+  const openHistory =
+    item => {
 
-    const command =
-      item?.command || "";
-
-
-    const answer =
-      item?.answer || "";
+      const command =
+        item?.command || "";
 
 
-    setUserText(command);
+      const answer =
+        item?.answer || "";
 
-    setAiText(
-      cleanAIResponse(answer)
-    );
 
-    setShowAIText(true);
+      setUserText(
+        command
+      );
 
-    setShowHistory(false);
 
-  };
+      setAiText(
+        cleanAIResponse(
+          answer
+        )
+      );
+
+
+      setShowAIText(true);
+
+
+      /*
+      -----------------------------------------------
+      IMPORTANT:
+      Restore old image here.
+      -----------------------------------------------
+      */
+
+      if (
+        item?.type === "image" &&
+        item?.image
+      ) {
+
+        setHistoryImage(
+          item.image
+        );
+
+      } else {
+
+        setHistoryImage("");
+      }
+
+
+      /*
+      The old image is NOT placed into
+      selectedImage/imagePreview.
+
+      Therefore clicking old history
+      will not accidentally send it again.
+      */
+
+
+      setShowHistory(false);
+    };
 
 
   // =====================================================
   // FORMAT DATE
   // =====================================================
 
-  const formatDate = date => {
+  const formatDate =
+    date => {
 
-    if (!date) {
-      return "";
-    }
-
-
-    return new Date(
-      date
-    ).toLocaleString(
-      "en-IN",
-      {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
+      if (!date) {
+        return "";
       }
-    );
 
-  };
+
+      return new Date(
+        date
+      ).toLocaleString(
+        "en-IN",
+        {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        }
+      );
+    };
 
 
   // =====================================================
@@ -2568,7 +2774,6 @@ function Home() {
               setShowProfileMenu(
                 false
               );
-
             }}
             className="
               flex
@@ -2594,9 +2799,13 @@ function Home() {
           >
 
             {showHistory ? (
-              <IoMdClose size={22} />
+              <IoMdClose
+                size={22}
+              />
             ) : (
-              <IoMdMenu size={22} />
+              <IoMdMenu
+                size={22}
+              />
             )}
 
           </button>
@@ -2632,10 +2841,8 @@ function Home() {
                 text-white
               "
             >
-
               {userData?.assistantName ||
                 "Assistant"}
-
             </p>
 
 
@@ -2647,9 +2854,7 @@ function Home() {
                 sm:block
               "
             >
-
               Virtual Assistant
-
             </p>
 
           </div>
@@ -2688,9 +2893,7 @@ function Home() {
               sm:block
             "
           >
-
             Customize
-
           </button>
 
 
@@ -2703,7 +2906,6 @@ function Home() {
               );
 
               setShowHistory(false);
-
             }}
             className="
               flex
@@ -2743,8 +2945,9 @@ function Home() {
 
             ) : (
 
-              <FiSettings size={19} />
-
+              <FiSettings
+                size={19}
+              />
             )}
 
           </button>
@@ -2791,10 +2994,8 @@ function Home() {
                     text-white
                   "
                 >
-
                   {userData?.name ||
                     "User"}
-
                 </p>
 
 
@@ -2805,10 +3006,8 @@ function Home() {
                     text-gray-500
                   "
                 >
-
                   {userData?.email ||
                     "Account"}
-
                 </p>
 
               </div>
@@ -2824,7 +3023,6 @@ function Home() {
                   setShowProfileMenu(
                     false
                   );
-
                 }}
                 className="
                   flex
@@ -2863,7 +3061,6 @@ function Home() {
                   setShowProfileMenu(
                     false
                   );
-
                 }}
                 disabled={
                   historyItems.length === 0
@@ -2887,7 +3084,9 @@ function Home() {
                 "
               >
 
-                <FiTrash2 size={17} />
+                <FiTrash2
+                  size={17}
+                />
 
                 <span>
                   Clear All History
@@ -2906,7 +3105,6 @@ function Home() {
                   setShowProfileMenu(
                     false
                   );
-
                 }}
                 className="
                   flex
@@ -2966,7 +3164,9 @@ function Home() {
                 "
               >
 
-                <FiLogOut size={17} />
+                <FiLogOut
+                  size={17}
+                />
 
                 <span>
                   Logout
@@ -2975,7 +3175,6 @@ function Home() {
               </button>
 
             </div>
-
           )}
 
         </div>
@@ -3047,6 +3246,7 @@ function Home() {
                   History
                 </h2>
 
+
                 <p
                   className="
                     text-xs
@@ -3094,7 +3294,9 @@ function Home() {
               "
             >
 
-              <div className="relative">
+              <div
+                className="relative"
+              >
 
                 <FiSearch
                   className="
@@ -3206,10 +3408,8 @@ function Home() {
                               text-cyan-300
                             "
                           >
-
                             {item.type ||
                               "text"}
-
                           </span>
 
 
@@ -3229,16 +3429,38 @@ function Home() {
                             />
 
                             <span className="truncate">
-
                               {formatDate(
                                 item.createdAt
                               )}
-
                             </span>
 
                           </span>
 
                         </div>
+
+
+                        {/* IMAGE THUMBNAIL IN HISTORY */}
+
+                        {item?.type === "image" &&
+                          item?.image && (
+
+                            <img
+                              src={
+                                item.image
+                              }
+                              alt="Previous question"
+                              className="
+                                mb-3
+                                h-28
+                                w-full
+                                rounded-xl
+                                border
+                                border-white/10
+                                bg-black/20
+                                object-cover
+                              "
+                            />
+                          )}
 
 
                         <p
@@ -3249,9 +3471,7 @@ function Home() {
                             text-gray-300
                           "
                         >
-
                           {item.command}
-
                         </p>
 
 
@@ -3267,11 +3487,8 @@ function Home() {
                               text-gray-600
                             "
                           >
-
                             {item.answer}
-
                           </p>
-
                         )}
 
                       </button>
@@ -3309,13 +3526,10 @@ function Home() {
                             Delete
 
                           </button>
-
                         )}
 
                     </div>
-
                   )
-
                 )
 
               ) : (
@@ -3361,7 +3575,6 @@ function Home() {
                   </p>
 
                 </div>
-
               )}
 
             </div>
@@ -3369,7 +3582,6 @@ function Home() {
           </aside>
 
         </>
-
       )}
 
 
@@ -3399,14 +3611,8 @@ function Home() {
           "
         >
 
-
           {/* =================================================
               CONVERSATION AREA
-
-              IMPORTANT:
-              This is now scrollable.
-
-              Long answers will NOT be cut.
           ================================================= */}
 
           <div
@@ -3423,8 +3629,6 @@ function Home() {
               pb-6
             "
           >
-
-            {/* TOP CONTENT */}
 
             <div
               className="
@@ -3491,10 +3695,8 @@ function Home() {
                   md:text-3xl
                 "
               >
-
                 {userData?.assistantName ||
                   "Assistant"}
-
               </h1>
 
 
@@ -3521,6 +3723,55 @@ function Home() {
               </p>
 
 
+              {/* =================================================
+                  RESTORED HISTORICAL IMAGE
+
+                  This is the main new feature.
+              ================================================= */}
+
+              {historyImage && (
+
+                <div
+                  className="
+                    mt-6
+                    w-full
+                    max-w-2xl
+                    overflow-hidden
+                    rounded-2xl
+                    border
+                    border-cyan-400/10
+                    bg-black/20
+                    p-2
+                    sm:mt-8
+                  "
+                >
+
+                  <img
+                    src={historyImage}
+                    alt="Previous image question"
+                    className="
+                      max-h-112
+                      w-full
+                      rounded-xl
+                      object-contain
+                    "
+                  />
+
+                  <p
+                    className="
+                      mt-2
+                      text-center
+                      text-[10px]
+                      text-gray-600
+                    "
+                  >
+                    Previous image from history
+                  </p>
+
+                </div>
+              )}
+
+
               {/* USER QUESTION */}
 
               {userText && (
@@ -3545,11 +3796,8 @@ function Home() {
                     sm:px-5
                   "
                 >
-
                   {userText}
-
                 </div>
-
               )}
 
 
@@ -3568,7 +3816,7 @@ function Home() {
                       rounded-2xl
                       border
                       border-white/10
-                      bg-white/3
+                     bg-white/3
                       px-4
                       py-5
                       text-left
@@ -3581,11 +3829,8 @@ function Home() {
                       sm:text-base
                     "
                   >
-
                     {aiText}
-
                   </div>
-
                 )}
 
             </div>
@@ -3594,7 +3839,7 @@ function Home() {
 
 
           {/* =================================================
-              IMAGE PREVIEW
+              CURRENT IMAGE PREVIEW
           ================================================= */}
 
           {imagePreview && (
@@ -3690,14 +3935,15 @@ function Home() {
                   "
                 >
 
-                  <FiX size={18} />
+                  <FiX
+                    size={18}
+                  />
 
                 </button>
 
               </div>
 
             </div>
-
           )}
 
 
@@ -3756,7 +4002,9 @@ function Home() {
                 title="Analyze image"
               >
 
-                <FiImage size={19} />
+                <FiImage
+                  size={19}
+                />
 
               </button>
 
@@ -3835,9 +4083,16 @@ function Home() {
               >
 
                 {isListening ? (
-                  <FiMicOff size={19} />
+
+                  <FiMicOff
+                    size={19}
+                  />
+
                 ) : (
-                  <FiMic size={19} />
+
+                  <FiMic
+                    size={19}
+                  />
                 )}
 
               </button>
@@ -3878,7 +4133,9 @@ function Home() {
                 }
               >
 
-                <FiSend size={18} />
+                <FiSend
+                  size={18}
+                />
 
               </button>
 
@@ -3905,9 +4162,7 @@ function Home() {
       </main>
 
     </div>
-
   );
-
 }
 
 

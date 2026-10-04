@@ -1,5 +1,6 @@
 import geminiResponse, {
-  geminiImageResponse
+  geminiImageResponse,
+  geminiPdfResponse
 } from "../gemini.js";
 
 import User from "../models/user.model.js";
@@ -8,18 +9,21 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 
 import moment from "moment";
 
-
 /*
 =====================================================
 GET CURRENT USER
 =====================================================
 */
 
-export const getCurrentUser = async (req, res) => {
+export const getCurrentUser = async (
+  req,
+  res
+) => {
   try {
     const user =
-      await User.findById(req.userId)
-        .select("-password");
+      await User.findById(
+        req.userId
+      ).select("-password");
 
     if (!user) {
       return res.status(404).json({
@@ -36,12 +40,13 @@ export const getCurrentUser = async (req, res) => {
     );
 
     return res.status(500).json({
-      message: "Get current user error",
-      error: error.message
+      message:
+        "Get current user error",
+      error:
+        error.message
     });
   }
 };
-
 
 /*
 =====================================================
@@ -59,7 +64,8 @@ export const updateAssistant = async (
       imageUrl
     } = req.body;
 
-    let finalImageUrl = imageUrl;
+    let finalImageUrl =
+      imageUrl;
 
     if (req.file) {
       finalImageUrl =
@@ -94,11 +100,14 @@ export const updateAssistant = async (
 
     if (!user) {
       return res.status(404).json({
-        message: "User not found"
+        message:
+          "User not found"
       });
     }
 
-    return res.status(200).json(user);
+    return res.status(200).json(
+      user
+    );
 
   } catch (error) {
     console.error(
@@ -107,12 +116,13 @@ export const updateAssistant = async (
     );
 
     return res.status(500).json({
-      message: "Update assistant error",
-      error: error.message
+      message:
+        "Update assistant error",
+      error:
+        error.message
     });
   }
 };
-
 
 /*
 =====================================================
@@ -132,8 +142,10 @@ export const saveHistory = async (
     } = req.body;
 
     if (
-      typeof command !== "string" ||
-      typeof answer !== "string"
+      typeof command !==
+        "string" ||
+      typeof answer !==
+        "string"
     ) {
       return res.status(400).json({
         message:
@@ -160,7 +172,8 @@ export const saveHistory = async (
     const validTypes = [
       "text",
       "voice",
-      "image"
+      "image",
+      "pdf"
     ];
 
     const historyType =
@@ -169,25 +182,36 @@ export const saveHistory = async (
         : "text";
 
     const user =
-      await User.findById(req.userId);
+      await User.findById(
+        req.userId
+      );
 
     if (!user) {
       return res.status(404).json({
-        message: "User not found"
+        message:
+          "User not found"
       });
     }
 
     user.history.unshift({
-      command: trimmedCommand,
-      answer: trimmedAnswer,
-      type: historyType
+      command:
+        trimmedCommand,
+
+      answer:
+        trimmedAnswer,
+
+      type:
+        historyType
     });
 
     await user.save();
 
     return res.status(200).json({
-      message: "History saved",
-      history: user.history
+      message:
+        "History saved",
+
+      history:
+        user.history
     });
 
   } catch (error) {
@@ -197,12 +221,14 @@ export const saveHistory = async (
     );
 
     return res.status(500).json({
-      message: "Could not save history",
-      error: error.message
+      message:
+        "Could not save history",
+
+      error:
+        error.message
     });
   }
 };
-
 
 /*
 =====================================================
@@ -220,16 +246,21 @@ export const deleteHistory = async (
     } = req.params;
 
     const user =
-      await User.findById(req.userId);
+      await User.findById(
+        req.userId
+      );
 
     if (!user) {
       return res.status(404).json({
-        message: "User not found"
+        message:
+          "User not found"
       });
     }
 
     const historyItem =
-      user.history.id(historyId);
+      user.history.id(
+        historyId
+      );
 
     if (!historyItem) {
       return res.status(404).json({
@@ -243,8 +274,11 @@ export const deleteHistory = async (
     await user.save();
 
     return res.status(200).json({
-      message: "History deleted",
-      history: user.history
+      message:
+        "History deleted",
+
+      history:
+        user.history
     });
 
   } catch (error) {
@@ -255,11 +289,13 @@ export const deleteHistory = async (
 
     return res.status(500).json({
       message:
-        "Could not delete history"
+        "Could not delete history",
+
+      error:
+        error.message
     });
   }
 };
-
 
 /*
 =====================================================
@@ -273,11 +309,14 @@ export const clearHistory = async (
 ) => {
   try {
     const user =
-      await User.findById(req.userId);
+      await User.findById(
+        req.userId
+      );
 
     if (!user) {
       return res.status(404).json({
-        message: "User not found"
+        message:
+          "User not found"
       });
     }
 
@@ -286,7 +325,9 @@ export const clearHistory = async (
     await user.save();
 
     return res.status(200).json({
-      message: "All history cleared",
+      message:
+        "All history cleared",
+
       history: []
     });
 
@@ -302,7 +343,6 @@ export const clearHistory = async (
     });
   }
 };
-
 
 /*
 =====================================================
@@ -321,32 +361,39 @@ export const askToAssistant = async (
 
     if (
       !command ||
-      typeof command !== "string"
+      typeof command !==
+        "string"
     ) {
       return res.status(400).json({
-        message: "Command is required"
+        message:
+          "Command is required"
       });
     }
 
     const user =
-      await User.findById(req.userId);
+      await User.findById(
+        req.userId
+      );
 
     if (!user) {
       return res.status(404).json({
-        message: "User not found"
+        message:
+          "User not found"
       });
     }
 
     const userName =
-      user.name || "User";
+      user.name ||
+      "User";
 
     const assistantName =
       user.assistantName ||
       "Assistant";
 
     const lowerCommand =
-      command.toLowerCase().trim();
-
+      command
+        .toLowerCase()
+        .trim();
 
     /*
     =================================================
@@ -366,13 +413,16 @@ export const askToAssistant = async (
       )
     ) {
       return res.status(200).json({
-        type: "general",
-        userInput: command,
+        type:
+          "general",
+
+        userInput:
+          command,
+
         response:
           `My name is ${assistantName}.`
       });
     }
-
 
     /*
     =================================================
@@ -392,13 +442,16 @@ export const askToAssistant = async (
       )
     ) {
       return res.status(200).json({
-        type: "general",
-        userInput: command,
+        type:
+          "general",
+
+        userInput:
+          command,
+
         response:
           "I was created by my developer."
       });
     }
-
 
     /*
     =================================================
@@ -410,21 +463,25 @@ export const askToAssistant = async (
       lowerCommand.includes(
         "what time is it"
       ) ||
-      lowerCommand === "time" ||
+      lowerCommand ===
+        "time" ||
       lowerCommand.includes(
         "current time"
       )
     ) {
       return res.status(200).json({
-        type: "general",
-        userInput: command,
+        type:
+          "general",
+
+        userInput:
+          command,
+
         response:
           `The current time is ${moment().format(
             "hh:mm A"
           )}.`
       });
     }
-
 
     /*
     =================================================
@@ -439,21 +496,25 @@ export const askToAssistant = async (
       lowerCommand.includes(
         "what is the date"
       ) ||
-      lowerCommand === "date" ||
+      lowerCommand ===
+        "date" ||
       lowerCommand.includes(
         "today's date"
       )
     ) {
       return res.status(200).json({
-        type: "general",
-        userInput: command,
+        type:
+          "general",
+
+        userInput:
+          command,
+
         response:
           `Today's date is ${moment().format(
             "DD MMMM YYYY"
           )}.`
       });
     }
-
 
     /*
     =================================================
@@ -465,21 +526,25 @@ export const askToAssistant = async (
       lowerCommand.includes(
         "what day is it"
       ) ||
-      lowerCommand === "day" ||
+      lowerCommand ===
+        "day" ||
       lowerCommand.includes(
         "today's day"
       )
     ) {
       return res.status(200).json({
-        type: "general",
-        userInput: command,
+        type:
+          "general",
+
+        userInput:
+          command,
+
         response:
           `Today is ${moment().format(
             "dddd"
           )}.`
       });
     }
-
 
     /*
     =================================================
@@ -491,18 +556,22 @@ export const askToAssistant = async (
       lowerCommand.includes(
         "what month is it"
       ) ||
-      lowerCommand === "month"
+      lowerCommand ===
+        "month"
     ) {
       return res.status(200).json({
-        type: "general",
-        userInput: command,
+        type:
+          "general",
+
+        userInput:
+          command,
+
         response:
           `This month is ${moment().format(
             "MMMM"
           )}.`
       });
     }
-
 
     /*
     =================================================
@@ -517,15 +586,25 @@ export const askToAssistant = async (
         userName
       );
 
-    let data = result;
+    let data =
+      result;
 
-    if (typeof result === "string") {
+    if (
+      typeof result ===
+      "string"
+    ) {
       try {
-        data = JSON.parse(result);
+        data =
+          JSON.parse(
+            result
+          );
       } catch {
         data = {
-          type: "general",
-          response: result
+          type:
+            "general",
+
+          response:
+            result
         };
       }
     }
@@ -551,12 +630,14 @@ export const askToAssistant = async (
     );
 
     return res.status(500).json({
-      message: "Assistant error",
-      error: error.message
+      message:
+        "Assistant error",
+
+      error:
+        error.message
     });
   }
 };
-
 
 /*
 =====================================================
@@ -575,21 +656,37 @@ export const analyzeImage = async (
 
     if (!req.file) {
       return res.status(400).json({
-        message: "Image is required"
+        message:
+          "Image is required"
+      });
+    }
+
+    if (
+      !req.file.mimetype.startsWith(
+        "image/"
+      )
+    ) {
+      return res.status(400).json({
+        message:
+          "Only image files are allowed"
       });
     }
 
     const user =
-      await User.findById(req.userId);
+      await User.findById(
+        req.userId
+      );
 
     if (!user) {
       return res.status(404).json({
-        message: "User not found"
+        message:
+          "User not found"
       });
     }
 
     const userName =
-      user.name || "User";
+      user.name ||
+      "User";
 
     const assistantName =
       user.assistantName ||
@@ -609,8 +706,12 @@ export const analyzeImage = async (
       );
 
     return res.status(200).json({
-      type: "image",
-      userInput: question,
+      type:
+        "image",
+
+      userInput:
+        question,
+
       response
     });
 
@@ -623,7 +724,99 @@ export const analyzeImage = async (
     return res.status(500).json({
       message:
         "Unable to analyze image",
-      error: error.message
+
+      error:
+        error.message
+    });
+  }
+};
+
+/*
+=====================================================
+PDF ANALYSIS
+=====================================================
+*/
+
+export const analyzePdf = async (
+  req,
+  res
+) => {
+  try {
+    const {
+      command
+    } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({
+        message:
+          "PDF is required"
+      });
+    }
+
+    if (
+      req.file.mimetype !==
+      "application/pdf"
+    ) {
+      return res.status(400).json({
+        message:
+          "Only PDF files are allowed"
+      });
+    }
+
+    const user =
+      await User.findById(
+        req.userId
+      );
+
+    if (!user) {
+      return res.status(404).json({
+        message:
+          "User not found"
+      });
+    }
+
+    const userName =
+      user.name ||
+      "User";
+
+    const assistantName =
+      user.assistantName ||
+      "Assistant";
+
+    const question =
+      command?.trim() ||
+      "Please analyze this PDF and explain what you see.";
+
+    const response =
+      await geminiPdfResponse(
+        question,
+        req.file.buffer,
+        assistantName,
+        userName
+      );
+
+    return res.status(200).json({
+      type:
+        "pdf",
+
+      userInput:
+        question,
+
+      response
+    });
+
+  } catch (error) {
+    console.error(
+      "PDF ANALYSIS ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        "Unable to analyze PDF",
+
+      error:
+        error.message
     });
   }
 };
