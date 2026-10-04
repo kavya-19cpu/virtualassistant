@@ -94,7 +94,7 @@ function Home() {
 
 
   // =====================================================
-  // IMAGE
+  // IMAGE STATE
   // =====================================================
 
   const [selectedImage, setSelectedImage] =
@@ -111,7 +111,7 @@ function Home() {
 
 
   // =====================================================
-  // PDF
+  // PDF STATE
   // =====================================================
 
   const [selectedPdf, setSelectedPdf] =
@@ -156,7 +156,25 @@ function Home() {
     useRef(null);
 
   const assistantNameRef =
-    useRef("");
+    useRef("Assistant");
+
+  /*
+   * IMPORTANT
+   *
+   * Keep the latest Gemini function in a ref.
+   * This prevents SpeechRecognition from being
+   * destroyed/recreated on every React render.
+   */
+  const getGeminiResponseRef =
+    useRef(getGeminiResponse);
+
+
+  useEffect(() => {
+
+    getGeminiResponseRef.current =
+      getGeminiResponse;
+
+  }, [getGeminiResponse]);
 
 
   // =====================================================
@@ -173,7 +191,7 @@ function Home() {
 
 
   // =====================================================
-  // LOAD HISTORY
+  // HISTORY
   // =====================================================
 
   useEffect(() => {
@@ -188,7 +206,7 @@ function Home() {
 
 
   // =====================================================
-  // CLEAN GEMINI RESPONSE
+  // CLEAN AI RESPONSE
   // =====================================================
 
   const cleanAIResponse = text => {
@@ -197,451 +215,565 @@ function Home() {
       return "";
     }
 
-    let cleaned = String(text);
-
-    cleaned = cleaned.replace(
-      /```(?:json|javascript|js|text|markdown|md)?/gi,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /```/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\*\*/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /__/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /^\s*#{1,6}\s*/gm,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /^\s*>\s?/gm,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /^\s*[-*+]\s+/gm,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /`/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\$\$/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\[/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\]/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\(/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\)/g,
-      ""
-    );
+    let cleaned =
+      String(text);
 
 
-    let previous = "";
-
-    while (previous !== cleaned) {
-
-      previous = cleaned;
-
-      cleaned = cleaned.replace(
-        /\\(?:frac|dfrac|tfrac)\{([^{}]+)\}\{([^{}]+)\}/g,
-        "$1/$2"
-      );
-
-    }
-
-
-    cleaned = cleaned
-      .replace(/\\pi\b/g, "π")
-      .replace(
-        /\\sqrt\{([^{}]+)\}/g,
-        "√($1)"
-      )
-      .replace(/\\sin\b/g, "sin")
-      .replace(/\\cos\b/g, "cos")
-      .replace(/\\tan\b/g, "tan")
-      .replace(/\\cot\b/g, "cot")
-      .replace(/\\sec\b/g, "sec")
-      .replace(/\\csc\b/g, "csc")
-      .replace(/\\log\b/g, "log")
-      .replace(/\\ln\b/g, "ln")
-      .replace(/\\lim\b/g, "lim")
-      .replace(/\\infty\b/g, "∞")
-      .replace(/\\times\b/g, "×")
-      .replace(/\\cdot\b/g, "·")
-      .replace(/\\leq\b/g, "≤")
-      .replace(/\\geq\b/g, "≥")
-      .replace(/\\neq\b/g, "≠")
-      .replace(/\\pm\b/g, "±");
-
-
-    cleaned = cleaned.replace(
-      /\\left\b/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\right\b/g,
-      ""
-    );
-
-
-    cleaned = cleaned
-      .replace(
-        /\\text\{([^{}]*)\}/g,
-        "$1"
-      )
-      .replace(
-        /\\mathrm\{([^{}]*)\}/g,
-        "$1"
-      )
-      .replace(
-        /\\mathbf\{([^{}]*)\}/g,
-        "$1"
-      )
-      .replace(
-        /\\displaystyle/g,
+    cleaned =
+      cleaned.replace(
+        /```(?:json|javascript|js|text|markdown|md)?/gi,
         ""
       );
 
 
-    cleaned = cleaned
-      .replace(
-        /\^\{2\}/g,
-        "²"
-      )
-      .replace(
-        /\^\{3\}/g,
-        "³"
-      )
-      .replace(
-        /\^2/g,
-        "²"
-      )
-      .replace(
-        /\^3/g,
-        "³"
+    cleaned =
+      cleaned.replace(
+        /```/g,
+        ""
       );
 
 
-    cleaned = cleaned
-      .replace(
-        /sin\^\{-1\}/g,
-        "sin⁻¹"
-      )
-      .replace(
-        /cos\^\{-1\}/g,
-        "cos⁻¹"
-      )
-      .replace(
-        /tan\^\{-1\}/g,
-        "tan⁻¹"
+    cleaned =
+      cleaned.replace(
+        /\*\*/g,
+        ""
       );
 
 
-    cleaned = cleaned.replace(
-      /[{}]/g,
-      ""
-    );
+    cleaned =
+      cleaned.replace(
+        /__/g,
+        ""
+      );
 
-    cleaned = cleaned.replace(
-      /[ \t]+/g,
-      " "
-    );
 
-    cleaned = cleaned.replace(
-      /\n[ \t]+/g,
-      "\n"
-    );
+    cleaned =
+      cleaned.replace(
+        /^\s*#{1,6}\s*/gm,
+        ""
+      );
 
-    cleaned = cleaned.replace(
-      /\n{3,}/g,
-      "\n\n"
-    );
+
+    cleaned =
+      cleaned.replace(
+        /^\s*>\s?/gm,
+        ""
+      );
+
+
+    cleaned =
+      cleaned.replace(
+        /^\s*[-*+]\s+/gm,
+        ""
+      );
+
+
+    cleaned =
+      cleaned.replace(
+        /`/g,
+        ""
+      );
+
+
+    cleaned =
+      cleaned.replace(
+        /\$\$/g,
+        ""
+      );
+
+
+    cleaned =
+      cleaned.replace(
+        /\\\[/g,
+        ""
+      );
+
+
+    cleaned =
+      cleaned.replace(
+        /\\\]/g,
+        ""
+      );
+
+
+    cleaned =
+      cleaned.replace(
+        /\\\(/g,
+        ""
+      );
+
+
+    cleaned =
+      cleaned.replace(
+        /\\\)/g,
+        ""
+      );
+
+
+    let previous = "";
+
+    while (
+      previous !== cleaned
+    ) {
+
+      previous = cleaned;
+
+      cleaned =
+        cleaned.replace(
+          /\\(?:frac|dfrac|tfrac)\{([^{}]+)\}\{([^{}]+)\}/g,
+          "$1/$2"
+        );
+
+    }
+
+
+    cleaned =
+      cleaned
+        .replace(
+          /\\pi\b/g,
+          "π"
+        )
+        .replace(
+          /\\sqrt\{([^{}]+)\}/g,
+          "√($1)"
+        )
+        .replace(
+          /\\sin\b/g,
+          "sin"
+        )
+        .replace(
+          /\\cos\b/g,
+          "cos"
+        )
+        .replace(
+          /\\tan\b/g,
+          "tan"
+        )
+        .replace(
+          /\\cot\b/g,
+          "cot"
+        )
+        .replace(
+          /\\sec\b/g,
+          "sec"
+        )
+        .replace(
+          /\\csc\b/g,
+          "csc"
+        )
+        .replace(
+          /\\log\b/g,
+          "log"
+        )
+        .replace(
+          /\\ln\b/g,
+          "ln"
+        )
+        .replace(
+          /\\lim\b/g,
+          "lim"
+        )
+        .replace(
+          /\\infty\b/g,
+          "∞"
+        )
+        .replace(
+          /\\times\b/g,
+          "×"
+        )
+        .replace(
+          /\\cdot\b/g,
+          "·"
+        )
+        .replace(
+          /\\leq\b/g,
+          "≤"
+        )
+        .replace(
+          /\\geq\b/g,
+          "≥"
+        )
+        .replace(
+          /\\neq\b/g,
+          "≠"
+        )
+        .replace(
+          /\\pm\b/g,
+          "±"
+        );
+
+
+    cleaned =
+      cleaned.replace(
+        /\\left\b/g,
+        ""
+      );
+
+
+    cleaned =
+      cleaned.replace(
+        /\\right\b/g,
+        ""
+      );
+
+
+    cleaned =
+      cleaned
+        .replace(
+          /\\text\{([^{}]*)\}/g,
+          "$1"
+        )
+        .replace(
+          /\\mathrm\{([^{}]*)\}/g,
+          "$1"
+        )
+        .replace(
+          /\\mathbf\{([^{}]*)\}/g,
+          "$1"
+        )
+        .replace(
+          /\\displaystyle/g,
+          ""
+        );
+
+
+    cleaned =
+      cleaned
+        .replace(
+          /\^\{2\}/g,
+          "²"
+        )
+        .replace(
+          /\^\{3\}/g,
+          "³"
+        )
+        .replace(
+          /\^2/g,
+          "²"
+        )
+        .replace(
+          /\^3/g,
+          "³"
+        );
+
+
+    cleaned =
+      cleaned
+        .replace(
+          /sin\^\{-1\}/g,
+          "sin⁻¹"
+        )
+        .replace(
+          /cos\^\{-1\}/g,
+          "cos⁻¹"
+        )
+        .replace(
+          /tan\^\{-1\}/g,
+          "tan⁻¹"
+        );
+
+
+    cleaned =
+      cleaned.replace(
+        /[{}]/g,
+        ""
+      );
+
+
+    cleaned =
+      cleaned.replace(
+        /[ \t]+/g,
+        " "
+      );
+
+
+    cleaned =
+      cleaned.replace(
+        /\n[ \t]+/g,
+        "\n"
+      );
+
+
+    cleaned =
+      cleaned.replace(
+        /\n{3,}/g,
+        "\n\n"
+      );
+
 
     return cleaned.trim();
+
   };
 
 
   // =====================================================
-  // IMAGE -> DATA URL
+  // IMAGE TO DATA URL
   // =====================================================
 
-  const imageFileToDataUrl = file => {
+  const imageFileToDataUrl =
+    file => {
 
-    return new Promise(
-      (resolve, reject) => {
+      return new Promise(
+        (resolve, reject) => {
 
-        if (!file) {
-
-          reject(
-            new Error(
-              "No image file provided"
-            )
-          );
-
-          return;
-        }
-
-
-        const reader =
-          new FileReader();
-
-
-        reader.onload = () => {
-
-          const img =
-            new Image();
-
-
-          img.onload = () => {
-
-            const maxSize = 1000;
-
-            let width =
-              img.width;
-
-            let height =
-              img.height;
-
-
-            if (
-              width > maxSize ||
-              height > maxSize
-            ) {
-
-              if (
-                width > height
-              ) {
-
-                height =
-                  Math.round(
-                    (height * maxSize) /
-                    width
-                  );
-
-                width =
-                  maxSize;
-
-              } else {
-
-                width =
-                  Math.round(
-                    (width * maxSize) /
-                    height
-                  );
-
-                height =
-                  maxSize;
-
-              }
-
-            }
-
-
-            const canvas =
-              document.createElement(
-                "canvas"
-              );
-
-            canvas.width =
-              width;
-
-            canvas.height =
-              height;
-
-
-            const ctx =
-              canvas.getContext(
-                "2d"
-              );
-
-
-            if (!ctx) {
-
-              reject(
-                new Error(
-                  "Could not create canvas"
-                )
-              );
-
-              return;
-
-            }
-
-
-            ctx.drawImage(
-              img,
-              0,
-              0,
-              width,
-              height
-            );
-
-
-            resolve(
-              canvas.toDataURL(
-                "image/jpeg",
-                0.72
-              )
-            );
-
-          };
-
-
-          img.onerror = () => {
+          if (!file) {
 
             reject(
               new Error(
-                "Could not load image"
+                "No image file provided"
               )
             );
 
-          };
+            return;
+
+          }
 
 
-          img.src =
-            reader.result;
-
-        };
+          const reader =
+            new FileReader();
 
 
-        reader.onerror = () => {
+          reader.onload =
+            () => {
 
-          reject(
-            new Error(
-              "Could not read image"
-            )
+              const img =
+                new Image();
+
+
+              img.onload =
+                () => {
+
+                  const maxSize =
+                    1000;
+
+                  let width =
+                    img.width;
+
+                  let height =
+                    img.height;
+
+
+                  if (
+                    width > maxSize ||
+                    height > maxSize
+                  ) {
+
+                    if (
+                      width > height
+                    ) {
+
+                      height =
+                        Math.round(
+                          (height *
+                            maxSize) /
+                          width
+                        );
+
+                      width =
+                        maxSize;
+
+                    } else {
+
+                      width =
+                        Math.round(
+                          (width *
+                            maxSize) /
+                          height
+                        );
+
+                      height =
+                        maxSize;
+
+                    }
+
+                  }
+
+
+                  const canvas =
+                    document.createElement(
+                      "canvas"
+                    );
+
+
+                  canvas.width =
+                    width;
+
+                  canvas.height =
+                    height;
+
+
+                  const ctx =
+                    canvas.getContext(
+                      "2d"
+                    );
+
+
+                  if (!ctx) {
+
+                    reject(
+                      new Error(
+                        "Could not create canvas"
+                      )
+                    );
+
+                    return;
+
+                  }
+
+
+                  ctx.drawImage(
+                    img,
+                    0,
+                    0,
+                    width,
+                    height
+                  );
+
+
+                  resolve(
+                    canvas.toDataURL(
+                      "image/jpeg",
+                      0.72
+                    )
+                  );
+
+                };
+
+
+              img.onerror =
+                () => {
+
+                  reject(
+                    new Error(
+                      "Could not load image"
+                    )
+                  );
+
+                };
+
+
+              img.src =
+                reader.result;
+
+            };
+
+
+          reader.onerror =
+            () => {
+
+              reject(
+                new Error(
+                  "Could not read image"
+                )
+              );
+
+            };
+
+
+          reader.readAsDataURL(
+            file
           );
 
-        };
+        }
+      );
 
-
-        reader.readAsDataURL(file);
-
-      }
-    );
-
-  };
+    };
 
 
   // =====================================================
   // SAVE HISTORY
   // =====================================================
 
-  const addHistory = async (
-    command,
-    answer,
-    type = "text",
-    image = "",
-    fileName = ""
-  ) => {
-
-    const temporaryItem = {
-
-      _id:
-        `temp-${Date.now()}`,
-
+  const addHistory =
+    async (
       command,
       answer,
-      type,
-      image,
-      fileName,
+      type = "text",
+      image = "",
+      fileName = ""
+    ) => {
 
-      createdAt:
-        new Date().toISOString()
+      const temporaryItem = {
 
-    };
+        _id:
+          `temp-${Date.now()}`,
 
+        command,
 
-    setHistoryItems(
-      previous => [
-        temporaryItem,
-        ...previous
-      ]
-    );
+        answer,
 
+        type,
 
-    try {
+        image,
 
-      const response =
-        await axios.post(
+        fileName,
 
-          `${serverUrl}/api/user/savehistory`,
+        createdAt:
+          new Date().toISOString()
 
-          {
-            command,
-            answer,
-            type,
-            image,
-            fileName
-          },
-
-          {
-            withCredentials: true
-          }
-
-        );
+      };
 
 
-      if (
-        response.data?.history
-      ) {
+      setHistoryItems(
+        previous => [
+          temporaryItem,
+          ...previous
+        ]
+      );
 
-        setHistoryItems(
-          response.data.history
-        );
+
+      try {
+
+        const response =
+          await axios.post(
+
+            `${serverUrl}/api/user/savehistory`,
+
+            {
+              command,
+              answer,
+              type,
+              image,
+              fileName
+            },
+
+            {
+              withCredentials: true
+            }
+
+          );
 
 
-        setUserData(
-          previous => ({
-            ...previous,
-            history:
-              response.data.history
-          })
+        if (
+          response.data?.history
+        ) {
+
+          setHistoryItems(
+            response.data.history
+          );
+
+
+          setUserData(
+            previous => ({
+              ...previous,
+              history:
+                response.data.history
+            })
+          );
+
+        }
+
+      } catch (error) {
+
+        console.error(
+          "HISTORY SAVE ERROR:",
+          error.response?.data ||
+          error.message
         );
 
       }
 
-    } catch (error) {
-
-      console.error(
-        "HISTORY SAVE ERROR:",
-        error.response?.data ||
-        error.message
-      );
-
-    }
-
-  };
+    };
 
 
   // =====================================================
@@ -688,7 +820,6 @@ function Home() {
           })
         );
 
-
       } catch (error) {
 
         console.error(
@@ -706,531 +837,612 @@ function Home() {
   // CLEAR HISTORY
   // =====================================================
 
-  const clearHistory = async () => {
+  const clearHistory =
+    async () => {
 
-    if (
-      historyItems.length === 0
-    ) {
+      if (
+        historyItems.length === 0
+      ) {
 
-      return;
+        return;
 
-    }
-
-
-    const confirmed =
-      window.confirm(
-        "Clear all history?"
-      );
+      }
 
 
-    if (!confirmed) {
-      return;
-    }
+      const confirmed =
+        window.confirm(
+          "Clear all history?"
+        );
 
 
-    try {
-
-      await axios.delete(
-
-        `${serverUrl}/api/user/history`,
-
-        {
-          withCredentials: true
-        }
-
-      );
+      if (!confirmed) {
+        return;
+      }
 
 
-      setHistoryItems([]);
+      try {
 
-      setHistoryImage("");
+        await axios.delete(
 
-      setHistoryFileName("");
+          `${serverUrl}/api/user/history`,
 
-      setUserText("");
+          {
+            withCredentials: true
+          }
 
-      setAiText("");
-
-      setShowAIText(false);
-
-
-      setUserData(
-        previous => ({
-          ...previous,
-          history: []
-        })
-      );
+        );
 
 
-    } catch (error) {
+        setHistoryItems([]);
 
-      console.error(
-        "CLEAR HISTORY ERROR:",
-        error.response?.data ||
-        error.message
-      );
+        setHistoryImage("");
 
-    }
+        setHistoryFileName("");
 
-  };
+        setUserText("");
+
+        setAiText("");
+
+        setShowAIText(false);
+
+
+        setUserData(
+          previous => ({
+            ...previous,
+            history: []
+          })
+        );
+
+      } catch (error) {
+
+        console.error(
+          "CLEAR HISTORY ERROR:",
+          error.response?.data ||
+          error.message
+        );
+
+      }
+
+    };
 
 
   // =====================================================
   // STOP SPEAKING
   // =====================================================
 
-  const stopSpeaking = () => {
+  const stopSpeaking =
+    () => {
 
-    clearTimeout(
-      speechTimeoutRef.current
-    );
-
-    window.speechSynthesis.cancel();
-
-    speakingRef.current =
-      false;
-
-    setIsSpeaking(false);
+      clearTimeout(
+        speechTimeoutRef.current
+      );
 
 
-    if (
-      !processingRef.current
-    ) {
-
-      setIsAIActive(false);
-
-    }
-
-  };
+      window.speechSynthesis.cancel();
 
 
-  // =====================================================
-  // SPEAK COMPLETE RESPONSE
-  // =====================================================
-
-  const speak = text => {
-
-    if (!text) {
-      return;
-    }
+      speakingRef.current =
+        false;
 
 
-    const speechText =
-      String(text).trim();
+      setIsSpeaking(false);
 
 
-    if (!speechText) {
-      return;
-    }
+      if (
+        !processingRef.current
+      ) {
+
+        setIsAIActive(false);
+
+      }
 
 
-    clearTimeout(
-      speechTimeoutRef.current
-    );
+      /*
+       * If the user had microphone mode enabled,
+       * start listening again after stopping speech.
+       */
+      if (
+        listeningRef.current &&
+        !processingRef.current &&
+        recognitionRef.current
+      ) {
 
+        setTimeout(() => {
 
-    window.speechSynthesis.cancel();
+          if (
+            listeningRef.current &&
+            !processingRef.current &&
+            !speakingRef.current &&
+            recognitionRef.current
+          ) {
 
+            try {
 
-    // Split response into sentences first.
-    const sentences =
-      speechText.match(
-        /[^.!?]+[.!?]+|[^.!?]+$/g
-      ) || [speechText];
+              recognitionRef.current.start();
 
+              setIsListening(true);
 
-    const chunks = [];
+            } catch {
 
-    let currentChunk = "";
-
-
-    sentences.forEach(
-      sentence => {
-
-        const cleanSentence =
-          sentence.trim();
-
-
-        if (!cleanSentence) {
-          return;
-        }
-
-
-        // If an individual sentence is too long,
-        // split it into words.
-        if (
-          cleanSentence.length > 160
-        ) {
-
-          const words =
-            cleanSentence.split(
-              /\s+/
-            );
-
-
-          let wordChunk = "";
-
-
-          words.forEach(word => {
-
-            const combined =
-              `${wordChunk} ${word}`.trim();
-
-
-            if (
-              combined.length > 160
-            ) {
-
-              if (
-                wordChunk.trim()
-              ) {
-
-                chunks.push(
-                  wordChunk.trim()
-                );
-
-              }
-
-
-              wordChunk =
-                word;
-
-            } else {
-
-              wordChunk =
-                combined;
+              // Recognition may already be active.
 
             }
 
-          });
-
-
-          if (
-            wordChunk.trim()
-          ) {
-
-            chunks.push(
-              wordChunk.trim()
-            );
-
           }
 
-
-          return;
-
-        }
-
-
-        const combined =
-          `${currentChunk} ${cleanSentence}`.trim();
-
-
-        if (
-          combined.length > 160
-        ) {
-
-          if (
-            currentChunk.trim()
-          ) {
-
-            chunks.push(
-              currentChunk.trim()
-            );
-
-          }
-
-
-          currentChunk =
-            cleanSentence;
-
-        } else {
-
-          currentChunk =
-            combined;
-
-        }
+        }, 300);
 
       }
-    );
-
-
-    if (
-      currentChunk.trim()
-    ) {
-
-      chunks.push(
-        currentChunk.trim()
-      );
-
-    }
-
-
-    if (
-      chunks.length === 0
-    ) {
-
-      chunks.push(
-        speechText
-      );
-
-    }
-
-
-    let currentIndex = 0;
-
-
-    speakingRef.current =
-      true;
-
-    setIsSpeaking(true);
-
-    setIsAIActive(true);
-
-
-    const speakNextChunk = () => {
-
-      // USER PRESSED STOP
-      if (
-        !speakingRef.current
-      ) {
-
-        return;
-
-      }
-
-
-      // ALL CHUNKS FINISHED
-      if (
-        currentIndex >=
-        chunks.length
-      ) {
-
-        speakingRef.current =
-          false;
-
-        setIsSpeaking(false);
-
-
-        if (
-          !processingRef.current
-        ) {
-
-          setIsAIActive(false);
-
-        }
-
-
-        // Start microphone again
-        if (
-          listeningRef.current &&
-          !processingRef.current &&
-          recognitionRef.current
-        ) {
-
-          setTimeout(() => {
-
-            if (
-              listeningRef.current &&
-              !processingRef.current &&
-              !speakingRef.current
-            ) {
-
-              try {
-
-                recognitionRef.current.start();
-
-                setIsListening(true);
-
-              } catch {
-
-                // Already running
-
-              }
-
-            }
-
-          }, 400);
-
-        }
-
-
-        return;
-
-      }
-
-
-      const utterance =
-        new SpeechSynthesisUtterance(
-          chunks[currentIndex]
-        );
-
-
-      utterance.rate =
-        1;
-
-      utterance.pitch =
-        1;
-
-      utterance.volume =
-        1;
-
-      utterance.lang =
-        "en-US";
-
-
-      utterance.onstart = () => {
-
-        if (
-          !speakingRef.current
-        ) {
-
-          window.speechSynthesis.cancel();
-
-          return;
-
-        }
-
-
-        setIsSpeaking(true);
-
-        setIsAIActive(true);
-
-      };
-
-
-      utterance.onend = () => {
-
-        if (
-          !speakingRef.current
-        ) {
-
-          return;
-
-        }
-
-
-        currentIndex++;
-
-
-        speechTimeoutRef.current =
-          setTimeout(() => {
-
-            speakNextChunk();
-
-          }, 80);
-
-      };
-
-
-      utterance.onerror = event => {
-
-        console.error(
-          "Speech synthesis error:",
-          event.error
-        );
-
-
-        // Don't continue if the user stopped it.
-        if (
-          !speakingRef.current
-        ) {
-
-          return;
-
-        }
-
-
-        currentIndex++;
-
-
-        speechTimeoutRef.current =
-          setTimeout(() => {
-
-            speakNextChunk();
-
-          }, 80);
-
-      };
-
-
-      // Chrome speech synthesis sometimes pauses.
-      try {
-
-        window.speechSynthesis.resume();
-
-      } catch {}
-
-
-      window.speechSynthesis.speak(
-        utterance
-      );
 
     };
 
 
-    speakNextChunk();
+  // =====================================================
+  // SPEAK
+  // =====================================================
 
-  };
+  const speak =
+    text => {
+
+      if (!text) {
+        return;
+      }
+
+
+      const speechText =
+        String(text).trim();
+
+
+      if (!speechText) {
+        return;
+      }
+
+
+      clearTimeout(
+        speechTimeoutRef.current
+      );
+
+
+      window.speechSynthesis.cancel();
+
+
+      /*
+       * Break long answers into small chunks.
+       * This prevents Chrome from stopping long speech.
+       */
+      const sentences =
+        speechText.match(
+          /[^.!?]+[.!?]+|[^.!?]+$/g
+        ) ||
+        [speechText];
+
+
+      const chunks = [];
+
+      let currentChunk =
+        "";
+
+
+      sentences.forEach(
+        sentence => {
+
+          const cleanSentence =
+            sentence.trim();
+
+
+          if (!cleanSentence) {
+            return;
+          }
+
+
+          if (
+            cleanSentence.length > 160
+          ) {
+
+            const words =
+              cleanSentence.split(
+                /\s+/
+              );
+
+
+            let wordChunk =
+              "";
+
+
+            words.forEach(word => {
+
+              const combined =
+                `${wordChunk} ${word}`
+                  .trim();
+
+
+              if (
+                combined.length > 160
+              ) {
+
+                if (
+                  wordChunk.trim()
+                ) {
+
+                  chunks.push(
+                    wordChunk.trim()
+                  );
+
+                }
+
+
+                wordChunk =
+                  word;
+
+              } else {
+
+                wordChunk =
+                  combined;
+
+              }
+
+            });
+
+
+            if (
+              wordChunk.trim()
+            ) {
+
+              chunks.push(
+                wordChunk.trim()
+              );
+
+            }
+
+
+            return;
+
+          }
+
+
+          const combined =
+            `${currentChunk} ${cleanSentence}`
+              .trim();
+
+
+          if (
+            combined.length > 160
+          ) {
+
+            if (
+              currentChunk.trim()
+            ) {
+
+              chunks.push(
+                currentChunk.trim()
+              );
+
+            }
+
+
+            currentChunk =
+              cleanSentence;
+
+          } else {
+
+            currentChunk =
+              combined;
+
+          }
+
+        }
+      );
+
+
+      if (
+        currentChunk.trim()
+      ) {
+
+        chunks.push(
+          currentChunk.trim()
+        );
+
+      }
+
+
+      if (
+        chunks.length === 0
+      ) {
+
+        chunks.push(
+          speechText
+        );
+
+      }
+
+
+      let currentIndex =
+        0;
+
+
+      speakingRef.current =
+        true;
+
+
+      setIsSpeaking(true);
+
+      setIsAIActive(true);
+
+
+      /*
+       * IMPORTANT:
+       *
+       * Stop microphone while assistant is speaking.
+       * Otherwise the microphone can hear the assistant's
+       * own voice.
+       */
+      if (
+        recognitionRef.current
+      ) {
+
+        try {
+
+          recognitionRef.current.stop();
+
+        } catch {}
+
+      }
+
+
+      const speakNextChunk =
+        () => {
+
+          if (
+            !speakingRef.current
+          ) {
+
+            return;
+
+          }
+
+
+          if (
+            currentIndex >=
+            chunks.length
+          ) {
+
+            speakingRef.current =
+              false;
+
+
+            setIsSpeaking(false);
+
+
+            if (
+              !processingRef.current
+            ) {
+
+              setIsAIActive(false);
+
+            }
+
+
+            /*
+             * Restart microphone after speech.
+             */
+            if (
+              listeningRef.current &&
+              !processingRef.current &&
+              recognitionRef.current
+            ) {
+
+              setTimeout(() => {
+
+                if (
+                  listeningRef.current &&
+                  !processingRef.current &&
+                  !speakingRef.current
+                ) {
+
+                  try {
+
+                    recognitionRef.current.start();
+
+                    setIsListening(
+                      true
+                    );
+
+                  } catch {}
+
+                }
+
+              }, 400);
+
+            }
+
+
+            return;
+
+          }
+
+
+          const utterance =
+            new SpeechSynthesisUtterance(
+              chunks[currentIndex]
+            );
+
+
+          utterance.rate =
+            1;
+
+          utterance.pitch =
+            1;
+
+          utterance.volume =
+            1;
+
+          utterance.lang =
+            "en-US";
+
+
+          utterance.onstart =
+            () => {
+
+              if (
+                !speakingRef.current
+              ) {
+
+                window.speechSynthesis.cancel();
+
+                return;
+
+              }
+
+
+              setIsSpeaking(true);
+
+              setIsAIActive(true);
+
+            };
+
+
+          utterance.onend =
+            () => {
+
+              if (
+                !speakingRef.current
+              ) {
+
+                return;
+
+              }
+
+
+              currentIndex++;
+
+
+              speechTimeoutRef.current =
+                setTimeout(
+                  () => {
+
+                    speakNextChunk();
+
+                  },
+                  80
+                );
+
+            };
+
+
+          utterance.onerror =
+            event => {
+
+              console.error(
+                "Speech synthesis error:",
+                event.error
+              );
+
+
+              if (
+                !speakingRef.current
+              ) {
+
+                return;
+
+              }
+
+
+              currentIndex++;
+
+
+              speechTimeoutRef.current =
+                setTimeout(
+                  () => {
+
+                    speakNextChunk();
+
+                  },
+                  80
+                );
+
+            };
+
+
+          try {
+
+            window.speechSynthesis.resume();
+
+          } catch {}
+
+
+          window.speechSynthesis.speak(
+            utterance
+          );
+
+        };
+
+
+      speakNextChunk();
+
+    };
 
 
   // =====================================================
   // OPEN URL
   // =====================================================
 
-  const openUrl = url => {
+  const openUrl =
+    url => {
 
-    if (!url) {
-      return;
-    }
+      if (!url) {
+        return;
+      }
 
 
-    window.open(
-      url,
-      "_blank",
-      "noopener,noreferrer"
-    );
+      window.open(
+        url,
+        "_blank",
+        "noopener,noreferrer"
+      );
 
-  };
+    };
 
 
   // =====================================================
   // GOOGLE SEARCH
   // =====================================================
 
-  const googleSearch = query => {
+  const googleSearch =
+    query => {
 
-    if (!query?.trim()) {
-      return;
-    }
+      if (!query?.trim()) {
+        return;
+      }
 
 
-    openUrl(
-      `https://www.google.com/search?q=${encodeURIComponent(
-        query.trim()
-      )}`
-    );
+      openUrl(
+        `https://www.google.com/search?q=${encodeURIComponent(
+          query.trim()
+        )}`
+      );
 
-  };
+    };
 
 
   // =====================================================
   // YOUTUBE SEARCH
   // =====================================================
 
-  const youtubeSearch = query => {
+  const youtubeSearch =
+    query => {
 
-    if (!query?.trim()) {
-      return;
-    }
+      if (!query?.trim()) {
+        return;
+      }
 
 
-    openUrl(
-      `https://www.youtube.com/results?search_query=${encodeURIComponent(
-        query.trim()
-      )}`
-    );
+      openUrl(
+        `https://www.youtube.com/results?search_query=${encodeURIComponent(
+          query.trim()
+        )}`
+      );
 
-  };
+    };
 
 
   // =====================================================
@@ -1306,71 +1518,102 @@ function Home() {
 
 
   // =====================================================
-  // WEBSITE SEARCH URL
+  // WEBSITE SEARCH
   // =====================================================
 
-  const getWebsiteSearchUrl = (
-    site,
-    query
-  ) => {
+  const getWebsiteSearchUrl =
+    (
+      site,
+      query
+    ) => {
 
-    const encodedQuery =
-      encodeURIComponent(
-        query.trim()
-      );
+      const encodedQuery =
+        encodeURIComponent(
+          query.trim()
+        );
 
 
-    switch (site) {
+      switch (site) {
 
-      case "google":
-        return `https://www.google.com/search?q=${encodedQuery}`;
+        case "google":
 
-      case "youtube":
-        return `https://www.youtube.com/results?search_query=${encodedQuery}`;
+          return `https://www.google.com/search?q=${encodedQuery}`;
 
-      case "yahoo":
-        return `https://search.yahoo.com/search?p=${encodedQuery}`;
 
-      case "amazon":
-        return `https://www.amazon.in/s?k=${encodedQuery}`;
+        case "youtube":
 
-      case "flipkart":
-        return `https://www.flipkart.com/search?q=${encodedQuery}`;
+          return `https://www.youtube.com/results?search_query=${encodedQuery}`;
 
-      case "wikipedia":
-        return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
 
-      case "reddit":
-        return `https://www.reddit.com/search/?q=${encodedQuery}`;
+        case "yahoo":
 
-      case "github":
-        return `https://github.com/search?q=${encodedQuery}`;
+          return `https://search.yahoo.com/search?p=${encodedQuery}`;
 
-      case "linkedin":
-        return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
 
-      case "spotify":
-        return `https://open.spotify.com/search/${encodedQuery}`;
+        case "amazon":
 
-      case "pinterest":
-        return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
+          return `https://www.amazon.in/s?k=${encodedQuery}`;
 
-      case "facebook":
-        return `https://www.facebook.com/search/top?q=${encodedQuery}`;
 
-      case "x":
-      case "twitter":
-        return `https://x.com/search?q=${encodedQuery}`;
+        case "flipkart":
 
-      case "instagram":
-        return `https://www.instagram.com/explore/search/keyword/?q=${encodedQuery}`;
+          return `https://www.flipkart.com/search?q=${encodedQuery}`;
 
-      default:
-        return null;
 
-    }
+        case "wikipedia":
 
-  };
+          return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
+
+
+        case "reddit":
+
+          return `https://www.reddit.com/search/?q=${encodedQuery}`;
+
+
+        case "github":
+
+          return `https://github.com/search?q=${encodedQuery}`;
+
+
+        case "linkedin":
+
+          return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
+
+
+        case "spotify":
+
+          return `https://open.spotify.com/search/${encodedQuery}`;
+
+
+        case "pinterest":
+
+          return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
+
+
+        case "facebook":
+
+          return `https://www.facebook.com/search/top?q=${encodedQuery}`;
+
+
+        case "x":
+
+        case "twitter":
+
+          return `https://x.com/search?q=${encodedQuery}`;
+
+
+        case "instagram":
+
+          return `https://www.instagram.com/explore/search/keyword/?q=${encodedQuery}`;
+
+
+        default:
+
+          return null;
+
+      }
+
+    };
 
 
   // =====================================================
@@ -1405,52 +1648,86 @@ function Home() {
 
       const siteAliases = {
 
-        google: "google",
-        goog: "google",
+        google:
+          "google",
 
-        youtube: "youtube",
-        yt: "youtube",
+        goog:
+          "google",
 
-        yahoo: "yahoo",
+        youtube:
+          "youtube",
 
-        instagram: "instagram",
-        insta: "instagram",
+        yt:
+          "youtube",
 
-        facebook: "facebook",
-        fb: "facebook",
+        yahoo:
+          "yahoo",
 
-        github: "github",
+        instagram:
+          "instagram",
 
-        linkedin: "linkedin",
+        insta:
+          "instagram",
 
-        amazon: "amazon",
-        amzn: "amazon",
+        facebook:
+          "facebook",
 
-        flipkart: "flipkart",
+        fb:
+          "facebook",
 
-        spotify: "spotify",
+        github:
+          "github",
 
-        wikipedia: "wikipedia",
-        wiki: "wikipedia",
+        linkedin:
+          "linkedin",
 
-        reddit: "reddit",
+        amazon:
+          "amazon",
 
-        pinterest: "pinterest",
+        amzn:
+          "amazon",
 
-        twitter: "twitter",
-        x: "x",
+        flipkart:
+          "flipkart",
 
-        whatsapp: "whatsapp",
+        spotify:
+          "spotify",
 
-        gmail: "gmail",
+        wikipedia:
+          "wikipedia",
 
-        netflix: "netflix",
+        wiki:
+          "wikipedia",
 
-        discord: "discord",
+        reddit:
+          "reddit",
 
-        canva: "canva",
+        pinterest:
+          "pinterest",
 
-        telegram: "telegram"
+        twitter:
+          "twitter",
+
+        x:
+          "x",
+
+        whatsapp:
+          "whatsapp",
+
+        gmail:
+          "gmail",
+
+        netflix:
+          "netflix",
+
+        discord:
+          "discord",
+
+        canva:
+          "canva",
+
+        telegram:
+          "telegram"
 
       };
 
@@ -1480,6 +1757,7 @@ function Home() {
 
         const query =
           match[1].trim();
+
 
         const site =
           siteAliases[
@@ -1521,6 +1799,7 @@ function Home() {
             match[1].toLowerCase()
           ];
 
+
         const query =
           match[2].trim();
 
@@ -1558,6 +1837,7 @@ function Home() {
           siteAliases[
             match[1].toLowerCase()
           ];
+
 
         const query =
           match[2].trim();
@@ -1603,8 +1883,11 @@ function Home() {
         ) {
 
           return {
-            site: "google",
+            site:
+              "google",
+
             query
+
           };
 
         }
@@ -1653,6 +1936,7 @@ function Home() {
 
       setIsSending(true);
 
+
       processingRef.current =
         true;
 
@@ -1660,7 +1944,7 @@ function Home() {
       try {
 
         // =================================================
-        // SEARCH COMMAND
+        // SEARCH
         // =================================================
 
         const searchCommand =
@@ -1674,7 +1958,8 @@ function Home() {
           const {
             site,
             query
-          } = searchCommand;
+          } =
+            searchCommand;
 
 
           const siteName =
@@ -1762,7 +2047,9 @@ function Home() {
           );
 
 
-          googleSearch(query);
+          googleSearch(
+            query
+          );
 
 
           if (shouldSpeak) {
@@ -1809,7 +2096,9 @@ function Home() {
           );
 
 
-          youtubeSearch(query);
+          youtubeSearch(
+            query
+          );
 
 
           if (shouldSpeak) {
@@ -1897,7 +2186,7 @@ function Home() {
         // =================================================
 
         const result =
-          await getGeminiResponse(
+          await getGeminiResponseRef.current(
             cleanedCommand
           );
 
@@ -2046,12 +2335,16 @@ function Home() {
 
 
         // =================================================
-        // DISPLAY ANSWER
+        // DISPLAY
         // =================================================
 
-        setAiText(response);
+        setAiText(
+          response
+        );
 
-        setShowAIText(true);
+        setShowAIText(
+          true
+        );
 
 
         await addHistory(
@@ -2062,12 +2355,14 @@ function Home() {
 
 
         // =================================================
-        // SPEAK VOICE RESPONSE
+        // SPEAK VOICE ANSWER
         // =================================================
 
         if (shouldSpeak) {
 
-          speak(response);
+          speak(
+            response
+          );
 
         }
 
@@ -2087,7 +2382,9 @@ function Home() {
           errorMessage
         );
 
-        setShowAIText(true);
+        setShowAIText(
+          true
+        );
 
 
         if (shouldSpeak) {
@@ -2103,23 +2400,27 @@ function Home() {
         processingRef.current =
           false;
 
-        setIsSending(false);
+
+        setIsSending(
+          false
+        );
 
 
         if (
           !speakingRef.current
         ) {
 
-          setIsAIActive(false);
+          setIsAIActive(
+            false
+          );
 
         }
 
 
-        // =================================================
-        // IMPORTANT:
-        // START LISTENING AGAIN AFTER GEMINI
-        // =================================================
-
+        /*
+         * Restart microphone if speech recognition
+         * ended while Gemini was processing.
+         */
         if (
           listeningRef.current &&
           !speakingRef.current &&
@@ -2136,6 +2437,7 @@ function Home() {
 
               if (
                 listeningRef.current &&
+                !processingRef.current &&
                 !speakingRef.current &&
                 recognitionRef.current
               ) {
@@ -2144,18 +2446,13 @@ function Home() {
 
                   recognitionRef.current.start();
 
-                  setIsListening(true);
-
-                  console.log(
-                    "Listening again..."
+                  setIsListening(
+                    true
                   );
 
-                } catch (error) {
+                } catch {
 
-                  console.log(
-                    "Recognition already active:",
-                    error.message
-                  );
+                  // Already running.
 
                 }
 
@@ -2171,7 +2468,7 @@ function Home() {
 
 
   // =====================================================
-  // SEND TEXT
+  // SEND
   // =====================================================
 
   const handleSend =
@@ -2278,11 +2575,17 @@ function Home() {
       }
 
 
-      setSelectedPdf(null);
+      setSelectedPdf(
+        null
+      );
 
-      setPdfPreviewName("");
+      setPdfPreviewName(
+        ""
+      );
 
-      setSelectedImage(file);
+      setSelectedImage(
+        file
+      );
 
       setImagePreview(
         URL.createObjectURL(file)
@@ -2341,7 +2644,10 @@ function Home() {
 
       removeImage();
 
-      setSelectedPdf(file);
+
+      setSelectedPdf(
+        file
+      );
 
       setPdfPreviewName(
         file.name
@@ -2408,11 +2714,17 @@ function Home() {
           }
 
 
-          setSelectedPdf(null);
+          setSelectedPdf(
+            null
+          );
 
-          setPdfPreviewName("");
+          setPdfPreviewName(
+            ""
+          );
 
-          setSelectedImage(file);
+          setSelectedImage(
+            file
+          );
 
           setImagePreview(
             URL.createObjectURL(file)
@@ -2435,55 +2747,65 @@ function Home() {
   // REMOVE IMAGE
   // =====================================================
 
-  const removeImage = () => {
+  const removeImage =
+    () => {
 
-    if (imagePreview) {
+      if (imagePreview) {
 
-      URL.revokeObjectURL(
-        imagePreview
+        URL.revokeObjectURL(
+          imagePreview
+        );
+
+      }
+
+
+      setSelectedImage(
+        null
       );
 
-    }
+      setImagePreview(
+        ""
+      );
 
 
-    setSelectedImage(null);
+      if (
+        imageInputRef.current
+      ) {
 
-    setImagePreview("");
+        imageInputRef.current.value =
+          "";
 
+      }
 
-    if (
-      imageInputRef.current
-    ) {
-
-      imageInputRef.current.value =
-        "";
-
-    }
-
-  };
+    };
 
 
   // =====================================================
   // REMOVE PDF
   // =====================================================
 
-  const removePdf = () => {
+  const removePdf =
+    () => {
 
-    setSelectedPdf(null);
+      setSelectedPdf(
+        null
+      );
 
-    setPdfPreviewName("");
+      setPdfPreviewName(
+        ""
+      );
 
 
-    if (
-      pdfInputRef.current
-    ) {
+      if (
+        pdfInputRef.current
+      ) {
 
-      pdfInputRef.current.value =
-        "";
+        pdfInputRef.current.value =
+          "";
 
-    }
+      }
 
-  };
+    };
 
 
   // =====================================================
@@ -2508,15 +2830,23 @@ function Home() {
         "Analyze this PDF and explain its important contents.";
 
 
-      setIsPdfAnalyzing(true);
+      setIsPdfAnalyzing(
+        true
+      );
 
-      setUserText(question);
+      setUserText(
+        question
+      );
 
       setAiText("");
 
-      setShowAIText(false);
+      setShowAIText(
+        false
+      );
 
-      setIsAIActive(true);
+      setIsAIActive(
+        true
+      );
 
 
       try {
@@ -2563,9 +2893,13 @@ function Home() {
           );
 
 
-        setAiText(answer);
+        setAiText(
+          answer
+        );
 
-        setShowAIText(true);
+        setShowAIText(
+          true
+        );
 
 
         await addHistory(
@@ -2601,18 +2935,24 @@ function Home() {
           )
         );
 
-        setShowAIText(true);
+        setShowAIText(
+          true
+        );
 
       } finally {
 
-        setIsPdfAnalyzing(false);
+        setIsPdfAnalyzing(
+          false
+        );
 
 
         if (
           !speakingRef.current
         ) {
 
-          setIsAIActive(false);
+          setIsAIActive(
+            false
+          );
 
         }
 
@@ -2643,15 +2983,23 @@ function Home() {
         "Analyze this image and explain what you see.";
 
 
-      setIsImageAnalyzing(true);
+      setIsImageAnalyzing(
+        true
+      );
 
-      setUserText(question);
+      setUserText(
+        question
+      );
 
       setAiText("");
 
-      setShowAIText(false);
+      setShowAIText(
+        false
+      );
 
-      setIsAIActive(true);
+      setIsAIActive(
+        true
+      );
 
 
       try {
@@ -2698,9 +3046,13 @@ function Home() {
           );
 
 
-        setAiText(answer);
+        setAiText(
+          answer
+        );
 
-        setShowAIText(true);
+        setShowAIText(
+          true
+        );
 
 
         let imageForHistory =
@@ -2756,18 +3108,24 @@ function Home() {
           )
         );
 
-        setShowAIText(true);
+        setShowAIText(
+          true
+        );
 
       } finally {
 
-        setIsImageAnalyzing(false);
+        setIsImageAnalyzing(
+          false
+        );
 
 
         if (
           !speakingRef.current
         ) {
 
-          setIsAIActive(false);
+          setIsAIActive(
+            false
+          );
 
         }
 
@@ -2802,14 +3160,22 @@ function Home() {
       new SpeechRecognition();
 
 
-    // IMPORTANT:
-    // false allows us to get a clean final sentence
-    // and then restart recognition after processing.
+    /*
+     * IMPORTANT:
+     *
+     * continuous=false gives one clean utterance.
+     * After processing/speaking, we start it again.
+     */
     recognition.continuous =
       false;
 
 
-    // true allows the text to appear while you speak.
+    /*
+     * IMPORTANT:
+     *
+     * interimResults=true makes your words
+     * appear as text while you are speaking.
+     */
     recognition.interimResults =
       true;
 
@@ -2827,7 +3193,7 @@ function Home() {
 
 
     // ===================================================
-    // ON START
+    // START
     // ===================================================
 
     recognition.onstart =
@@ -2838,17 +3204,15 @@ function Home() {
         );
 
 
-        listeningRef.current =
-          true;
-
-
-        setIsListening(true);
+        setIsListening(
+          true
+        );
 
       };
 
 
     // ===================================================
-    // ON RESULT
+    // RESULT
     // ===================================================
 
     recognition.onresult =
@@ -2894,10 +3258,12 @@ function Home() {
         }
 
 
-        // =================================================
-        // SHOW LIVE SPEECH AS TEXT
-        // =================================================
-
+        /*
+         * LIVE TEXT
+         *
+         * This is what makes your spoken words
+         * appear in the UI while you are talking.
+         */
         const liveText =
           `${finalTranscript} ${interimTranscript}`
             .trim();
@@ -2912,10 +3278,10 @@ function Home() {
         }
 
 
-        // =================================================
-        // WAIT FOR FINAL SPEECH
-        // =================================================
-
+        /*
+         * Don't send interim text to Gemini.
+         * Wait until Chrome marks the sentence final.
+         */
         if (
           !finalTranscript.trim()
         ) {
@@ -2930,7 +3296,7 @@ function Home() {
 
 
         console.log(
-          "Recognized speech:",
+          "Final recognized speech:",
           transcript
         );
 
@@ -2972,11 +3338,15 @@ function Home() {
         }
 
 
-        // =================================================
-        // SEND TO GEMINI
-        // =================================================
-
-        await processCommand(
+        /*
+         * IMPORTANT:
+         *
+         * Do NOT await processCommand here.
+         *
+         * Calling it asynchronously prevents the
+         * browser recognition event from getting stuck.
+         */
+        processCommand(
           transcript,
           "voice",
           true
@@ -2986,7 +3356,7 @@ function Home() {
 
 
     // ===================================================
-    // ON END
+    // END
     // ===================================================
 
     recognition.onend =
@@ -2997,23 +3367,28 @@ function Home() {
         );
 
 
-        // User clicked microphone OFF.
         if (
           !listeningRef.current
         ) {
 
-          setIsListening(false);
+          setIsListening(
+            false
+          );
 
           return;
 
         }
 
 
-        setIsListening(false);
+        setIsListening(
+          false
+        );
 
 
-        // If Gemini is processing the command,
-        // processCommand finally{} will restart it.
+        /*
+         * Gemini is processing.
+         * processCommand finally{} will restart it.
+         */
         if (
           processingRef.current
         ) {
@@ -3023,8 +3398,10 @@ function Home() {
         }
 
 
-        // If assistant is speaking,
-        // don't start microphone yet.
+        /*
+         * Assistant is speaking.
+         * speak() will restart microphone when done.
+         */
         if (
           speakingRef.current
         ) {
@@ -3034,7 +3411,6 @@ function Home() {
         }
 
 
-        // Otherwise restart listening.
         clearTimeout(
           restartTimeoutRef.current
         );
@@ -3054,18 +3430,17 @@ function Home() {
 
                 recognitionRef.current.start();
 
-                setIsListening(true);
+                setIsListening(
+                  true
+                );
 
                 console.log(
                   "Listening again..."
                 );
 
-              } catch (error) {
+              } catch {
 
-                console.log(
-                  "Recognition restart:",
-                  error.message
-                );
+                // Already active.
 
               }
 
@@ -3077,7 +3452,7 @@ function Home() {
 
 
     // ===================================================
-    // ON ERROR
+    // ERROR
     // ===================================================
 
     recognition.onerror =
@@ -3100,7 +3475,9 @@ function Home() {
             false;
 
 
-          setIsListening(false);
+          setIsListening(
+            false
+          );
 
 
           alert(
@@ -3122,7 +3499,9 @@ function Home() {
             false;
 
 
-          setIsListening(false);
+          setIsListening(
+            false
+          );
 
 
           alert(
@@ -3135,8 +3514,12 @@ function Home() {
         }
 
 
-        // no-speech and aborted can happen
-        // normally when recognition ends.
+        /*
+         * no-speech is normal when Chrome doesn't
+         * detect anything for a moment.
+         *
+         * onend handles restarting.
+         */
         if (
           event.error ===
             "no-speech" ||
@@ -3183,7 +3566,15 @@ function Home() {
 
     };
 
-  }, [getGeminiResponse]);
+
+    /*
+     * VERY IMPORTANT:
+     *
+     * Do NOT put getGeminiResponse here.
+     *
+     * The recognition object must be created only once.
+     */
+  }, []);
 
 
   // =====================================================
@@ -3206,7 +3597,6 @@ function Home() {
       }
 
 
-      // Stop assistant speech first.
       if (
         speakingRef.current ||
         window.speechSynthesis.speaking
@@ -3226,7 +3616,9 @@ function Home() {
         true;
 
 
-      setIsListening(true);
+      setIsListening(
+        true
+      );
 
 
       try {
@@ -3245,8 +3637,13 @@ function Home() {
         );
 
 
-        // Already running is okay.
-        setIsListening(true);
+        /*
+         * If Chrome says recognition is already
+         * running, keep the UI in listening state.
+         */
+        setIsListening(
+          true
+        );
 
       }
 
@@ -3264,7 +3661,9 @@ function Home() {
         false;
 
 
-      setIsListening(false);
+      setIsListening(
+        false
+      );
 
 
       clearTimeout(
@@ -3299,11 +3698,13 @@ function Home() {
   const handleMicClick =
     () => {
 
-      // -----------------------------------------------
-      // If assistant is speaking:
-      // MIC BUTTON = STOP SPEAKING
-      // -----------------------------------------------
-
+      /*
+       * SAME BUTTON:
+       *
+       * If assistant is speaking,
+       * this microphone button becomes
+       * the STOP button.
+       */
       if (
         isSpeaking ||
         speakingRef.current ||
@@ -3317,10 +3718,10 @@ function Home() {
       }
 
 
-      // -----------------------------------------------
-      // Normal microphone behavior
-      // -----------------------------------------------
-
+      /*
+       * Otherwise it is the normal microphone
+       * on/off button.
+       */
       if (isListening) {
 
         stopListening();
@@ -3370,9 +3771,14 @@ function Home() {
       }
 
 
-      setUserData(null);
+      setUserData(
+        null
+      );
 
-      navigate("/signin");
+
+      navigate(
+        "/signin"
+      );
 
     };
 
@@ -3466,7 +3872,8 @@ function Home() {
 
 
       if (
-        item?.type === "image" &&
+        item?.type ===
+          "image" &&
         item?.image
       ) {
 
@@ -3476,13 +3883,16 @@ function Home() {
 
       } else {
 
-        setHistoryImage("");
+        setHistoryImage(
+          ""
+        );
 
       }
 
 
       if (
-        item?.type === "file"
+        item?.type ===
+        "file"
       ) {
 
         setHistoryFileName(
@@ -3492,7 +3902,9 @@ function Home() {
 
       } else {
 
-        setHistoryFileName("");
+        setHistoryFileName(
+          ""
+        );
 
       }
 
@@ -3712,7 +4124,9 @@ function Home() {
 
           <button
             onClick={() =>
-              navigate("/customize2")
+              navigate(
+                "/customize2"
+              )
             }
             className="
               hidden
@@ -3740,7 +4154,9 @@ function Home() {
                   !previous
               );
 
-              setShowHistory(false);
+              setShowHistory(
+                false
+              );
 
             }}
             className="
@@ -3898,7 +4314,8 @@ function Home() {
 
                 }}
                 disabled={
-                  historyItems.length === 0
+                  historyItems.length ===
+                  0
                 }
                 className="
                   flex
@@ -4009,7 +4426,7 @@ function Home() {
 
 
       {/* =================================================
-          HISTORY
+          HISTORY DRAWER
       ================================================= */}
 
       {showHistory && (
@@ -4086,7 +4503,9 @@ function Home() {
 
               <button
                 onClick={() =>
-                  setShowHistory(false)
+                  setShowHistory(
+                    false
+                  )
                 }
                 className="
                   flex
@@ -4178,7 +4597,8 @@ function Home() {
               "
             >
 
-              {filteredHistory.length > 0 ? (
+              {filteredHistory.length >
+              0 ? (
 
                 filteredHistory.map(
                   item => (
@@ -4303,6 +4723,7 @@ function Home() {
                                 size={22}
                                 className="text-cyan-400"
                               />
+
 
                               <span
                                 className="
@@ -4695,7 +5116,7 @@ function Home() {
               )}
 
 
-              {/* AI TEXT */}
+              {/* AI ANSWER */}
 
               {showAIText &&
                 aiText && (
@@ -4945,6 +5366,8 @@ function Home() {
 
           {/* =================================================
               INPUT AREA
+              
+              NO STOP SPEAKING BUTTON HERE.
           ================================================= */}
 
           <div
@@ -4954,55 +5377,6 @@ function Home() {
               shrink-0
             "
           >
-
-            {/* STOP SPEAKING */}
-
-            {isSpeaking && (
-
-              <div
-                className="
-                  mb-2
-                  flex
-                  justify-center
-                "
-              >
-
-                <button
-                  type="button"
-                  onClick={
-                    stopSpeaking
-                  }
-                  className="
-                    flex
-                    items-center
-                    gap-2
-                    rounded-full
-                    border
-                    border-red-400/30
-                    bg-red-400/10
-                    px-4
-                    py-2
-                    text-xs
-                    text-red-400
-                    hover:bg-red-400/20
-                    active:scale-95
-                  "
-                  title="Stop assistant speaking"
-                >
-
-                  <FiSquare
-                    size={13}
-                    fill="currentColor"
-                  />
-
-                  Stop Speaking
-
-                </button>
-
-              </div>
-
-            )}
-
 
             <form
               onSubmit={
@@ -5024,7 +5398,7 @@ function Home() {
               "
             >
 
-              {/* IMAGE BUTTON */}
+              {/* IMAGE */}
 
               <button
                 type="button"
@@ -5066,7 +5440,7 @@ function Home() {
               />
 
 
-              {/* PDF BUTTON */}
+              {/* PDF */}
 
               <button
                 type="button"
@@ -5108,7 +5482,7 @@ function Home() {
               />
 
 
-              {/* TEXT INPUT */}
+              {/* TEXT */}
 
               <input
                 value={
@@ -5118,9 +5492,6 @@ function Home() {
                   setTypedText(
                     e.target.value
                   )
-                }
-                onPaste={
-                  handlePaste
                 }
                 placeholder={
                   imagePreview
@@ -5146,7 +5517,9 @@ function Home() {
 
 
               {/* =================================================
-                  MIC BUTTON
+                  MIC / STOP BUTTON
+
+                  THIS IS THE ONLY STOP BUTTON.
               ================================================= */}
 
               <button
@@ -5169,16 +5542,14 @@ function Home() {
                   ${
                     isSpeaking
                       ? "bg-red-400/15 text-red-400 hover:bg-red-400/25"
-
                       : isListening
                         ? "bg-red-400/10 text-red-400 hover:bg-red-400/20"
-
                         : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
                   }
                 `}
                 title={
                   isSpeaking
-                    ? "Stop assistant speaking"
+                    ? "Stop speaking"
                     : isListening
                       ? "Stop microphone"
                       : "Start microphone"
@@ -5187,6 +5558,10 @@ function Home() {
 
                 {isSpeaking ? (
 
+                  /*
+                   * Assistant speaking:
+                   * SAME MIC POSITION becomes STOP.
+                   */
                   <FiSquare
                     size={17}
                     fill="currentColor"
@@ -5209,17 +5584,15 @@ function Home() {
               </button>
 
 
-              {/* SEND BUTTON */}
+              {/* SEND */}
 
               <button
                 type="submit"
                 disabled={
                   selectedImage
                     ? isImageAnalyzing
-
                     : selectedPdf
                       ? isPdfAnalyzing
-
                       : isSending ||
                         !typedText.trim()
                 }
