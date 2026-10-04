@@ -16,12 +16,18 @@ const historySchema = new mongoose.Schema(
 
     type: {
       type: String,
-      enum: ["text", "voice", "image"],
+      enum: ["text", "voice", "image", "pdf"],
       default: "text"
     },
 
     // Saved compressed image for image-analysis history
     image: {
+      type: String,
+      default: ""
+    },
+
+    // Optional PDF information for PDF-analysis history
+    pdf: {
       type: String,
       default: ""
     }
@@ -54,11 +60,13 @@ const userSchema = new mongoose.Schema(
 
     assistantName: {
       type: String,
-      trim: true
+      trim: true,
+      default: "Assistant"
     },
 
     assistantImage: {
-      type: String
+      type: String,
+      default: ""
     },
 
     history: {

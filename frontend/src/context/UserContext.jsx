@@ -15,7 +15,6 @@ const UserContext = ({
     children
 }) => {
 
-
     const serverUrl =
         "https://virtualassistant-backend-9mos.onrender.com";
 
@@ -50,6 +49,12 @@ const UserContext = ({
     ] = useState(null);
 
 
+    /*
+    =====================================================
+    CURRENT USER
+    =====================================================
+    */
+
     const handleCurrentUser =
         async () => {
 
@@ -59,15 +64,14 @@ const UserContext = ({
                     await axios.get(
                         `${serverUrl}/api/user/current`,
                         {
-                            withCredentials: true
+                            withCredentials:
+                                true
                         }
                     );
-
 
                 setUserData(
                     result.data
                 );
-
 
             } catch (error) {
 
@@ -77,42 +81,116 @@ const UserContext = ({
                     error.message
                 );
 
-
                 setUserData(null);
-
 
             } finally {
 
                 setLoading(false);
 
             }
+
         };
 
 
-    const getGeminiResponse = async (command) => {
-  try {
-    const result = await axios.post(
-      `${serverUrl}/api/user/asktoassistant`,
-      {
-        command
-      },
-      {
-        withCredentials: true
-      }
-    );
+    /*
+    =====================================================
+    NORMAL GEMINI
+    =====================================================
+    */
 
-    return result.data;
+    const getGeminiResponse =
+        async command => {
 
-  } catch (error) {
-    console.error(
-      "GET GEMINI RESPONSE ERROR:",
-      error.response?.data ||
-      error.message
-    );
+            try {
 
-    throw error;
-  }
-};
+                const result =
+                    await axios.post(
+
+                        `${serverUrl}/api/user/asktoassistant`,
+
+                        {
+                            command
+                        },
+
+                        {
+                            withCredentials:
+                                true
+                        }
+
+                    );
+
+                return result.data;
+
+            } catch (error) {
+
+                console.error(
+                    "GET GEMINI RESPONSE ERROR:",
+                    error.response?.data ||
+                    error.message
+                );
+
+                throw error;
+
+            }
+
+        };
+
+
+    /*
+    =====================================================
+    PDF ANALYSIS
+    =====================================================
+    */
+
+    const analyzePdfFile =
+        async (
+            file,
+            command
+        ) => {
+
+            if (!file) {
+
+                throw new Error(
+                    "PDF file is required"
+                );
+
+            }
+
+            const formData =
+                new FormData();
+
+            formData.append(
+                "pdf",
+                file
+            );
+
+            formData.append(
+                "command",
+                command ||
+                "Analyze this PDF and explain its important contents."
+            );
+
+            const result =
+                await axios.post(
+
+                    `${serverUrl}/api/user/analyze-pdf`,
+
+                    formData,
+
+                    {
+                        withCredentials:
+                            true,
+
+                        timeout:
+                            180000
+                    }
+
+                );
+
+            return result.data;
+
+        };
+
 
     useEffect(() => {
 
@@ -145,7 +223,9 @@ const UserContext = ({
 
         setSelectedImage,
 
-        getGeminiResponse
+        getGeminiResponse,
+
+        analyzePdfFile
 
     };
 
@@ -161,6 +241,7 @@ const UserContext = ({
         </userDataContext.Provider>
 
     );
+
 };
 
 

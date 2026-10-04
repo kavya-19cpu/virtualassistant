@@ -8,16 +8,11 @@ import dns from "dns";
 import authRouter from "./routes/auth.routes.js";
 import userRouter from "./routes/user.routes.js";
 
-
-dns.setDefaultResultOrder(
-  "ipv4first"
-);
+dns.setDefaultResultOrder("ipv4first");
 
 dotenv.config();
 
-
 const app = express();
-
 
 /*
 =====================================================
@@ -29,11 +24,9 @@ app.use(
   cors({
     origin:
       "https://virtualassistant-frontend-pebc.onrender.com",
-
     credentials: true
   })
 );
-
 
 /*
 =====================================================
@@ -54,10 +47,7 @@ app.use(
   })
 );
 
-app.use(
-  cookieParser()
-);
-
+app.use(cookieParser());
 
 /*
 =====================================================
@@ -75,23 +65,17 @@ app.use(
   userRouter
 );
 
-
 /*
 =====================================================
 HEALTH CHECK
 =====================================================
 */
 
-app.get(
-  "/",
-  (req, res) => {
-    res.status(200).json({
-      message:
-        "Virtual Assistant Backend is running"
-    });
-  }
-);
-
+app.get("/", (req, res) => {
+  res.status(200).json({
+    message: "Virtual Assistant Backend is running"
+  });
+});
 
 /*
 =====================================================
@@ -99,31 +83,21 @@ MONGODB
 =====================================================
 */
 
-const port =
-  process.env.PORT || 6001;
-
+const port = process.env.PORT || 6001;
 
 mongoose
-  .connect(
-    process.env.MONGODB_URL,
-    {
-      family: 4
-    }
-  )
-
-  .then(() => {
-    console.log(
-      "MongoDB connected"
-    );
+  .connect(process.env.MONGODB_URL, {
+    family: 4
   })
-
-  .catch(error => {
+  .then(() => {
+    console.log("MongoDB connected");
+  })
+  .catch((error) => {
     console.error(
       "MongoDB connection error:",
       error
     );
   });
-
 
 /*
 =====================================================
@@ -131,11 +105,8 @@ START SERVER
 =====================================================
 */
 
-app.listen(
-  port,
-  () => {
-    console.log(
-      `Server started on ${port}`
-    );
-  }
-);
+app.listen(port, () => {
+  console.log(
+    `Server started on ${port}`
+  );
+});

@@ -1,5 +1,6 @@
 import axios from "axios";
 
+
 /*
 =====================================================
 NORMAL GEMINI RESPONSE
@@ -7,26 +8,30 @@ NORMAL GEMINI RESPONSE
 */
 
 const geminiResponse = async (
-  command,
-  assistantName,
-  userName
+    command,
+    assistantName,
+    userName
 ) => {
-  try {
-    const apiKey =
-      process.env.GEMINI_API_KEY;
 
-    if (!apiKey) {
-      throw new Error(
-        "GEMINI_API_KEY is missing in .env"
-      );
-    }
+    try {
 
-    const prompt = `
+        const apiKey =
+            process.env.GEMINI_API_KEY;
+
+        if (!apiKey) {
+
+            throw new Error(
+                "GEMINI_API_KEY is missing in .env"
+            );
+
+        }
+
+        const prompt = `
 You are a virtual assistant named ${assistantName}, created by ${userName}.
 
 Understand the user's command.
 
-Return ONLY valid JSON in exactly this format:
+Return ONLY valid JSON:
 
 {
   "type": "general",
@@ -55,96 +60,119 @@ weather_show
 
 Rules:
 
-1. For normal questions and conversation, use "general".
-2. For normal questions, "response" must contain the actual answer.
-3. Keep normal answers short and useful.
-4. For calculations, provide the actual calculated answer.
-5. For "open Google", use "google_open".
-6. For Google searches, use "google_search".
-7. For Google searches, put the search text inside "query".
-8. For "open YouTube", use "youtube_open".
-9. For YouTube searches, use "youtube_search".
-10. For playing something on YouTube, use "youtube_play".
-11. For "open calculator", use "calculator_open".
-12. For calculations, use "calculator_calculate".
-13. For Instagram, use "instagram_open".
-14. For Facebook, use "facebook_open".
-15. For weather requests, use "weather_show".
-16. userInput must contain the original command.
-17. Return ONLY JSON.
-18. Do not use Markdown.
-19. Do not use code fences.
-20. Do not write anything before or after the JSON.
+1. Normal questions use "general".
+2. Give the actual answer in "response".
+3. Give complete useful answers.
+4. For calculations, provide the actual result.
+5. For Google searches, use "google_search".
+6. For YouTube searches, use "youtube_search".
+7. For YouTube playing, use "youtube_play".
+8. For opening Google, use "google_open".
+9. For opening YouTube, use "youtube_open".
+10. For opening calculator, use "calculator_open".
+11. userInput must contain the original command.
+12. Return ONLY JSON.
+13. Do not use Markdown code fences.
 
 USER COMMAND:
 ${command}
 `;
 
-    const apiUrl =
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
+        const apiUrl =
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 
-    const result =
-      await axios.post(
-        apiUrl,
-        {
-          contents: [
-            {
-              parts: [
+        const result =
+            await axios.post(
+
+                apiUrl,
+
                 {
-                  text: prompt
+                    contents: [
+                        {
+                            parts: [
+                                {
+                                    text: prompt
+                                }
+                            ]
+                        }
+                    ],
+
+                    generationConfig: {
+
+                        temperature: 0.2,
+
+                        responseMimeType:
+                            "application/json"
+
+                    }
+                },
+
+                {
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    timeout:
+                        30000
+
                 }
-              ]
-            }
-          ],
 
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType:
-              "application/json"
-          }
-        },
-        {
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
+            );
 
-          timeout: 30000
+        const text =
+            result.data
+                ?.candidates?.[0]
+                ?.content?.parts?.[0]
+                ?.text;
+
+        if (!text) {
+
+            throw new Error(
+                "Gemini response text not found"
+            );
+
         }
-      );
 
-    const text =
-      result.data
-        ?.candidates?.[0]
-        ?.content?.parts?.[0]
-        ?.text;
+        try {
 
-    if (!text) {
-      throw new Error(
-        "Gemini response text not found"
-      );
+            return JSON.parse(text);
+
+        } catch {
+
+            return {
+
+                type:
+                    "general",
+
+                userInput:
+                    command,
+
+                response:
+                    text.trim(),
+
+                query:
+                    ""
+
+            };
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Gemini error:",
+            error.response?.data ||
+            error.message
+        );
+
+        throw error;
+
     }
 
-    try {
-      return JSON.parse(text);
-    } catch {
-      return {
-        type: "general",
-        userInput: command,
-        response: text.trim(),
-        query: ""
-      };
-    }
-
-  } catch (error) {
-    console.error(
-      "Gemini error:",
-      error.response?.data ||
-        error.message
-    );
-
-    throw error;
-  }
 };
 
 
@@ -155,150 +183,180 @@ IMAGE ANALYSIS
 */
 
 export const geminiImageResponse =
-  async (
-    command,
-    imageBuffer,
-    mimeType,
-    assistantName,
-    userName
-  ) => {
-    try {
-      const apiKey =
-        process.env.GEMINI_API_KEY;
+    async (
+        command,
+        imageBuffer,
+        mimeType,
+        assistantName,
+        userName
+    ) => {
 
-      if (!apiKey) {
-        throw new Error(
-          "GEMINI_API_KEY is missing in .env"
-        );
-      }
+        try {
 
-      if (!imageBuffer) {
-        throw new Error(
-          "Image is required"
-        );
-      }
+            const apiKey =
+                process.env.GEMINI_API_KEY;
 
-      const imageBase64 =
-        imageBuffer.toString(
-          "base64"
-        );
+            if (!apiKey) {
 
-      const prompt = `
+                throw new Error(
+                    "GEMINI_API_KEY is missing in .env"
+                );
+
+            }
+
+            if (!imageBuffer) {
+
+                throw new Error(
+                    "Image is required"
+                );
+
+            }
+
+            const imageBase64 =
+                imageBuffer.toString(
+                    "base64"
+                );
+
+            const prompt = `
 You are ${assistantName}, a helpful AI virtual assistant.
 
 The user's name is ${userName}.
 
-The user has uploaded an image and asked:
+The user uploaded an image and asked:
 
 "${command}"
 
-Analyze the uploaded image carefully.
+Analyze the image carefully.
 
-You can help with:
+You can analyze:
 
 - handwritten notes
 - printed notes
-- mathematics problems
+- mathematics
+- chemistry
+- physics
 - graphs
 - charts
 - diagrams
-- chemistry diagrams
-- physics diagrams
-- programming screenshots
-- code screenshots
-- documents
+- programming code
+- screenshots
 - tables
-- general images
+- documents
+- multiple-choice questions
 
-Give a clear and useful answer.
+Rules:
 
-If the image contains a question, solve it completely and explain the solution.
-
-If the image contains code, explain the code and identify errors if present.
-
-If the image contains notes, summarize the important information.
-
-If the image contains a multiple-choice question, identify the correct option and explain why.
-
-If the image is unclear, honestly tell the user which part is unclear.
-
-Do not invent information that cannot be seen.
-
-Answer the user's question directly.
-
-Give a complete answer rather than only repeating the topic name.
+1. Answer the user's exact question.
+2. If there is a question, solve it completely.
+3. If there is a calculation, show the calculation.
+4. If there are MCQs, identify the correct option and explain why.
+5. If there is code, explain errors and corrections.
+6. If there are notes, explain important points.
+7. Do not invent information.
+8. If something is unreadable, say so.
+9. Give a complete answer rather than only naming the topic.
 `;
 
-      const apiUrl =
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
+            const apiUrl =
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 
-      const result =
-        await axios.post(
-          apiUrl,
-          {
-            contents: [
-              {
-                parts: [
-                  {
-                    text: prompt
-                  },
+            const result =
+                await axios.post(
 
-                  {
-                    inline_data: {
-                      mime_type:
-                        mimeType,
+                    apiUrl,
 
-                      data:
-                        imageBase64
+                    {
+
+                        contents: [
+
+                            {
+
+                                parts: [
+
+                                    {
+                                        text:
+                                            prompt
+                                    },
+
+                                    {
+
+                                        inline_data: {
+
+                                            mime_type:
+                                                mimeType,
+
+                                            data:
+                                                imageBase64
+
+                                        }
+
+                                    }
+
+                                ]
+
+                            }
+
+                        ],
+
+                        generationConfig: {
+
+                            temperature:
+                                0.2
+
+                        }
+
+                    },
+
+                    {
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json"
+
+                        },
+
+                        timeout:
+                            60000
+
                     }
-                  }
-                ]
-              }
-            ],
 
-            generationConfig: {
-              temperature: 0.2
+                );
+
+            const text =
+                result.data
+                    ?.candidates?.[0]
+                    ?.content?.parts
+                    ?.map(
+                        part =>
+                            part.text || ""
+                    )
+                    .join("")
+                    .trim();
+
+            if (!text) {
+
+                throw new Error(
+                    "Gemini image response not found"
+                );
+
             }
-          },
-          {
-            headers: {
-              "Content-Type":
-                "application/json"
-            },
 
-            timeout: 60000
-          }
-        );
+            return text;
 
-      const text =
-        result.data
-          ?.candidates?.[0]
-          ?.content?.parts
-          ?.map(
-            part =>
-              part.text || ""
-          )
-          .join("")
-          .trim();
+        } catch (error) {
 
-      if (!text) {
-        throw new Error(
-          "Gemini image response not found"
-        );
-      }
+            console.error(
+                "Gemini IMAGE ERROR:",
+                error.response?.data ||
+                error.message
+            );
 
-      return text;
+            throw error;
 
-    } catch (error) {
-      console.error(
-        "Gemini IMAGE ERROR:",
-        error.response?.data ||
-          error.message
-      );
+        }
 
-      throw error;
-    }
-  };
+    };
 
 
 /*
@@ -308,45 +366,57 @@ PDF ANALYSIS
 */
 
 export const geminiPdfResponse =
-  async (
-    command,
-    pdfBuffer,
-    assistantName,
-    userName
-  ) => {
-    try {
-      const apiKey =
-        process.env.GEMINI_API_KEY;
+    async (
+        command,
+        pdfBuffer,
+        assistantName,
+        userName
+    ) => {
 
-      if (!apiKey) {
-        throw new Error(
-          "GEMINI_API_KEY is missing in .env"
-        );
-      }
+        try {
 
-      if (!pdfBuffer) {
-        throw new Error(
-          "PDF is required"
-        );
-      }
+            const apiKey =
+                process.env.GEMINI_API_KEY;
 
-      const pdfBase64 =
-        pdfBuffer.toString(
-          "base64"
-        );
+            if (!apiKey) {
 
-      const prompt = `
-You are ${assistantName}, a helpful AI virtual assistant.
+                throw new Error(
+                    "GEMINI_API_KEY is missing in .env"
+                );
+
+            }
+
+            if (!pdfBuffer) {
+
+                throw new Error(
+                    "PDF is required"
+                );
+
+            }
+
+            const pdfBase64 =
+                pdfBuffer.toString(
+                    "base64"
+                );
+
+            const prompt = `
+You are ${assistantName}, an advanced AI virtual assistant.
 
 The user's name is ${userName}.
 
-The user has uploaded a PDF document and asked:
+The user has uploaded a PDF document.
+
+The user asks:
 
 "${command}"
 
-Read and analyze the uploaded PDF carefully before answering.
+IMPORTANT:
 
-You can help with:
+Read and understand the uploaded PDF before answering.
+
+The PDF is the PRIMARY SOURCE for your answer.
+
+You can analyze:
 
 - textbooks
 - notes
@@ -359,103 +429,155 @@ You can help with:
 - mathematics documents
 - chemistry documents
 - physics documents
+- educational documents
 - tables
 - charts
 - diagrams
-- scanned documents
-- educational PDFs
+- scanned pages
+- MCQ papers
+- exam papers
 
-IMPORTANT RULES:
+RULES:
 
-1. Use the uploaded PDF as the primary source.
-2. Answer the user's exact question.
-3. If the user asks for a summary, summarize the relevant PDF content clearly.
-4. If the user asks about a chapter or section, explain that section.
-5. If the user asks a question from the PDF, solve it completely.
-6. If the PDF contains multiple-choice questions, identify the correct answer and explain it.
-7. If the PDF contains mathematical problems, show the calculation and final answer.
-8. If the PDF contains tables, use the relevant information from the tables.
-9. If the PDF contains code, explain the code and identify errors where appropriate.
-10. If the PDF contains diagrams, explain what they represent.
-11. If the PDF contains scanned text, use the readable text from the document.
-12. Do not invent information that is not present in the PDF.
-13. If the requested information cannot be found in the PDF, clearly say that it could not be found.
-14. Give a complete and useful answer.
-15. Do not give only a short one-line answer when the question requires explanation.
+1. Answer the user's exact question.
+
+2. If the user asks "summarize this PDF", provide a useful structured summary.
+
+3. If the user asks about a particular chapter, section or page, explain that part.
+
+4. If the user asks a question contained in the PDF, solve it completely.
+
+5. If the PDF contains MCQs, identify the correct answer and explain why.
+
+6. If the PDF contains mathematics, show the steps and final answer.
+
+7. If the PDF contains chemistry, provide equations and explanations where appropriate.
+
+8. If the PDF contains physics, show formulas, substitutions and final answers where appropriate.
+
+9. If the PDF contains programming code, explain it and identify errors.
+
+10. If the PDF contains tables, use the actual information from the table.
+
+11. If the PDF contains diagrams, explain what they represent.
+
+12. If the PDF is scanned, use readable text from the scanned pages.
+
+13. Do not invent information that cannot be found or reasonably derived from the PDF.
+
+14. If the requested information cannot be found in the PDF, clearly say that it is not available in the uploaded document.
+
+15. Give complete answers.
+
+16. Do not answer with only the topic name.
+
+17. If the question requires explanation, provide the explanation.
+
+18. If the user asks for a direct answer, still include enough reasoning to make the answer understandable.
 
 Answer the user's question directly.
 `;
 
-      const apiUrl =
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
+            const apiUrl =
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 
-      const result =
-        await axios.post(
-          apiUrl,
-          {
-            contents: [
-              {
-                parts: [
-                  {
-                    text: prompt
-                  },
+            const result =
+                await axios.post(
 
-                  {
-                    inline_data: {
-                      mime_type:
-                        "application/pdf",
+                    apiUrl,
 
-                      data:
-                        pdfBase64
+                    {
+
+                        contents: [
+
+                            {
+
+                                parts: [
+
+                                    {
+                                        text:
+                                            prompt
+                                    },
+
+                                    {
+
+                                        inline_data: {
+
+                                            mime_type:
+                                                "application/pdf",
+
+                                            data:
+                                                pdfBase64
+
+                                        }
+
+                                    }
+
+                                ]
+
+                            }
+
+                        ],
+
+                        generationConfig: {
+
+                            temperature:
+                                0.2
+
+                        }
+
+                    },
+
+                    {
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json"
+
+                        },
+
+                        timeout:
+                            120000
+
                     }
-                  }
-                ]
-              }
-            ],
 
-            generationConfig: {
-              temperature: 0.2
+                );
+
+            const text =
+                result.data
+                    ?.candidates?.[0]
+                    ?.content?.parts
+                    ?.map(
+                        part =>
+                            part.text || ""
+                    )
+                    .join("")
+                    .trim();
+
+            if (!text) {
+
+                throw new Error(
+                    "Gemini PDF response not found"
+                );
+
             }
-          },
-          {
-            headers: {
-              "Content-Type":
-                "application/json"
-            },
 
-            timeout: 120000
-          }
-        );
+            return text;
 
-      const text =
-        result.data
-          ?.candidates?.[0]
-          ?.content?.parts
-          ?.map(
-            part =>
-              part.text || ""
-          )
-          .join("")
-          .trim();
+        } catch (error) {
 
-      if (!text) {
-        throw new Error(
-          "Gemini PDF response not found"
-        );
-      }
+            console.error(
+                "Gemini PDF ERROR:",
+                error.response?.data ||
+                error.message
+            );
 
-      return text;
+            throw error;
 
-    } catch (error) {
-      console.error(
-        "Gemini PDF ERROR:",
-        error.response?.data ||
-          error.message
-      );
+        }
 
-      throw error;
-    }
-  };
+    };
 
 
 export default geminiResponse;

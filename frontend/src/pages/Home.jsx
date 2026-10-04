@@ -34,7 +34,8 @@ import {
   FiSettings,
   FiLogOut,
   FiLock,
-  FiEdit3
+  FiEdit3,
+  FiFileText
 } from "react-icons/fi";
 
 
@@ -44,103 +45,218 @@ function Home() {
     userData,
     serverUrl,
     setUserData,
-    getGeminiResponse
-  } = useContext(userDataContext);
+    getGeminiResponse,
+    analyzePdfFile
+  } = useContext(
+    userDataContext
+  );
 
-  const navigate = useNavigate();
+
+  const navigate =
+    useNavigate();
 
 
-  // =====================================================
-  // STATE
-  // =====================================================
+  /*
+  =====================================================
+  STATE
+  =====================================================
+  */
 
-  const [isListening, setIsListening] =
-    useState(false);
+  const [
+    isListening,
+    setIsListening
+  ] = useState(false);
 
-  const [isAIActive, setIsAIActive] =
-    useState(false);
 
-  const [userText, setUserText] =
-    useState("");
+  const [
+    isAIActive,
+    setIsAIActive
+  ] = useState(false);
 
-  const [aiText, setAiText] =
-    useState("");
 
-  const [showAIText, setShowAIText] =
-    useState(false);
+  const [
+    userText,
+    setUserText
+  ] = useState("");
 
-  const [showHistory, setShowHistory] =
-    useState(false);
 
-  const [showProfileMenu, setShowProfileMenu] =
-    useState(false);
+  const [
+    aiText,
+    setAiText
+  ] = useState("");
 
-  const [historyItems, setHistoryItems] =
-    useState([]);
 
-  const [typedText, setTypedText] =
-    useState("");
+  const [
+    showAIText,
+    setShowAIText
+  ] = useState(false);
 
-  const [isSending, setIsSending] =
-    useState(false);
 
-  const [historySearch, setHistorySearch] =
-    useState("");
+  const [
+    showHistory,
+    setShowHistory
+  ] = useState(false);
 
-  const [selectedImage, setSelectedImage] =
-    useState(null);
 
-  const [imagePreview, setImagePreview] =
-    useState("");
+  const [
+    showProfileMenu,
+    setShowProfileMenu
+  ] = useState(false);
 
-  const [isImageAnalyzing, setIsImageAnalyzing] =
-    useState(false);
+
+  const [
+    historyItems,
+    setHistoryItems
+  ] = useState([]);
+
+
+  const [
+    typedText,
+    setTypedText
+  ] = useState("");
+
+
+  const [
+    isSending,
+    setIsSending
+  ] = useState(false);
+
+
+  const [
+    historySearch,
+    setHistorySearch
+  ] = useState("");
+
 
   /*
   -----------------------------------------------------
-  NEW:
-  Image belonging to an opened history item.
-  This is separate from imagePreview so that an old
-  image cannot accidentally be submitted again.
+  IMAGE
   -----------------------------------------------------
   */
 
-  const [historyImage, setHistoryImage] =
-    useState("");
+  const [
+    selectedImage,
+    setSelectedImage
+  ] = useState(null);
 
 
-  // =====================================================
-  // REFS
-  // =====================================================
+  const [
+    imagePreview,
+    setImagePreview
+  ] = useState("");
+
+
+  const [
+    isImageAnalyzing,
+    setIsImageAnalyzing
+  ] = useState(false);
+
+
+  /*
+  -----------------------------------------------------
+  PDF
+  -----------------------------------------------------
+  */
+
+  const [
+    selectedPdf,
+    setSelectedPdf
+  ] = useState(null);
+
+
+  const [
+    pdfPreview,
+    setPdfPreview
+  ] = useState("");
+
+
+  const [
+    isPdfAnalyzing,
+    setIsPdfAnalyzing
+  ] = useState(false);
+
+
+  const [
+    pdfName,
+    setPdfName
+  ] = useState("");
+
+
+  /*
+  -----------------------------------------------------
+  HISTORY IMAGE
+  -----------------------------------------------------
+  */
+
+  const [
+    historyImage,
+    setHistoryImage
+  ] = useState("");
+
+
+  /*
+  -----------------------------------------------------
+  CURRENT PDF SESSION
+  -----------------------------------------------------
+  */
+
+  const [
+    activePdf,
+    setActivePdf
+  ] = useState(null);
+
+
+  /*
+  =====================================================
+  REFS
+  =====================================================
+  */
 
   const imageInputRef =
     useRef(null);
 
+
+  const pdfInputRef =
+    useRef(null);
+
+
   const recognitionRef =
     useRef(null);
+
 
   const listeningRef =
     useRef(false);
 
+
   const speakingRef =
     useRef(false);
+
 
   const processingRef =
     useRef(false);
 
+
   const restartTimeoutRef =
     useRef(null);
 
+
   const speechTimeoutRef =
     useRef(null);
+
+
+  const answerRef =
+    useRef(null);
+
 
   const assistantNameRef =
     useRef("");
 
 
-  // =====================================================
-  // ASSISTANT NAME
-  // =====================================================
+  /*
+  =====================================================
+  ASSISTANT NAME
+  =====================================================
+  */
 
   useEffect(() => {
 
@@ -148,529 +264,475 @@ function Home() {
       userData?.assistantName ||
       "Assistant";
 
-  }, [userData?.assistantName]);
+  }, [
+    userData?.assistantName
+  ]);
 
 
-  // =====================================================
-  // LOAD HISTORY
-  // =====================================================
+  /*
+  =====================================================
+  LOAD HISTORY
+  =====================================================
+  */
 
   useEffect(() => {
 
     setHistoryItems(
-      Array.isArray(userData?.history)
+
+      Array.isArray(
+        userData?.history
+      )
         ? userData.history
         : []
+
     );
 
-  }, [userData?.history]);
+  }, [
+    userData?.history
+  ]);
 
 
-  // =====================================================
-  // CLEAN GEMINI RESPONSE
-  // =====================================================
+  /*
+  =====================================================
+  CLEAN AI RESPONSE
+  =====================================================
+  */
 
-  const cleanAIResponse = text => {
+  const cleanAIResponse =
+    text => {
 
-    if (!text) {
-      return "";
-    }
-
-    let cleaned = String(text);
-
-
-    // Remove code fences
-
-    cleaned = cleaned.replace(
-      /```(?:json|javascript|js|text|markdown|md)?/gi,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /```/g,
-      ""
-    );
-
-
-    // Remove bold
-
-    cleaned = cleaned.replace(
-      /\*\*/g,
-      ""
-    );
-
-
-    // Remove underline/bold
-
-    cleaned = cleaned.replace(
-      /__/g,
-      ""
-    );
-
-
-    // Remove headings
-
-    cleaned = cleaned.replace(
-      /^\s*#{1,6}\s*/gm,
-      ""
-    );
-
-
-    // Remove blockquote
-
-    cleaned = cleaned.replace(
-      /^\s*>\s?/gm,
-      ""
-    );
-
-
-    // Remove markdown bullets
-
-    cleaned = cleaned.replace(
-      /^\s*[-*+]\s+/gm,
-      ""
-    );
-
-
-    // Remove backticks
-
-    cleaned = cleaned.replace(
-      /`/g,
-      ""
-    );
-
-
-    // Remove math delimiters
-
-    cleaned = cleaned.replace(
-      /\$\$/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\$/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\[/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\]/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\(/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\)/g,
-      ""
-    );
-
-
-    // Convert fractions
-
-    let previous = "";
-
-    while (previous !== cleaned) {
-
-      previous = cleaned;
-
-      cleaned = cleaned.replace(
-        /\\(?:frac|dfrac|tfrac)\{([^{}]+)\}\{([^{}]+)\}/g,
-        "$1/$2"
-      );
-    }
-
-
-    // Common LaTeX symbols
-
-    cleaned = cleaned
-      .replace(/\\pi\b/g, "π")
-      .replace(
-        /\\sqrt\{([^{}]+)\}/g,
-        "√($1)"
-      )
-      .replace(/\\sin\b/g, "sin")
-      .replace(/\\cos\b/g, "cos")
-      .replace(/\\tan\b/g, "tan")
-      .replace(/\\cot\b/g, "cot")
-      .replace(/\\sec\b/g, "sec")
-      .replace(/\\csc\b/g, "csc")
-      .replace(/\\log\b/g, "log")
-      .replace(/\\ln\b/g, "ln")
-      .replace(/\\lim\b/g, "lim")
-      .replace(/\\infty\b/g, "∞")
-      .replace(/\\times\b/g, "×")
-      .replace(/\\cdot\b/g, "·")
-      .replace(/\\leq\b/g, "≤")
-      .replace(/\\geq\b/g, "≥")
-      .replace(/\\neq\b/g, "≠")
-      .replace(/\\pm\b/g, "±");
-
-
-    // Remove positioning commands
-
-    cleaned = cleaned.replace(
-      /\\left\b/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\right\b/g,
-      ""
-    );
-
-
-    // Common commands
-
-    cleaned = cleaned
-      .replace(
-        /\\text\{([^{}]*)\}/g,
-        "$1"
-      )
-      .replace(
-        /\\mathrm\{([^{}]*)\}/g,
-        "$1"
-      )
-      .replace(
-        /\\mathbf\{([^{}]*)\}/g,
-        "$1"
-      )
-      .replace(
-        /\\displaystyle/g,
-        ""
-      );
-
-
-    // Superscripts
-
-    cleaned = cleaned
-      .replace(
-        /\^\{2\}/g,
-        "²"
-      )
-      .replace(
-        /\^\{3\}/g,
-        "³"
-      )
-      .replace(
-        /\^2/g,
-        "²"
-      )
-      .replace(
-        /\^3/g,
-        "³"
-      );
-
-
-    // Inverse trig
-
-    cleaned = cleaned
-      .replace(
-        /sin\^\{-1\}/g,
-        "sin⁻¹"
-      )
-      .replace(
-        /cos\^\{-1\}/g,
-        "cos⁻¹"
-      )
-      .replace(
-        /tan\^\{-1\}/g,
-        "tan⁻¹"
-      );
-
-
-    // Remove remaining braces
-
-    cleaned = cleaned.replace(
-      /[{}]/g,
-      ""
-    );
-
-
-    // Spaces
-
-    cleaned = cleaned.replace(
-      /[ \t]+/g,
-      " "
-    );
-
-
-    cleaned = cleaned.replace(
-      /\n[ \t]+/g,
-      "\n"
-    );
-
-
-    cleaned = cleaned.replace(
-      /\n{3,}/g,
-      "\n\n"
-    );
-
-
-    return cleaned.trim();
-  };
-
-
-  // =====================================================
-  // IMAGE -> COMPRESSED DATA URL
-  //
-  // This is what makes the old image persistent.
-  //
-  // We resize large images before saving them to MongoDB.
-  // =====================================================
-
-  const imageFileToDataUrl = file => {
-
-    return new Promise(
-      (resolve, reject) => {
-
-        if (!file) {
-          reject(
-            new Error(
-              "No image file provided"
-            )
-          );
-
-          return;
-        }
-
-        const reader =
-          new FileReader();
-
-        reader.onload = () => {
-
-          const img =
-            new Image();
-
-          img.onload = () => {
-
-            const maxSize = 1000;
-
-            let width =
-              img.width;
-
-            let height =
-              img.height;
-
-
-            if (
-              width > maxSize ||
-              height > maxSize
-            ) {
-
-              if (
-                width > height
-              ) {
-
-                height =
-                  Math.round(
-                    (
-                      height *
-                      maxSize
-                    ) / width
-                  );
-
-                width =
-                  maxSize;
-
-              } else {
-
-                width =
-                  Math.round(
-                    (
-                      width *
-                      maxSize
-                    ) / height
-                  );
-
-                height =
-                  maxSize;
-              }
-            }
-
-
-            const canvas =
-              document.createElement(
-                "canvas"
-              );
-
-            canvas.width =
-              width;
-
-            canvas.height =
-              height;
-
-
-            const ctx =
-              canvas.getContext(
-                "2d"
-              );
-
-
-            if (!ctx) {
-
-              reject(
-                new Error(
-                  "Could not create image canvas"
-                )
-              );
-
-              return;
-            }
-
-
-            ctx.drawImage(
-              img,
-              0,
-              0,
-              width,
-              height
-            );
-
-
-            /*
-            JPEG is used because it is much
-            smaller than the original image
-            for most photos/screenshots.
-            */
-
-            const compressed =
-              canvas.toDataURL(
-                "image/jpeg",
-                0.72
-              );
-
-
-            resolve(compressed);
-          };
-
-
-          img.onerror = () => {
-
-            reject(
-              new Error(
-                "Could not load image"
-              )
-            );
-          };
-
-
-          img.src =
-            reader.result;
-        };
-
-
-        reader.onerror = () => {
-
-          reject(
-            new Error(
-              "Could not read image"
-            )
-          );
-        };
-
-
-        reader.readAsDataURL(file);
+      if (!text) {
+        return "";
       }
-    );
-  };
+
+      let cleaned =
+        String(text);
 
 
-  // =====================================================
-  // SAVE HISTORY
-  // =====================================================
+      cleaned =
+        cleaned.replace(
+          /```(?:json|javascript|js|text|markdown|md)?/gi,
+          ""
+        );
 
-  const addHistory = async (
-    command,
-    answer,
-    type = "text",
-    image = ""
-  ) => {
 
-    const temporaryItem = {
+      cleaned =
+        cleaned.replace(
+          /```/g,
+          ""
+        );
 
-      _id:
-        `temp-${Date.now()}`,
 
-      command,
+      cleaned =
+        cleaned.replace(
+          /\*\*/g,
+          ""
+        );
 
-      answer,
 
-      type,
+      cleaned =
+        cleaned.replace(
+          /__/g,
+          ""
+        );
 
-      image,
 
-      createdAt:
-        new Date().toISOString()
+      cleaned =
+        cleaned.replace(
+          /^\s*#{1,6}\s*/gm,
+          ""
+        );
+
+
+      cleaned =
+        cleaned.replace(
+          /^\s*>\s?/gm,
+          ""
+        );
+
+
+      cleaned =
+        cleaned.replace(
+          /^\s*[-*+]\s+/gm,
+          ""
+        );
+
+
+      cleaned =
+        cleaned.replace(
+          /`/g,
+          ""
+        );
+
+
+      cleaned =
+        cleaned.replace(
+          /\$\$/g,
+          ""
+        );
+
+
+      cleaned =
+        cleaned.replace(
+          /\$/g,
+          ""
+        );
+
+
+      cleaned =
+        cleaned.replace(
+          /\\\[/g,
+          ""
+        );
+
+
+      cleaned =
+        cleaned.replace(
+          /\\\]/g,
+          ""
+        );
+
+
+      cleaned =
+        cleaned.replace(
+          /\\\(/g,
+          ""
+        );
+
+
+      cleaned =
+        cleaned.replace(
+          /\\\)/g,
+          ""
+        );
+
+
+      let previous =
+        "";
+
+      while (
+        previous !==
+        cleaned
+      ) {
+
+        previous =
+          cleaned;
+
+        cleaned =
+          cleaned.replace(
+            /\\(?:frac|dfrac|tfrac)\{([^{}]+)\}\{([^{}]+)\}/g,
+            "$1/$2"
+          );
+
+      }
+
+
+      cleaned =
+        cleaned
+
+          .replace(
+            /\\pi\b/g,
+            "π"
+          )
+
+          .replace(
+            /\\sqrt\{([^{}]+)\}/g,
+            "√($1)"
+          )
+
+          .replace(
+            /\\sin\b/g,
+            "sin"
+          )
+
+          .replace(
+            /\\cos\b/g,
+            "cos"
+          )
+
+          .replace(
+            /\\tan\b/g,
+            "tan"
+          )
+
+          .replace(
+            /\\cot\b/g,
+            "cot"
+          )
+
+          .replace(
+            /\\sec\b/g,
+            "sec"
+          )
+
+          .replace(
+            /\\csc\b/g,
+            "csc"
+          )
+
+          .replace(
+            /\\log\b/g,
+            "log"
+          )
+
+          .replace(
+            /\\ln\b/g,
+            "ln"
+          )
+
+          .replace(
+            /\\infty\b/g,
+            "∞"
+          )
+
+          .replace(
+            /\\times\b/g,
+            "×"
+          )
+
+          .replace(
+            /\\cdot\b/g,
+            "·"
+          )
+
+          .replace(
+            /\\leq\b/g,
+            "≤"
+          )
+
+          .replace(
+            /\\geq\b/g,
+            "≥"
+          )
+
+          .replace(
+            /\\neq\b/g,
+            "≠"
+          )
+
+          .replace(
+            /\\pm\b/g,
+            "±"
+          );
+
+
+      cleaned =
+        cleaned.replace(
+          /\\left\b/g,
+          ""
+        );
+
+
+      cleaned =
+        cleaned.replace(
+          /\\right\b/g,
+          ""
+        );
+
+
+      cleaned =
+        cleaned
+
+          .replace(
+            /\\text\{([^{}]*)\}/g,
+            "$1"
+          )
+
+          .replace(
+            /\\mathrm\{([^{}]*)\}/g,
+            "$1"
+          )
+
+          .replace(
+            /\\mathbf\{([^{}]*)\}/g,
+            "$1"
+          )
+
+          .replace(
+            /\\displaystyle/g,
+            ""
+          );
+
+
+      cleaned =
+        cleaned
+
+          .replace(
+            /\^\{2\}/g,
+            "²"
+          )
+
+          .replace(
+            /\^\{3\}/g,
+            "³"
+          )
+
+          .replace(
+            /\^2/g,
+            "²"
+          )
+
+          .replace(
+            /\^3/g,
+            "³"
+          );
+
+
+      cleaned =
+        cleaned
+
+          .replace(
+            /sin\^\{-1\}/g,
+            "sin⁻¹"
+          )
+
+          .replace(
+            /cos\^\{-1\}/g,
+            "cos⁻¹"
+          )
+
+          .replace(
+            /tan\^\{-1\}/g,
+            "tan⁻¹"
+          );
+
+
+      cleaned =
+        cleaned.replace(
+          /[{}]/g,
+          ""
+        );
+
+
+      cleaned =
+        cleaned.replace(
+          /[ \t]+/g,
+          " "
+        );
+
+
+      cleaned =
+        cleaned.replace(
+          /\n[ \t]+/g,
+          "\n"
+        );
+
+
+      cleaned =
+        cleaned.replace(
+          /\n{3,}/g,
+          "\n\n"
+        );
+
+
+      return cleaned.trim();
+
     };
 
 
-    setHistoryItems(
-      previous => [
-        temporaryItem,
-        ...previous
-      ]
-    );
+  /*
+  =====================================================
+  SAVE HISTORY
+  =====================================================
+  */
+
+  const addHistory =
+    async (
+      command,
+      answer,
+      type = "text",
+      image = ""
+    ) => {
+
+      const temporaryItem = {
+
+        _id:
+          `temp-${Date.now()}`,
+
+        command,
+
+        answer,
+
+        type,
+
+        image,
+
+        createdAt:
+          new Date().toISOString()
+
+      };
 
 
-    try {
-
-      const response =
-        await axios.post(
-          `${serverUrl}/api/user/savehistory`,
-          {
-            command,
-            answer,
-            type,
-            image
-          },
-          {
-            withCredentials: true
-          }
-        );
-
-
-      if (
-        response.data?.history
-      ) {
-
-        setHistoryItems(
-          response.data.history
-        );
-
-
-        setUserData(
-          previous => ({
-            ...previous,
-
-            history:
-              response.data.history
-          })
-        );
-      }
-
-    } catch (error) {
-
-      console.error(
-        "HISTORY SAVE ERROR:",
-        error.response?.data ||
-        error.message
+      setHistoryItems(
+        previous => [
+          temporaryItem,
+          ...previous
+        ]
       );
 
-    }
-  };
+
+      try {
+
+        const response =
+          await axios.post(
+
+            `${serverUrl}/api/user/savehistory`,
+
+            {
+              command,
+              answer,
+              type,
+              image
+            },
+
+            {
+              withCredentials:
+                true
+            }
+
+          );
 
 
-  // =====================================================
-  // DELETE HISTORY
-  // =====================================================
+        if (
+          response.data?.history
+        ) {
+
+          setHistoryItems(
+            response.data.history
+          );
+
+
+          setUserData(
+            previous => ({
+
+              ...previous,
+
+              history:
+                response.data.history
+
+            })
+          );
+
+        }
+
+      } catch (error) {
+
+        console.error(
+          "HISTORY SAVE ERROR:",
+          error.response?.data ||
+          error.message
+        );
+
+      }
+
+    };
+
+
+  /*
+  =====================================================
+  DELETE HISTORY
+  =====================================================
+  */
 
   const deleteHistory =
     async historyId => {
@@ -679,15 +741,18 @@ function Home() {
         return;
       }
 
-
       try {
 
         const response =
           await axios.delete(
+
             `${serverUrl}/api/user/history/${historyId}`,
+
             {
-              withCredentials: true
+              withCredentials:
+                true
             }
+
           );
 
 
@@ -703,10 +768,12 @@ function Home() {
 
         setUserData(
           previous => ({
+
             ...previous,
 
             history:
               updatedHistory
+
           })
         );
 
@@ -718,341 +785,397 @@ function Home() {
           error.response?.data ||
           error.message
         );
+
       }
+
     };
 
 
-  // =====================================================
-  // CLEAR HISTORY
-  // =====================================================
-
-  const clearHistory = async () => {
-
-    if (
-      historyItems.length === 0
-    ) {
-      return;
-    }
-
-
-    const confirmed =
-      window.confirm(
-        "Clear all history?"
-      );
-
-
-    if (!confirmed) {
-      return;
-    }
-
-
-    try {
-
-      await axios.delete(
-        `${serverUrl}/api/user/history`,
-        {
-          withCredentials: true
-        }
-      );
-
-
-      setHistoryItems([]);
-
-      setHistoryImage("");
-
-      setUserText("");
-
-      setAiText("");
-
-      setShowAIText(false);
-
-
-      setUserData(
-        previous => ({
-          ...previous,
-
-          history: []
-        })
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "CLEAR HISTORY ERROR:",
-        error.response?.data ||
-        error.message
-      );
-    }
-  };
-
-
-  // =====================================================
-  // SPEECH
-  // =====================================================
-
-  const speak = text => {
-
-    if (!text) {
-      return;
-    }
-
-
-    const speechText =
-      String(text).trim();
-
-
-    if (!speechText) {
-      return;
-    }
-
-
-    window.speechSynthesis.cancel();
-
-    clearTimeout(
-      speechTimeoutRef.current
-    );
-
-
-    const sentences =
-      speechText.match(
-        /[^.!?]+[.!?]+|[^.!?]+$/g
-      ) || [speechText];
-
-
-    const chunks = [];
-
-    let currentChunk = "";
-
-
-    sentences.forEach(
-      sentence => {
-
-        const cleanSentence =
-          sentence.trim();
-
-
-        if (!cleanSentence) {
-          return;
-        }
-
-
-        const combined =
-          `${currentChunk} ${cleanSentence}`.trim();
-
-
-        if (
-          combined.length > 180
-        ) {
-
-          if (
-            currentChunk.trim()
-          ) {
-
-            chunks.push(
-              currentChunk.trim()
-            );
-          }
-
-
-          currentChunk =
-            cleanSentence;
-
-        } else {
-
-          currentChunk =
-            combined;
-        }
-      }
-    );
-
-
-    if (
-      currentChunk.trim()
-    ) {
-
-      chunks.push(
-        currentChunk.trim()
-      );
-    }
-
-
-    if (
-      chunks.length === 0
-    ) {
-
-      chunks.push(
-        speechText
-      );
-    }
-
-
-    let currentIndex = 0;
-
-
-    speakingRef.current = true;
-
-    setIsAIActive(true);
-
-
-    const speakNextChunk = () => {
+  /*
+  =====================================================
+  CLEAR HISTORY
+  =====================================================
+  */
+
+  const clearHistory =
+    async () => {
 
       if (
-        currentIndex >=
-        chunks.length
+        historyItems.length ===
+        0
       ) {
-
-        speakingRef.current =
-          false;
-
-        setIsAIActive(false);
-
-
-        if (
-          listeningRef.current &&
-          !processingRef.current &&
-          recognitionRef.current
-        ) {
-
-          try {
-            recognitionRef.current.start();
-          } catch {}
-        }
-
         return;
       }
 
 
-      const utterance =
-        new SpeechSynthesisUtterance(
-          chunks[currentIndex]
+      const confirmed =
+        window.confirm(
+          "Clear all history?"
         );
 
 
-      utterance.rate = 1;
-
-      utterance.pitch = 1;
-
-      utterance.volume = 1;
-
-      utterance.lang = "en-US";
+      if (!confirmed) {
+        return;
+      }
 
 
-      utterance.onstart = () => {
+      try {
 
-        speakingRef.current =
-          true;
+        await axios.delete(
 
-        setIsAIActive(true);
-      };
+          `${serverUrl}/api/user/history`,
 
+          {
+            withCredentials:
+              true
+          }
 
-      utterance.onend = () => {
-
-        currentIndex++;
-
-
-        speechTimeoutRef.current =
-          setTimeout(
-            () => {
-              speakNextChunk();
-            },
-            80
-          );
-      };
+        );
 
 
-      utterance.onerror = error => {
+        setHistoryItems([]);
+
+        setHistoryImage("");
+
+        setUserText("");
+
+        setAiText("");
+
+        setShowAIText(false);
+
+        setActivePdf(null);
+
+
+        setUserData(
+          previous => ({
+
+            ...previous,
+
+            history: []
+
+          })
+        );
+
+
+      } catch (error) {
 
         console.error(
-          "SPEECH SYNTHESIS ERROR:",
-          error
+          "CLEAR HISTORY ERROR:",
+          error.response?.data ||
+          error.message
         );
 
+      }
 
-        currentIndex++;
-
-
-        speechTimeoutRef.current =
-          setTimeout(
-            () => {
-              speakNextChunk();
-            },
-            80
-          );
-      };
-
-
-      window.speechSynthesis.speak(
-        utterance
-      );
     };
 
 
-    speakNextChunk();
-  };
+  /*
+  =====================================================
+  SPEECH
+  =====================================================
+  */
+
+  const speak =
+    text => {
+
+      if (!text) {
+        return;
+      }
 
 
-  // =====================================================
-  // OPEN URL
-  // =====================================================
-
-  const openUrl = url => {
-
-    if (!url) {
-      return;
-    }
+      const speechText =
+        String(text).trim();
 
 
-    window.open(
-      url,
-      "_blank",
-      "noopener,noreferrer"
-    );
-  };
+      if (!speechText) {
+        return;
+      }
 
 
-  // =====================================================
-  // GOOGLE SEARCH
-  // =====================================================
-
-  const googleSearch = query => {
-
-    if (!query?.trim()) {
-      return;
-    }
+      window.speechSynthesis.cancel();
 
 
-    openUrl(
-      `https://www.google.com/search?q=${encodeURIComponent(
-        query.trim()
-      )}`
-    );
-  };
+      clearTimeout(
+        speechTimeoutRef.current
+      );
 
 
-  // =====================================================
-  // YOUTUBE SEARCH
-  // =====================================================
-
-  const youtubeSearch = query => {
-
-    if (!query?.trim()) {
-      return;
-    }
+      const sentences =
+        speechText.match(
+          /[^.!?]+[.!?]+|[^.!?]+$/g
+        ) || [
+          speechText
+        ];
 
 
-    openUrl(
-      `https://www.youtube.com/results?search_query=${encodeURIComponent(
-        query.trim()
-      )}`
-    );
-  };
+      const chunks = [];
+
+      let currentChunk =
+        "";
 
 
-  // =====================================================
-  // WEBSITES
-  // =====================================================
+      sentences.forEach(
+        sentence => {
+
+          const cleanSentence =
+            sentence.trim();
+
+
+          if (!cleanSentence) {
+            return;
+          }
+
+
+          const combined =
+            `${currentChunk} ${cleanSentence}`.trim();
+
+
+          if (
+            combined.length >
+            180
+          ) {
+
+            if (
+              currentChunk.trim()
+            ) {
+
+              chunks.push(
+                currentChunk.trim()
+              );
+
+            }
+
+
+            currentChunk =
+              cleanSentence;
+
+          } else {
+
+            currentChunk =
+              combined;
+
+          }
+
+        }
+      );
+
+
+      if (
+        currentChunk.trim()
+      ) {
+
+        chunks.push(
+          currentChunk.trim()
+        );
+
+      }
+
+
+      if (
+        chunks.length ===
+        0
+      ) {
+
+        chunks.push(
+          speechText
+        );
+
+      }
+
+
+      let currentIndex =
+        0;
+
+
+      speakingRef.current =
+        true;
+
+
+      setIsAIActive(true);
+
+
+      const speakNextChunk =
+        () => {
+
+          if (
+            currentIndex >=
+            chunks.length
+          ) {
+
+            speakingRef.current =
+              false;
+
+            setIsAIActive(
+              false
+            );
+
+
+            if (
+              listeningRef.current &&
+              !processingRef.current &&
+              recognitionRef.current
+            ) {
+
+              try {
+                recognitionRef.current.start();
+              } catch { }
+
+            }
+
+            return;
+
+          }
+
+
+          const utterance =
+            new SpeechSynthesisUtterance(
+              chunks[
+              currentIndex
+              ]
+            );
+
+
+          utterance.rate =
+            1;
+
+          utterance.pitch =
+            1;
+
+          utterance.volume =
+            1;
+
+          utterance.lang =
+            "en-US";
+
+
+          utterance.onstart =
+            () => {
+
+              speakingRef.current =
+                true;
+
+              setIsAIActive(
+                true
+              );
+
+            };
+
+
+          utterance.onend =
+            () => {
+
+              currentIndex++;
+
+
+              speechTimeoutRef.current =
+                setTimeout(
+                  () => {
+                    speakNextChunk();
+                  },
+                  80
+                );
+
+            };
+
+
+          utterance.onerror =
+            () => {
+
+              currentIndex++;
+
+
+              speechTimeoutRef.current =
+                setTimeout(
+                  () => {
+                    speakNextChunk();
+                  },
+                  80
+                );
+
+            };
+
+
+          window.speechSynthesis.speak(
+            utterance
+          );
+
+        };
+
+
+      speakNextChunk();
+
+    };
+
+
+  /*
+  =====================================================
+  OPEN URL
+  =====================================================
+  */
+
+  const openUrl =
+    url => {
+
+      if (!url) {
+        return;
+      }
+
+
+      window.open(
+        url,
+        "_blank",
+        "noopener,noreferrer"
+      );
+
+    };
+
+
+  /*
+  =====================================================
+  SEARCH
+  =====================================================
+  */
+
+  const googleSearch =
+    query => {
+
+      if (!query?.trim()) {
+        return;
+      }
+
+
+      openUrl(
+        `https://www.google.com/search?q=${encodeURIComponent(
+          query.trim()
+        )}`
+      );
+
+    };
+
+
+  const youtubeSearch =
+    query => {
+
+      if (!query?.trim()) {
+        return;
+      }
+
+
+      openUrl(
+        `https://www.youtube.com/results?search_query=${encodeURIComponent(
+          query.trim()
+        )}`
+      );
+
+    };
+
+
+  /*
+  =====================================================
+  WEBSITES
+  =====================================================
+  */
 
   const websites = {
 
@@ -1115,97 +1238,93 @@ function Home() {
 
     telegram:
       "https://web.telegram.org"
+
   };
 
 
-  // =====================================================
-  // WEBSITE SEARCH URL
-  // =====================================================
+  /*
+  =====================================================
+  WEBSITE SEARCH
+  =====================================================
+  */
 
-  const getWebsiteSearchUrl = (
-    site,
-    query
-  ) => {
+  const getWebsiteSearchUrl =
+    (
+      site,
+      query
+    ) => {
 
-    const encodedQuery =
-      encodeURIComponent(
-        query.trim()
-      );
-
-
-    switch (site) {
-
-      case "google":
-
-        return `https://www.google.com/search?q=${encodedQuery}`;
+      const encodedQuery =
+        encodeURIComponent(
+          query.trim()
+        );
 
 
-      case "youtube":
+      switch (site) {
 
-        return `https://www.youtube.com/results?search_query=${encodedQuery}`;
+        case "google":
 
+          return `https://www.google.com/search?q=${encodedQuery}`;
 
-      case "amazon":
+        case "youtube":
 
-        return `https://www.amazon.in/s?k=${encodedQuery}`;
+          return `https://www.youtube.com/results?search_query=${encodedQuery}`;
 
+        case "amazon":
 
-      case "flipkart":
+          return `https://www.amazon.in/s?k=${encodedQuery}`;
 
-        return `https://www.flipkart.com/search?q=${encodedQuery}`;
+        case "flipkart":
 
+          return `https://www.flipkart.com/search?q=${encodedQuery}`;
 
-      case "wikipedia":
+        case "wikipedia":
 
-        return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
+          return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
 
+        case "reddit":
 
-      case "reddit":
+          return `https://www.reddit.com/search/?q=${encodedQuery}`;
 
-        return `https://www.reddit.com/search/?q=${encodedQuery}`;
+        case "github":
 
+          return `https://github.com/search?q=${encodedQuery}`;
 
-      case "github":
+        case "linkedin":
 
-        return `https://github.com/search?q=${encodedQuery}`;
+          return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
 
+        case "spotify":
 
-      case "linkedin":
+          return `https://open.spotify.com/search/${encodedQuery}`;
 
-        return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
+        case "pinterest":
 
+          return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
 
-      case "spotify":
+        case "facebook":
 
-        return `https://open.spotify.com/search/${encodedQuery}`;
+          return `https://www.facebook.com/search/top?q=${encodedQuery}`;
 
+        case "x":
+        case "twitter":
 
-      case "pinterest":
+          return `https://x.com/search?q=${encodedQuery}`;
 
-        return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
+        default:
 
+          return null;
 
-      case "facebook":
+      }
 
-        return `https://www.facebook.com/search/top?q=${encodedQuery}`;
-
-
-      case "x":
-      case "twitter":
-
-        return `https://x.com/search?q=${encodedQuery}`;
-
-
-      default:
-
-        return null;
-    }
-  };
+    };
 
 
-  // =====================================================
-  // EXTRACT SEARCH COMMAND
-  // =====================================================
+  /*
+  =====================================================
+  EXTRACT SEARCH COMMAND
+  =====================================================
+  */
 
   const extractSearchCommand =
     command => {
@@ -1218,19 +1337,18 @@ function Home() {
       const text =
         command
           .trim()
-          .replace(/\s+/g, " ");
+          .replace(
+            /\s+/g,
+            " "
+          );
 
 
       let match;
 
 
-      /*
-      search photosynthesis on Google
-      */
-
       match =
         text.match(
-          /^(?:search|find|look up)\s+(.+?)\s+(?:on|in)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s*$/i
+          /^(?:search|find|look up)\s+(.+?)\s+(?:on|in)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)$/i
         );
 
 
@@ -1245,13 +1363,11 @@ function Home() {
 
           query:
             match[1].trim()
+
         };
+
       }
 
-
-      /*
-      search Google for photosynthesis
-      */
 
       match =
         text.match(
@@ -1270,13 +1386,11 @@ function Home() {
 
           query:
             match[2].trim()
+
         };
+
       }
 
-
-      /*
-      open YouTube and search Sun Savaria
-      */
 
       match =
         text.match(
@@ -1295,17 +1409,22 @@ function Home() {
 
           query:
             match[2].trim()
+
         };
+
       }
 
 
       return null;
+
     };
 
 
-  // =====================================================
-  // YOUTUBE QUERY
-  // =====================================================
+  /*
+  =====================================================
+  YOUTUBE QUERY
+  =====================================================
+  */
 
   const getYouTubeQuery =
     command => {
@@ -1322,16 +1441,20 @@ function Home() {
       ) {
 
         return result.query;
+
       }
 
 
       return "";
+
     };
 
 
-  // =====================================================
-  // PROCESS COMMAND
-  // =====================================================
+  /*
+  =====================================================
+  PROCESS COMMAND
+  =====================================================
+  */
 
   const processCommand =
     async (
@@ -1349,13 +1472,7 @@ function Home() {
       }
 
 
-      /*
-      A new question is no longer
-      the previously opened history item.
-      */
-
       setHistoryImage("");
-
 
       setUserText(
         cleanedCommand
@@ -1375,9 +1492,11 @@ function Home() {
 
       try {
 
-        // =================================================
-        // EXPLICIT SEARCH
-        // =================================================
+        /*
+        =================================================
+        SEARCH
+        =================================================
+        */
 
         const searchCommand =
           extractSearchCommand(
@@ -1397,18 +1516,22 @@ function Home() {
             site === "x"
               ? "X"
               : site
-                  .charAt(0)
-                  .toUpperCase() +
-                site.slice(1);
+                .charAt(0)
+                .toUpperCase() +
+              site.slice(1);
 
 
           const answer =
             `Searching ${siteName} for ${query}.`;
 
 
-          setAiText(answer);
+          setAiText(
+            answer
+          );
 
-          setShowAIText(true);
+          setShowAIText(
+            true
+          );
 
 
           await addHistory(
@@ -1426,20 +1549,9 @@ function Home() {
 
 
           if (searchUrl) {
-
-            openUrl(searchUrl);
-
-          } else if (
-            site === "youtube"
-          ) {
-
-            youtubeSearch(query);
-
-          } else if (
-            site === "google"
-          ) {
-
-            googleSearch(query);
+            openUrl(
+              searchUrl
+            );
           }
 
 
@@ -1449,12 +1561,15 @@ function Home() {
 
 
           return;
+
         }
 
 
-        // =================================================
-        // SIMPLE GOOGLE SEARCH
-        // =================================================
+        /*
+        =================================================
+        SIMPLE GOOGLE
+        =================================================
+        */
 
         const googleSearchMatch =
           cleanedCommand.match(
@@ -1462,19 +1577,26 @@ function Home() {
           );
 
 
-        if (googleSearchMatch) {
+        if (
+          googleSearchMatch
+        ) {
 
           const query =
-            googleSearchMatch[1].trim();
+            googleSearchMatch[1]
+              .trim();
 
 
           const answer =
             `Searching Google for ${query}.`;
 
 
-          setAiText(answer);
+          setAiText(
+            answer
+          );
 
-          setShowAIText(true);
+          setShowAIText(
+            true
+          );
 
 
           await addHistory(
@@ -1484,7 +1606,9 @@ function Home() {
           );
 
 
-          googleSearch(query);
+          googleSearch(
+            query
+          );
 
 
           if (shouldSpeak) {
@@ -1493,12 +1617,15 @@ function Home() {
 
 
           return;
+
         }
 
 
-        // =================================================
-        // SIMPLE YOUTUBE SEARCH
-        // =================================================
+        /*
+        =================================================
+        YOUTUBE
+        =================================================
+        */
 
         const youtubeQuery =
           getYouTubeQuery(
@@ -1512,9 +1639,13 @@ function Home() {
             `Searching YouTube for ${youtubeQuery}.`;
 
 
-          setAiText(answer);
+          setAiText(
+            answer
+          );
 
-          setShowAIText(true);
+          setShowAIText(
+            true
+          );
 
 
           await addHistory(
@@ -1535,12 +1666,15 @@ function Home() {
 
 
           return;
+
         }
 
 
-        // =================================================
-        // DIRECT WEBSITE OPEN
-        // =================================================
+        /*
+        =================================================
+        DIRECT WEBSITE
+        =================================================
+        */
 
         const directMatch =
           cleanedCommand.match(
@@ -1566,9 +1700,13 @@ function Home() {
               `Opening ${site}.`;
 
 
-            setAiText(answer);
+            setAiText(
+              answer
+            );
 
-            setShowAIText(true);
+            setShowAIText(
+              true
+            );
 
 
             await addHistory(
@@ -1589,13 +1727,17 @@ function Home() {
 
 
             return;
+
           }
+
         }
 
 
-        // =================================================
-        // GEMINI
-        // =================================================
+        /*
+        =================================================
+        NORMAL GEMINI
+        =================================================
+        */
 
         const result =
           await getGeminiResponse(
@@ -1606,10 +1748,6 @@ function Home() {
         let parsedResult =
           result;
 
-
-        // =================================================
-        // PARSE GEMINI RESULT
-        // =================================================
 
         if (
           typeof result ===
@@ -1645,14 +1783,13 @@ function Home() {
 
               response:
                 cleanResult
+
             };
+
           }
+
         }
 
-
-        // =================================================
-        // COMPLETE GEMINI RESPONSE
-        // =================================================
 
         const rawResponse =
           parsedResult?.response ||
@@ -1661,19 +1798,11 @@ function Home() {
           "Sorry, I could not understand that.";
 
 
-        // =================================================
-        // CLEAN RESPONSE
-        // =================================================
-
         const response =
           cleanAIResponse(
             rawResponse
           );
 
-
-        // =================================================
-        // GOOGLE OPEN
-        // =================================================
 
         if (
           parsedResult?.type ===
@@ -1683,41 +1812,27 @@ function Home() {
           openUrl(
             "https://www.google.com"
           );
+
         }
 
-
-        // =================================================
-        // GOOGLE SEARCH
-        // =================================================
 
         else if (
           parsedResult?.type ===
           "google_search"
         ) {
 
-          const extractedSearch =
-            extractSearchCommand(
-              cleanedCommand
+          if (
+            parsedResult?.query
+          ) {
+
+            googleSearch(
+              parsedResult.query
             );
 
-
-          const query =
-            extractedSearch?.site ===
-            "google"
-              ? extractedSearch.query
-              : parsedResult?.query;
-
-
-          if (query?.trim()) {
-
-            googleSearch(query);
           }
+
         }
 
-
-        // =================================================
-        // YOUTUBE OPEN
-        // =================================================
 
         else if (
           parsedResult?.type ===
@@ -1727,43 +1842,29 @@ function Home() {
           openUrl(
             "https://www.youtube.com"
           );
+
         }
 
-
-        // =================================================
-        // YOUTUBE SEARCH / PLAY
-        // =================================================
 
         else if (
           parsedResult?.type ===
-            "youtube_search" ||
+          "youtube_search" ||
           parsedResult?.type ===
-            "youtube_play"
+          "youtube_play"
         ) {
 
-          const extractedQuery =
-            getYouTubeQuery(
-              cleanedCommand
-            );
-
-
-          const query =
-            extractedQuery ||
-            parsedResult?.query;
-
-
-          if (query?.trim()) {
+          if (
+            parsedResult?.query
+          ) {
 
             youtubeSearch(
-              query
+              parsedResult.query
             );
+
           }
+
         }
 
-
-        // =================================================
-        // CALCULATOR
-        // =================================================
 
         else if (
           parsedResult?.type ===
@@ -1773,16 +1874,17 @@ function Home() {
           openUrl(
             "https://www.google.com/search?q=calculator"
           );
+
         }
 
 
-        // =================================================
-        // SHOW COMPLETE ANSWER
-        // =================================================
+        setAiText(
+          response
+        );
 
-        setAiText(response);
-
-        setShowAIText(true);
+        setShowAIText(
+          true
+        );
 
 
         await addHistory(
@@ -1792,12 +1894,7 @@ function Home() {
         );
 
 
-        // =================================================
-        // ONLY VOICE INPUT SPEAKS
-        // =================================================
-
         if (shouldSpeak) {
-
           speak(response);
         }
 
@@ -1818,11 +1915,12 @@ function Home() {
           errorMessage
         );
 
-        setShowAIText(true);
+        setShowAIText(
+          true
+        );
 
 
         if (shouldSpeak) {
-
           speak(
             errorMessage
           );
@@ -1833,22 +1931,31 @@ function Home() {
         processingRef.current =
           false;
 
-        setIsSending(false);
+        setIsSending(
+          false
+        );
 
 
         if (
           !speakingRef.current
         ) {
 
-          setIsAIActive(false);
+          setIsAIActive(
+            false
+          );
+
         }
+
       }
+
     };
 
 
-  // =====================================================
-  // SEND TYPED MESSAGE
-  // =====================================================
+  /*
+  =====================================================
+  SEND MESSAGE
+  =====================================================
+  */
 
   const handleSend =
     async e => {
@@ -1856,13 +1963,41 @@ function Home() {
       e?.preventDefault();
 
 
+      /*
+      -------------------------------------------------
+      IMAGE
+      -------------------------------------------------
+      */
+
       if (selectedImage) {
 
         await analyzeImage();
 
         return;
+
       }
 
+
+      /*
+      -------------------------------------------------
+      PDF
+      -------------------------------------------------
+      */
+
+      if (selectedPdf) {
+
+        await analyzePdf();
+
+        return;
+
+      }
+
+
+      /*
+      -------------------------------------------------
+      NORMAL TEXT
+      -------------------------------------------------
+      */
 
       if (
         !typedText.trim() ||
@@ -1870,6 +2005,7 @@ function Home() {
       ) {
 
         return;
+
       }
 
 
@@ -1884,20 +2020,35 @@ function Home() {
 
 
       /*
-      Typed questions NEVER speak.
+      If a PDF session is active,
+      send the question with the PDF.
       */
+
+      if (activePdf) {
+
+        await analyzePdfQuestion(
+          command
+        );
+
+        return;
+
+      }
+
 
       await processCommand(
         command,
         "text",
         false
       );
+
     };
 
 
-  // =====================================================
-  // IMAGE SELECT
-  // =====================================================
+  /*
+  =====================================================
+  IMAGE SELECT
+  =====================================================
+  */
 
   const handleImageSelect =
     e => {
@@ -1922,6 +2073,7 @@ function Home() {
         );
 
         return;
+
       }
 
 
@@ -1935,6 +2087,7 @@ function Home() {
         );
 
         return;
+
       }
 
 
@@ -1943,24 +2096,807 @@ function Home() {
         URL.revokeObjectURL(
           imagePreview
         );
+
       }
+
+
+      removePdf();
 
 
       setHistoryImage("");
 
-
-      setSelectedImage(file);
-
+      setSelectedImage(
+        file
+      );
 
       setImagePreview(
-        URL.createObjectURL(file)
+        URL.createObjectURL(
+          file
+        )
       );
+
     };
 
 
-  // =====================================================
-  // PASTE IMAGE
-  // =====================================================
+  /*
+  =====================================================
+  PDF SELECT
+  =====================================================
+  */
+
+  const handlePdfSelect =
+    e => {
+
+      const file =
+        e.target.files?.[0];
+
+
+      if (!file) {
+        return;
+      }
+
+
+      const isPdf =
+        file.type ===
+        "application/pdf" ||
+        file.name
+          .toLowerCase()
+          .endsWith(".pdf");
+
+
+      if (!isPdf) {
+
+        alert(
+          "Please select a PDF file."
+        );
+
+        return;
+
+      }
+
+
+      if (
+        file.size >
+        20 * 1024 * 1024
+      ) {
+
+        alert(
+          "PDF must be smaller than 20 MB."
+        );
+
+        return;
+
+      }
+
+
+      removeImage();
+
+
+      setHistoryImage("");
+
+      setActivePdf(null);
+
+      setSelectedPdf(
+        file
+      );
+
+      setPdfName(
+        file.name
+      );
+
+      setPdfPreview(
+        URL.createObjectURL(
+          file
+        )
+      );
+
+
+      setUserText("");
+
+      setAiText("");
+
+      setShowAIText(false);
+
+    };
+
+
+  /*
+  =====================================================
+  REMOVE IMAGE
+  =====================================================
+  */
+
+  const removeImage =
+    () => {
+
+      if (imagePreview) {
+
+        URL.revokeObjectURL(
+          imagePreview
+        );
+
+      }
+
+
+      setSelectedImage(
+        null
+      );
+
+      setImagePreview(
+        ""
+      );
+
+
+      if (
+        imageInputRef.current
+      ) {
+
+        imageInputRef.current.value =
+          "";
+
+      }
+
+    };
+
+
+  /*
+  =====================================================
+  REMOVE PDF
+  =====================================================
+  */
+
+  const removePdf =
+    () => {
+
+      if (pdfPreview) {
+
+        URL.revokeObjectURL(
+          pdfPreview
+        );
+
+      }
+
+
+      setSelectedPdf(
+        null
+      );
+
+      setPdfPreview(
+        ""
+      );
+
+      setPdfName(
+        ""
+      );
+
+
+      if (
+        pdfInputRef.current
+      ) {
+
+        pdfInputRef.current.value =
+          "";
+
+      }
+
+    };
+
+
+  /*
+  =====================================================
+  PDF ANALYSIS
+  =====================================================
+  */
+
+  const analyzePdf =
+    async () => {
+
+      if (
+        !selectedPdf ||
+        isPdfAnalyzing
+      ) {
+
+        return;
+
+      }
+
+
+      const question =
+        typedText.trim() ||
+        "Analyze this PDF and explain its important contents.";
+
+
+      setIsPdfAnalyzing(
+        true
+      );
+
+      setIsAIActive(
+        true
+      );
+
+      setUserText(
+        question
+      );
+
+      setAiText("");
+
+      setShowAIText(
+        false
+      );
+
+
+      try {
+
+        const result =
+          await analyzePdfFile(
+            selectedPdf,
+            question
+          );
+
+
+        const answer =
+          cleanAIResponse(
+            result?.response ||
+            result?.answer ||
+            "I could not analyze this PDF."
+          );
+
+
+        setAiText(
+          answer
+        );
+
+        setShowAIText(
+          true
+        );
+
+
+        /*
+        Keep the PDF in memory
+        for follow-up questions.
+        */
+
+        setActivePdf(
+          selectedPdf
+        );
+
+
+        await addHistory(
+          question,
+          answer,
+          "pdf"
+        );
+
+
+        setTypedText("");
+
+        removePdf();
+
+
+      } catch (error) {
+
+        console.error(
+          "PDF ANALYSIS ERROR:",
+          error.response?.data ||
+          error.message
+        );
+
+
+        const errorMessage =
+          error.response?.data?.message ||
+          "Unable to analyze the PDF.";
+
+
+        setAiText(
+          errorMessage
+        );
+
+        setShowAIText(
+          true
+        );
+
+      } finally {
+
+        setIsPdfAnalyzing(
+          false
+        );
+
+        if (
+          !speakingRef.current
+        ) {
+
+          setIsAIActive(
+            false
+          );
+
+        }
+
+      }
+
+    };
+
+
+  /*
+  =====================================================
+  ASK QUESTION ABOUT ACTIVE PDF
+  =====================================================
+  */
+
+  const analyzePdfQuestion =
+    async question => {
+
+      if (
+        !activePdf ||
+        !question.trim() ||
+        isPdfAnalyzing
+      ) {
+
+        return;
+
+      }
+
+
+      setIsPdfAnalyzing(
+        true
+      );
+
+      setIsAIActive(
+        true
+      );
+
+      setUserText(
+        question
+      );
+
+      setAiText("");
+
+      setShowAIText(
+        false
+      );
+
+
+      try {
+
+        const result =
+          await analyzePdfFile(
+            activePdf,
+            question
+          );
+
+
+        const answer =
+          cleanAIResponse(
+            result?.response ||
+            result?.answer ||
+            "I could not answer that question from the PDF."
+          );
+
+
+        setAiText(
+          answer
+        );
+
+        setShowAIText(
+          true
+        );
+
+
+        await addHistory(
+          question,
+          answer,
+          "pdf"
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          "PDF QUESTION ERROR:",
+          error.response?.data ||
+          error.message
+        );
+
+
+        setAiText(
+          "Unable to answer the question from the PDF."
+        );
+
+        setShowAIText(
+          true
+        );
+
+      } finally {
+
+        setIsPdfAnalyzing(
+          false
+        );
+
+        setIsAIActive(
+          false
+        );
+
+      }
+
+    };
+
+
+  /*
+  =====================================================
+  IMAGE ANALYSIS
+  =====================================================
+  */
+
+  const analyzeImage =
+    async () => {
+
+      if (
+        !selectedImage ||
+        isImageAnalyzing
+      ) {
+
+        return;
+
+      }
+
+
+      const question =
+        typedText.trim() ||
+        "Analyze this image and explain what you see.";
+
+
+      setHistoryImage("");
+
+      setIsImageAnalyzing(
+        true
+      );
+
+      setUserText(
+        question
+      );
+
+      setAiText("");
+
+      setShowAIText(
+        false
+      );
+
+      setIsAIActive(
+        true
+      );
+
+
+      try {
+
+        const formData =
+          new FormData();
+
+
+        formData.append(
+          "image",
+          selectedImage
+        );
+
+
+        formData.append(
+          "command",
+          question
+        );
+
+
+        const response =
+          await axios.post(
+
+            `${serverUrl}/api/user/analyze-image`,
+
+            formData,
+
+            {
+              withCredentials:
+                true,
+
+              timeout:
+                120000
+            }
+
+          );
+
+
+        const rawAnswer =
+          response.data?.response ||
+          response.data?.answer ||
+          "I could not analyze the image.";
+
+
+        const answer =
+          cleanAIResponse(
+            rawAnswer
+          );
+
+
+        setAiText(
+          answer
+        );
+
+        setShowAIText(
+          true
+        );
+
+
+        let imageForHistory =
+          "";
+
+
+        try {
+
+          imageForHistory =
+            await imageFileToDataUrl(
+              selectedImage
+            );
+
+        } catch (
+        imageError
+        ) {
+
+          console.error(
+            "IMAGE HISTORY ERROR:",
+            imageError
+          );
+
+        }
+
+
+        await addHistory(
+          question,
+          answer,
+          "image",
+          imageForHistory
+        );
+
+
+        removeImage();
+
+        setTypedText("");
+
+
+      } catch (error) {
+
+        console.error(
+          "IMAGE ANALYSIS ERROR:",
+          error.response?.data ||
+          error.message
+        );
+
+
+        const errorMessage =
+          error.response?.data?.message ||
+          "Unable to analyze the image.";
+
+
+        setAiText(
+          cleanAIResponse(
+            errorMessage
+          )
+        );
+
+        setShowAIText(
+          true
+        );
+
+      } finally {
+
+        setIsImageAnalyzing(
+          false
+        );
+
+
+        if (
+          !speakingRef.current
+        ) {
+
+          setIsAIActive(
+            false
+          );
+
+        }
+
+      }
+
+    };
+
+
+  /*
+  =====================================================
+  IMAGE TO DATA URL
+  =====================================================
+  */
+
+  const imageFileToDataUrl =
+    file => {
+
+      return new Promise(
+        (
+          resolve,
+          reject
+        ) => {
+
+          if (!file) {
+
+            reject(
+              new Error(
+                "No image file provided"
+              )
+            );
+
+            return;
+
+          }
+
+
+          const reader =
+            new FileReader();
+
+
+          reader.onload =
+            () => {
+
+              const img =
+                new Image();
+
+
+              img.onload =
+                () => {
+
+                  const maxSize =
+                    1000;
+
+
+                  let width =
+                    img.width;
+
+
+                  let height =
+                    img.height;
+
+
+                  if (
+                    width >
+                    maxSize ||
+                    height >
+                    maxSize
+                  ) {
+
+                    if (
+                      width >
+                      height
+                    ) {
+
+                      height =
+                        Math.round(
+                          (
+                            height *
+                            maxSize
+                          ) /
+                          width
+                        );
+
+                      width =
+                        maxSize;
+
+                    } else {
+
+                      width =
+                        Math.round(
+                          (
+                            width *
+                            maxSize
+                          ) /
+                          height
+                        );
+
+                      height =
+                        maxSize;
+
+                    }
+
+                  }
+
+
+                  const canvas =
+                    document.createElement(
+                      "canvas"
+                    );
+
+
+                  canvas.width =
+                    width;
+
+                  canvas.height =
+                    height;
+
+
+                  const ctx =
+                    canvas.getContext(
+                      "2d"
+                    );
+
+
+                  if (!ctx) {
+
+                    reject(
+                      new Error(
+                        "Could not create canvas"
+                      )
+                    );
+
+                    return;
+
+                  }
+
+
+                  ctx.drawImage(
+                    img,
+                    0,
+                    0,
+                    width,
+                    height
+                  );
+
+
+                  resolve(
+                    canvas.toDataURL(
+                      "image/jpeg",
+                      0.72
+                    )
+                  );
+
+                };
+
+
+              img.onerror =
+                () => {
+
+                  reject(
+                    new Error(
+                      "Could not load image"
+                    )
+                  );
+
+                };
+
+
+              img.src =
+                reader.result;
+
+            };
+
+
+          reader.onerror =
+            () => {
+
+              reject(
+                new Error(
+                  "Could not read image"
+                )
+              );
+
+            };
+
+
+          reader.readAsDataURL(
+            file
+          );
+
+        }
+      );
+
+    };
+
+
+  /*
+  =====================================================
+  PASTE IMAGE
+  =====================================================
+  */
 
   const handlePaste =
     event => {
@@ -2003,238 +2939,47 @@ function Home() {
           }
 
 
-          if (imagePreview) {
+          removePdf();
+
+
+          if (
+            imagePreview
+          ) {
 
             URL.revokeObjectURL(
               imagePreview
             );
+
           }
 
 
           setHistoryImage("");
 
-
-          setSelectedImage(file);
-
+          setSelectedImage(
+            file
+          );
 
           setImagePreview(
-            URL.createObjectURL(file)
+            URL.createObjectURL(
+              file
+            )
           );
 
 
           return;
+
         }
+
       }
+
     };
 
 
-  // =====================================================
-  // REMOVE IMAGE
-  // =====================================================
-
-  const removeImage = () => {
-
-    if (imagePreview) {
-
-      URL.revokeObjectURL(
-        imagePreview
-      );
-    }
-
-
-    setSelectedImage(null);
-
-    setImagePreview("");
-
-
-    if (
-      imageInputRef.current
-    ) {
-
-      imageInputRef.current.value =
-        "";
-    }
-  };
-
-
-  // =====================================================
-  // IMAGE ANALYSIS
-  // =====================================================
-
-  const analyzeImage =
-    async () => {
-
-      if (
-        !selectedImage ||
-        isImageAnalyzing
-      ) {
-
-        return;
-      }
-
-
-      const question =
-        typedText.trim() ||
-        "Analyze this image and explain what you see.";
-
-
-      setHistoryImage("");
-
-
-      setIsImageAnalyzing(true);
-
-      setUserText(question);
-
-      setAiText("");
-
-      setShowAIText(false);
-
-      setIsAIActive(true);
-
-
-      try {
-
-        // =================================================
-        // SEND ORIGINAL IMAGE TO GEMINI
-        // =================================================
-
-        const formData =
-          new FormData();
-
-
-        formData.append(
-          "image",
-          selectedImage
-        );
-
-
-        formData.append(
-          "command",
-          question
-        );
-
-
-        const response =
-          await axios.post(
-            `${serverUrl}/api/user/analyze-image`,
-            formData,
-            {
-              withCredentials: true
-            }
-          );
-
-
-        const rawAnswer =
-          response.data?.response ||
-          response.data?.answer ||
-          "I could not analyze the image.";
-
-
-        const answer =
-          cleanAIResponse(
-            rawAnswer
-          );
-
-
-        setAiText(answer);
-
-        setShowAIText(true);
-
-
-        // =================================================
-        // COMPRESS IMAGE FOR HISTORY
-        // =================================================
-
-        let imageForHistory = "";
-
-
-        try {
-
-          imageForHistory =
-            await imageFileToDataUrl(
-              selectedImage
-            );
-
-        } catch (imageError) {
-
-          console.error(
-            "IMAGE HISTORY CONVERSION ERROR:",
-            imageError
-          );
-
-          /*
-          The AI answer can still work even
-          if history-image conversion fails.
-          */
-
-          imageForHistory = "";
-        }
-
-
-        // =================================================
-        // SAVE QUESTION + ANSWER + IMAGE
-        // =================================================
-
-        await addHistory(
-          question,
-          answer,
-          "image",
-          imageForHistory
-        );
-
-
-        // =================================================
-        // REMOVE CURRENT SELECTED IMAGE
-        // =================================================
-
-        removeImage();
-
-        setTypedText("");
-
-
-      } catch (error) {
-
-        console.error(
-          "IMAGE ANALYSIS ERROR:",
-          error.response?.data ||
-          error.message
-        );
-
-
-        const errorMessage =
-          error.response?.data?.message ||
-          "Unable to analyze the image.";
-
-
-        setAiText(
-          cleanAIResponse(
-            errorMessage
-          )
-        );
-
-
-        setShowAIText(true);
-
-      } finally {
-
-        setIsImageAnalyzing(
-          false
-        );
-
-
-        if (
-          !speakingRef.current
-        ) {
-
-          setIsAIActive(false);
-        }
-      }
-    };
-
-
-  // =====================================================
-  // SPEECH RECOGNITION
-  // =====================================================
+  /*
+  =====================================================
+  SPEECH RECOGNITION
+  =====================================================
+  */
 
   useEffect(() => {
 
@@ -2250,6 +2995,7 @@ function Home() {
       );
 
       return;
+
     }
 
 
@@ -2260,11 +3006,14 @@ function Home() {
     recognition.continuous =
       true;
 
+
     recognition.lang =
       "en-US";
 
+
     recognition.interimResults =
       false;
+
 
     recognition.maxAlternatives =
       1;
@@ -2280,7 +3029,10 @@ function Home() {
         listeningRef.current =
           true;
 
-        setIsListening(true);
+        setIsListening(
+          true
+        );
+
       };
 
 
@@ -2292,12 +3044,13 @@ function Home() {
         ) {
 
           return;
+
         }
 
 
         const lastResult =
           event.results[
-            event.results.length - 1
+          event.results.length - 1
           ];
 
 
@@ -2324,18 +3077,13 @@ function Home() {
         const stopCommands = [
 
           "thank you",
-
           "thanks",
-
           "stop",
-
           "bye",
-
           "goodbye",
-
           "stop listening",
-
           "cancel"
+
         ];
 
 
@@ -2348,6 +3096,7 @@ function Home() {
           stopListening();
 
           return;
+
         }
 
 
@@ -2357,8 +3106,45 @@ function Home() {
 
 
         /*
-        Voice questions speak the
-        complete answer.
+        -------------------------------------------------
+        PDF VOICE QUESTION
+        -------------------------------------------------
+        */
+
+        if (activePdf) {
+
+          await analyzePdfQuestion(
+            transcript
+          );
+
+          /*
+          Speak the complete PDF answer.
+          */
+
+          const currentAnswer =
+            aiText;
+
+
+          if (
+            currentAnswer
+          ) {
+
+            speak(
+              currentAnswer
+            );
+
+          }
+
+
+          return;
+
+        }
+
+
+        /*
+        -------------------------------------------------
+        NORMAL VOICE QUESTION
+        -------------------------------------------------
         */
 
         await processCommand(
@@ -2366,6 +3152,7 @@ function Home() {
           "voice",
           true
         );
+
       };
 
 
@@ -2391,7 +3178,8 @@ function Home() {
 
                   recognition.start();
 
-                } catch {}
+                } catch { }
+
               },
               400
             );
@@ -2400,8 +3188,12 @@ function Home() {
           !listeningRef.current
         ) {
 
-          setIsListening(false);
+          setIsListening(
+            false
+          );
+
         }
+
       };
 
 
@@ -2416,16 +3208,20 @@ function Home() {
 
         if (
           event.error ===
-            "not-allowed" ||
+          "not-allowed" ||
           event.error ===
-            "audio-capture"
+          "audio-capture"
         ) {
 
           listeningRef.current =
             false;
 
-          setIsListening(false);
+          setIsListening(
+            false
+          );
+
         }
+
       };
 
 
@@ -2449,10 +3245,8 @@ function Home() {
 
 
       try {
-
         recognition.stop();
-
-      } catch {}
+      } catch { }
 
 
       window.speechSynthesis.cancel();
@@ -2460,14 +3254,20 @@ function Home() {
 
       recognitionRef.current =
         null;
+
     };
 
-  }, [getGeminiResponse]);
+  }, [
+    getGeminiResponse,
+    activePdf
+  ]);
 
 
-  // =====================================================
-  // START LISTENING
-  // =====================================================
+  /*
+  =====================================================
+  START LISTENING
+  =====================================================
+  */
 
   const startListening =
     () => {
@@ -2481,6 +3281,7 @@ function Home() {
         );
 
         return;
+
       }
 
 
@@ -2497,7 +3298,9 @@ function Home() {
           true;
 
 
-        setIsListening(true);
+        setIsListening(
+          true
+        );
 
 
         recognitionRef.current.start();
@@ -2507,13 +3310,17 @@ function Home() {
         console.log(
           "Microphone already running."
         );
+
       }
+
     };
 
 
-  // =====================================================
-  // STOP LISTENING
-  // =====================================================
+  /*
+  =====================================================
+  STOP LISTENING
+  =====================================================
+  */
 
   const stopListening =
     () => {
@@ -2522,7 +3329,9 @@ function Home() {
         false;
 
 
-      setIsListening(false);
+      setIsListening(
+        false
+      );
 
 
       clearTimeout(
@@ -2538,14 +3347,18 @@ function Home() {
 
           recognitionRef.current.stop();
 
-        } catch {}
+        } catch { }
+
       }
+
     };
 
 
-  // =====================================================
-  // LOGOUT
-  // =====================================================
+  /*
+  =====================================================
+  LOGOUT
+  =====================================================
+  */
 
   const handleLogout =
     async () => {
@@ -2553,11 +3366,16 @@ function Home() {
       try {
 
         await axios.post(
+
           `${serverUrl}/api/auth/logout`,
+
           {},
+
           {
-            withCredentials: true
+            withCredentials:
+              true
           }
+
         );
 
       } catch (error) {
@@ -2566,18 +3384,24 @@ function Home() {
           "LOGOUT ERROR:",
           error
         );
+
       }
 
 
       setUserData(null);
 
-      navigate("/signin");
+      navigate(
+        "/signin"
+      );
+
     };
 
 
-  // =====================================================
-  // FILTER HISTORY
-  // =====================================================
+  /*
+  =====================================================
+  FILTER HISTORY
+  =====================================================
+  */
 
   const filteredHistory =
     historyItems.filter(
@@ -2607,6 +3431,7 @@ function Home() {
 
 
         return (
+
           command
             .toLowerCase()
             .includes(search) ||
@@ -2614,24 +3439,30 @@ function Home() {
           answer
             .toLowerCase()
             .includes(search)
+
         );
+
       }
     );
 
 
-  // =====================================================
-  // OPEN HISTORY
-  // =====================================================
+  /*
+  =====================================================
+  OPEN HISTORY
+  =====================================================
+  */
 
   const openHistory =
     item => {
 
       const command =
-        item?.command || "";
+        item?.command ||
+        "";
 
 
       const answer =
-        item?.answer || "";
+        item?.answer ||
+        "";
 
 
       setUserText(
@@ -2646,18 +3477,14 @@ function Home() {
       );
 
 
-      setShowAIText(true);
+      setShowAIText(
+        true
+      );
 
-
-      /*
-      -----------------------------------------------
-      IMPORTANT:
-      Restore old image here.
-      -----------------------------------------------
-      */
 
       if (
-        item?.type === "image" &&
+        item?.type ===
+        "image" &&
         item?.image
       ) {
 
@@ -2667,26 +3494,30 @@ function Home() {
 
       } else {
 
-        setHistoryImage("");
+        setHistoryImage(
+          ""
+        );
+
       }
 
 
-      /*
-      The old image is NOT placed into
-      selectedImage/imagePreview.
-
-      Therefore clicking old history
-      will not accidentally send it again.
-      */
+      setActivePdf(
+        null
+      );
 
 
-      setShowHistory(false);
+      setShowHistory(
+        false
+      );
+
     };
 
 
-  // =====================================================
-  // FORMAT DATE
-  // =====================================================
+  /*
+  =====================================================
+  FORMAT DATE
+  =====================================================
+  */
 
   const formatDate =
     date => {
@@ -2701,66 +3532,84 @@ function Home() {
       ).toLocaleString(
         "en-IN",
         {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit"
+
+          day:
+            "2-digit",
+
+          month:
+            "short",
+
+          year:
+            "numeric",
+
+          hour:
+            "2-digit",
+
+          minute:
+            "2-digit"
+
         }
       );
+
     };
 
 
-  // =====================================================
-  // UI
-  // =====================================================
+  /*
+  =====================================================
+  UI
+  =====================================================
+  */
 
   return (
 
     <div
-      onPaste={handlePaste}
+      onPaste={
+        handlePaste
+      }
+
       className="
-        relative
-        min-h-screen
-        w-full
-        overflow-hidden
-        bg-[#070B14]
-        text-white
-      "
+                relative
+                flex
+                min-h-screen
+                w-full
+                flex-col
+                overflow-hidden
+                bg-[#070B14]
+                text-white
+            "
     >
 
-      {/* =================================================
-          HEADER
-      ================================================= */}
+      {/* =========================================
+                HEADER
+            ========================================= */}
 
       <header
         className="
-          relative
-          z-40
-          flex
-          h-16
-          items-center
-          justify-between
-          border-b
-          border-white/10
-          bg-[#0A1020]/95
-          px-3
-          backdrop-blur
-          sm:px-5
-          md:px-6
-        "
+                    relative
+                    z-40
+                    flex
+                    h-16
+                    shrink-0
+                    items-center
+                    justify-between
+                    border-b
+                    border-white/10
+                    bg-[#0A1020]/95
+                    px-3
+                    backdrop-blur
+                    sm:px-5
+                    md:px-6
+                "
       >
-
-        {/* LEFT */}
 
         <div
           className="
-            flex
-            min-w-0
-            items-center
-            gap-2
-            sm:gap-3
-          "
+                        flex
+                        min-w-0
+                        items-center
+                        gap-2
+                        sm:gap-3
+                    "
         >
 
           <button
@@ -2774,38 +3623,38 @@ function Home() {
               setShowProfileMenu(
                 false
               );
+
             }}
+
             className="
-              flex
-              h-10
-              w-10
-              shrink-0
-              items-center
-              justify-center
-              rounded-full
-              border
-              border-white/10
-              text-gray-300
-              transition
-              hover:bg-white/5
-              hover:text-cyan-300
-              active:scale-95
-            "
-            title={
-              showHistory
-                ? "Close history"
-                : "Open history"
-            }
+                            flex
+                            h-10
+                            w-10
+                            shrink-0
+                            items-center
+                            justify-center
+                            rounded-full
+                            border
+                            border-white/10
+                            text-gray-300
+                            transition
+                            hover:bg-white/5
+                            hover:text-cyan-300
+                        "
           >
 
             {showHistory ? (
+
               <IoMdClose
                 size={22}
               />
+
             ) : (
+
               <IoMdMenu
                 size={22}
               />
+
             )}
 
           </button>
@@ -2816,43 +3665,51 @@ function Home() {
               userData?.assistantImage ||
               aiImg
             }
+
             alt="Assistant"
+
             className="
-              h-9
-              w-9
-              shrink-0
-              rounded-full
-              border
-              border-cyan-400/30
-              object-cover
-              sm:h-10
-              sm:w-10
-            "
+                            h-9
+                            w-9
+                            shrink-0
+                            rounded-full
+                            border
+                            border-cyan-400/30
+                            object-cover
+                            sm:h-10
+                            sm:w-10
+                        "
           />
 
 
-          <div className="min-w-0">
+          <div
+            className="
+                            min-w-0
+                        "
+          >
 
             <p
               className="
-                truncate
-                text-sm
-                font-semibold
-                text-white
-              "
+                                truncate
+                                text-sm
+                                font-semibold
+                                text-white
+                            "
             >
-              {userData?.assistantName ||
-                "Assistant"}
+              {
+                userData?.assistantName ||
+                "Assistant"
+              }
             </p>
 
 
             <p
               className="
-                hidden
-                text-xs
-                text-gray-500
-                sm:block
-              "
+                                hidden
+                                text-xs
+                                text-gray-500
+                                sm:block
+                            "
             >
               Virtual Assistant
             </p>
@@ -2862,15 +3719,13 @@ function Home() {
         </div>
 
 
-        {/* RIGHT */}
-
         <div
           className="
-            relative
-            flex
-            items-center
-            gap-2
-          "
+                        relative
+                        flex
+                        items-center
+                        gap-2
+                    "
         >
 
           <button
@@ -2879,19 +3734,20 @@ function Home() {
                 "/customize2"
               )
             }
+
             className="
-              hidden
-              rounded-full
-              border
-              border-cyan-400/20
-              px-4
-              py-2
-              text-sm
-              text-cyan-300
-              transition
-              hover:bg-cyan-400/10
-              sm:block
-            "
+                            hidden
+                            rounded-full
+                            border
+                            border-cyan-400/20
+                            px-4
+                            py-2
+                            text-sm
+                            text-cyan-300
+                            transition
+                            hover:bg-cyan-400/10
+                            sm:block
+                        "
           >
             Customize
           </button>
@@ -2905,28 +3761,29 @@ function Home() {
                   !previous
               );
 
-              setShowHistory(false);
+              setShowHistory(
+                false
+              );
+
             }}
+
             className="
-              flex
-              h-10
-              w-10
-              shrink-0
-              items-center
-              justify-center
-              overflow-hidden
-              rounded-full
-              border
-              border-white/10
-              bg-white/5
-              text-gray-300
-              transition
-              hover:border-cyan-400/30
-              hover:bg-cyan-400/10
-              hover:text-cyan-300
-              active:scale-95
-            "
-            title="Account and settings"
+                            flex
+                            h-10
+                            w-10
+                            shrink-0
+                            items-center
+                            justify-center
+                            overflow-hidden
+                            rounded-full
+                            border
+                            border-white/10
+                            bg-white/5
+                            text-gray-300
+                            transition
+                            hover:border-cyan-400/30
+                            hover:bg-cyan-400/10
+                        "
           >
 
             {userData?.assistantImage ? (
@@ -2935,12 +3792,14 @@ function Home() {
                 src={
                   userData.assistantImage
                 }
+
                 alt="Profile"
+
                 className="
-                  h-full
-                  w-full
-                  object-cover
-                "
+                                    h-full
+                                    w-full
+                                    object-cover
+                                "
               />
 
             ) : (
@@ -2948,66 +3807,67 @@ function Home() {
               <FiSettings
                 size={19}
               />
+
             )}
 
           </button>
 
 
-          {/* PROFILE MENU */}
-
           {showProfileMenu && (
 
             <div
               className="
-                absolute
-                right-0
-                top-12
-                z-70
-                w-[calc(100vw-1.5rem)]
-                max-w-xs
-                overflow-hidden
-                rounded-2xl
-                border
-                border-white/10
-                bg-[#0B1222]
-                p-2
-                shadow-2xl
-                shadow-black/50
-              "
+                                absolute
+                                right-0
+                                top-12
+                                z-70
+                                w-[calc(100vw-1.5rem)]
+                                max-w-xs
+                                overflow-hidden
+                                rounded-2xl
+                                border
+                                border-white/10
+                                bg-[#0B1222]
+                                p-2
+                                shadow-2xl
+                            "
             >
 
               <div
                 className="
-                  mb-1
-                  border-b
-                  border-white/10
-                  px-3
-                  py-3
-                "
+                                    mb-1
+                                    border-b
+                                    border-white/10
+                                    px-3
+                                    py-3
+                                "
               >
 
                 <p
                   className="
-                    truncate
-                    text-sm
-                    font-semibold
-                    text-white
-                  "
+                                        truncate
+                                        text-sm
+                                        font-semibold
+                                    "
                 >
-                  {userData?.name ||
-                    "User"}
+                  {
+                    userData?.name ||
+                    "User"
+                  }
                 </p>
 
 
                 <p
                   className="
-                    truncate
-                    text-xs
-                    text-gray-500
-                  "
+                                        truncate
+                                        text-xs
+                                        text-gray-500
+                                    "
                 >
-                  {userData?.email ||
-                    "Account"}
+                  {
+                    userData?.email ||
+                    "Account"
+                  }
                 </p>
 
               </div>
@@ -3023,22 +3883,22 @@ function Home() {
                   setShowProfileMenu(
                     false
                   );
+
                 }}
+
                 className="
-                  flex
-                  w-full
-                  items-center
-                  gap-3
-                  rounded-xl
-                  px-3
-                  py-3
-                  text-left
-                  text-sm
-                  text-gray-300
-                  transition
-                  hover:bg-white/5
-                  hover:text-white
-                "
+                                    flex
+                                    w-full
+                                    items-center
+                                    gap-3
+                                    rounded-xl
+                                    px-3
+                                    py-3
+                                    text-left
+                                    text-sm
+                                    text-gray-300
+                                    hover:bg-white/5
+                                "
               >
 
                 <FiEdit3
@@ -3046,51 +3906,51 @@ function Home() {
                   className="text-cyan-400"
                 />
 
-                <span>
-                  Customize Assistant
-                </span>
+                Customize Assistant
 
               </button>
 
 
               <button
-                onClick={async () => {
+                onClick={
+                  async () => {
 
-                  await clearHistory();
+                    await clearHistory();
 
-                  setShowProfileMenu(
-                    false
-                  );
-                }}
-                disabled={
-                  historyItems.length === 0
+                    setShowProfileMenu(
+                      false
+                    );
+
+                  }
                 }
+
+                disabled={
+                  historyItems.length ===
+                  0
+                }
+
                 className="
-                  flex
-                  w-full
-                  items-center
-                  gap-3
-                  rounded-xl
-                  px-3
-                  py-3
-                  text-left
-                  text-sm
-                  text-gray-300
-                  transition
-                  hover:bg-red-400/10
-                  hover:text-red-400
-                  disabled:cursor-not-allowed
-                  disabled:opacity-40
-                "
+                                    flex
+                                    w-full
+                                    items-center
+                                    gap-3
+                                    rounded-xl
+                                    px-3
+                                    py-3
+                                    text-left
+                                    text-sm
+                                    text-gray-300
+                                    hover:bg-red-400/10
+                                    hover:text-red-400
+                                    disabled:opacity-40
+                                "
               >
 
                 <FiTrash2
                   size={17}
                 />
 
-                <span>
-                  Clear All History
-                </span>
+                Clear All History
 
               </button>
 
@@ -3105,22 +3965,22 @@ function Home() {
                   setShowProfileMenu(
                     false
                   );
+
                 }}
+
                 className="
-                  flex
-                  w-full
-                  items-center
-                  gap-3
-                  rounded-xl
-                  px-3
-                  py-3
-                  text-left
-                  text-sm
-                  text-gray-300
-                  transition
-                  hover:bg-white/5
-                  hover:text-white
-                "
+                                    flex
+                                    w-full
+                                    items-center
+                                    gap-3
+                                    rounded-xl
+                                    px-3
+                                    py-3
+                                    text-left
+                                    text-sm
+                                    text-gray-300
+                                    hover:bg-white/5
+                                "
               >
 
                 <FiLock
@@ -3128,19 +3988,17 @@ function Home() {
                   className="text-cyan-400"
                 />
 
-                <span>
-                  Change Password
-                </span>
+                Change Password
 
               </button>
 
 
               <div
                 className="
-                  my-1
-                  border-t
-                  border-white/10
-                "
+                                    my-1
+                                    border-t
+                                    border-white/10
+                                "
               />
 
 
@@ -3148,33 +4006,32 @@ function Home() {
                 onClick={
                   handleLogout
                 }
+
                 className="
-                  flex
-                  w-full
-                  items-center
-                  gap-3
-                  rounded-xl
-                  px-3
-                  py-3
-                  text-left
-                  text-sm
-                  text-red-400
-                  transition
-                  hover:bg-red-400/10
-                "
+                                    flex
+                                    w-full
+                                    items-center
+                                    gap-3
+                                    rounded-xl
+                                    px-3
+                                    py-3
+                                    text-left
+                                    text-sm
+                                    text-red-400
+                                    hover:bg-red-400/10
+                                "
               >
 
                 <FiLogOut
                   size={17}
                 />
 
-                <span>
-                  Logout
-                </span>
+                Logout
 
               </button>
 
             </div>
+
           )}
 
         </div>
@@ -3182,9 +4039,9 @@ function Home() {
       </header>
 
 
-      {/* =================================================
-          HISTORY DRAWER
-      ================================================= */}
+      {/* =========================================
+                HISTORY
+            ========================================= */}
 
       {showHistory && (
 
@@ -3192,56 +4049,58 @@ function Home() {
 
           <div
             onClick={() =>
-              setShowHistory(false)
+              setShowHistory(
+                false
+              )
             }
+
             className="
-              fixed
-              inset-0
-              z-40
-              bg-black/50
-              backdrop-blur-sm
-            "
+                            fixed
+                            inset-0
+                            z-40
+                            bg-black/50
+                            backdrop-blur-sm
+                        "
           />
 
 
           <aside
             className="
-              fixed
-              left-0
-              top-0
-              z-50
-              flex
-              h-full
-              w-[88%]
-              max-w-sm
-              flex-col
-              border-r
-              border-white/10
-              bg-[#090E1A]
-              shadow-2xl
-            "
+                            fixed
+                            left-0
+                            top-0
+                            z-50
+                            flex
+                            h-full
+                            w-[88%]
+                            max-w-sm
+                            flex-col
+                            border-r
+                            border-white/10
+                            bg-[#090E1A]
+                            shadow-2xl
+                        "
           >
 
             <div
               className="
-                flex
-                h-16
-                shrink-0
-                items-center
-                justify-between
-                border-b
-                border-white/10
-                px-4
-              "
+                                flex
+                                h-16
+                                shrink-0
+                                items-center
+                                justify-between
+                                border-b
+                                border-white/10
+                                px-4
+                            "
             >
 
               <div>
 
                 <h2
                   className="
-                    font-semibold
-                    text-white
-                  "
+                                        font-semibold
+                                    "
                 >
                   History
                 </h2>
@@ -3249,11 +4108,11 @@ function Home() {
 
                 <p
                   className="
-                    text-xs
-                    text-gray-500
-                  "
+                                        text-xs
+                                        text-gray-500
+                                    "
                 >
-                  Your previous conversations
+                  Previous conversations
                 </p>
 
               </div>
@@ -3261,19 +4120,21 @@ function Home() {
 
               <button
                 onClick={() =>
-                  setShowHistory(false)
+                  setShowHistory(
+                    false
+                  )
                 }
+
                 className="
-                  flex
-                  h-9
-                  w-9
-                  items-center
-                  justify-center
-                  rounded-lg
-                  text-gray-400
-                  hover:bg-white/5
-                  hover:text-white
-                "
+                                    flex
+                                    h-9
+                                    w-9
+                                    items-center
+                                    justify-center
+                                    rounded-lg
+                                    text-gray-400
+                                    hover:bg-white/5
+                                "
               >
 
                 <IoMdClose
@@ -3287,25 +4148,27 @@ function Home() {
 
             <div
               className="
-                shrink-0
-                border-b
-                border-white/10
-                p-4
-              "
+                                shrink-0
+                                border-b
+                                border-white/10
+                                p-4
+                            "
             >
 
               <div
-                className="relative"
+                className="
+                                    relative
+                                "
               >
 
                 <FiSearch
                   className="
-                    absolute
-                    left-3
-                    top-1/2
-                    -translate-y-1/2
-                    text-gray-500
-                  "
+                                        absolute
+                                        left-3
+                                        top-1/2
+                                        -translate-y-1/2
+                                        text-gray-500
+                                    "
                   size={16}
                 />
 
@@ -3314,27 +4177,30 @@ function Home() {
                   value={
                     historySearch
                   }
+
                   onChange={e =>
                     setHistorySearch(
                       e.target.value
                     )
                   }
+
                   placeholder="Search history..."
+
                   className="
-                    h-10
-                    w-full
-                    rounded-lg
-                    border
-                    border-white/10
-                    bg-white/5
-                    pl-9
-                    pr-3
-                    text-sm
-                    text-white
-                    outline-none
-                    placeholder:text-gray-600
-                    focus:border-cyan-400/30
-                  "
+                                        h-10
+                                        w-full
+                                        rounded-lg
+                                        border
+                                        border-white/10
+                                        bg-white/5
+                                        pl-9
+                                        pr-3
+                                        text-sm
+                                        text-white
+                                        outline-none
+                                        placeholder:text-gray-600
+                                        focus:border-cyan-400/30
+                                    "
                 />
 
               </div>
@@ -3344,13 +4210,15 @@ function Home() {
 
             <div
               className="
-                flex-1
-                overflow-y-auto
-                p-3
-              "
+                                history-scroll
+                                flex-1
+                                overflow-y-auto
+                                p-3
+                            "
             >
 
-              {filteredHistory.length > 0 ? (
+              {filteredHistory.length >
+                0 ? (
 
                 filteredHistory.map(
                   item => (
@@ -3360,18 +4228,18 @@ function Home() {
                         item._id ||
                         `${item.command}-${item.createdAt}`
                       }
+
                       className="
-                        group
-                        mb-2
-                        rounded-xl
-                        border
-                        border-white/5
-                        bg-white/2.5
-                        p-3
-                        transition
-                        hover:border-cyan-400/20
-                        hover:bg-white/4
-                      "
+                                                group
+                                                mb-2
+                                                rounded-xl
+                                                border
+                                                border-white/5
+                                                bg-white/2.5
+                                                p-3
+                                                transition
+                                                hover:border-cyan-400/20
+                                            "
                     >
 
                       <button
@@ -3380,58 +4248,66 @@ function Home() {
                             item
                           )
                         }
+
                         className="
-                          w-full
-                          text-left
-                        "
+                                                    w-full
+                                                    text-left
+                                                "
                       >
 
                         <div
                           className="
-                            mb-2
-                            flex
-                            items-center
-                            justify-between
-                            gap-2
-                          "
+                                                        mb-2
+                                                        flex
+                                                        items-center
+                                                        justify-between
+                                                        gap-2
+                                                    "
                         >
 
                           <span
                             className="
-                              rounded-full
-                              bg-cyan-400/10
-                              px-2
-                              py-1
-                              text-[10px]
-                              uppercase
-                              tracking-wide
-                              text-cyan-300
-                            "
+                                                            rounded-full
+                                                            bg-cyan-400/10
+                                                            px-2
+                                                            py-1
+                                                            text-[10px]
+                                                            uppercase
+                                                            text-cyan-300
+                                                        "
                           >
-                            {item.type ||
-                              "text"}
+                            {
+                              item.type ||
+                              "text"
+                            }
                           </span>
 
 
                           <span
                             className="
-                              flex
-                              min-w-0
-                              items-center
-                              gap-1
-                              text-[10px]
-                              text-gray-600
-                            "
+                                                            flex
+                                                            min-w-0
+                                                            items-center
+                                                            gap-1
+                                                            text-[10px]
+                                                            text-gray-600
+                                                        "
                           >
 
                             <FiClock
                               size={10}
                             />
 
-                            <span className="truncate">
-                              {formatDate(
-                                item.createdAt
-                              )}
+                            <span
+                              className="
+                                                                truncate
+                                                            "
+                            >
+                              {
+                                formatDate(
+                                  item.createdAt
+                                )
+                              }
                             </span>
 
                           </span>
@@ -3439,39 +4315,42 @@ function Home() {
                         </div>
 
 
-                        {/* IMAGE THUMBNAIL IN HISTORY */}
-
-                        {item?.type === "image" &&
+                        {item?.type ===
+                          "image" &&
                           item?.image && (
 
                             <img
                               src={
                                 item.image
                               }
+
                               alt="Previous question"
+
                               className="
-                                mb-3
-                                h-28
-                                w-full
-                                rounded-xl
-                                border
-                                border-white/10
-                                bg-black/20
-                                object-cover
-                              "
+                                                                mb-3
+                                                                h-28
+                                                                w-full
+                                                                rounded-xl
+                                                                border
+                                                                border-white/10
+                                                                bg-black/20
+                                                                object-cover
+                                                            "
                             />
+
                           )}
 
 
                         <p
                           className="
-                            line-clamp-2
-                            wrap-break-word
-                            text-sm
-                            text-gray-300
-                          "
+                                                        line-clamp-2
+wrap-break-word                                                                     text-sm
+                                                        text-gray-300
+                                                    "
                         >
-                          {item.command}
+                          {
+                            item.command
+                          }
                         </p>
 
 
@@ -3479,16 +4358,18 @@ function Home() {
 
                           <p
                             className="
-                              mt-2
-                              line-clamp-2
-                              wrap-break-word
-                              text-xs
-                              leading-relaxed
-                              text-gray-600
-                            "
+                                                            mt-2
+                                                            line-clamp-2
+wrap-break-word                                                                         text-xs
+                                                            leading-relaxed
+                                                            text-gray-600
+                                                        "
                           >
-                            {item.answer}
+                            {
+                              item.answer
+                            }
                           </p>
+
                         )}
 
                       </button>
@@ -3507,16 +4388,16 @@ function Home() {
                                 item._id
                               )
                             }
+
                             className="
-                              mt-2
-                              flex
-                              items-center
-                              gap-1
-                              text-xs
-                              text-gray-600
-                              transition
-                              hover:text-red-400
-                            "
+                                                            mt-2
+                                                            flex
+                                                            items-center
+                                                            gap-1
+                                                            text-xs
+                                                            text-gray-600
+                                                            hover:text-red-400
+                                                        "
                           >
 
                             <FiTrash2
@@ -3526,55 +4407,39 @@ function Home() {
                             Delete
 
                           </button>
+
                         )}
 
                     </div>
+
                   )
+
                 )
 
               ) : (
 
                 <div
                   className="
-                    flex
-                    h-full
-                    flex-col
-                    items-center
-                    justify-center
-                    px-5
-                    text-center
-                  "
+                                        flex
+                                        h-full
+                                        flex-col
+                                        items-center
+                                        justify-center
+                                        text-center
+                                    "
                 >
-
-                  <div
-                    className="
-                      mb-3
-                      flex
-                      h-12
-                      w-12
-                      items-center
-                      justify-center
-                      rounded-full
-                      border
-                      border-white/10
-                      bg-white/5
-                      text-gray-600
-                    "
-                  >
-                    ✦
-                  </div>
-
 
                   <p
                     className="
-                      text-sm
-                      text-gray-500
-                    "
+                                            text-sm
+                                            text-gray-500
+                                        "
                   >
                     No history found
                   </p>
 
                 </div>
+
               )}
 
             </div>
@@ -3582,80 +4447,81 @@ function Home() {
           </aside>
 
         </>
+
       )}
 
 
-      {/* =================================================
-          MAIN
-      ================================================= */}
+      {/* =========================================
+                MAIN
+            ========================================= */}
 
       <main
         className="
-          flex
-          h-[calc(100vh-4rem)]
-          w-full
-        "
+                    flex
+                    min-h-0
+                    flex-1
+                    justify-center
+                    overflow-hidden
+                "
       >
 
         <section
           className="
-            flex
-            min-w-0
-            flex-1
-            flex-col
-            overflow-hidden
-            px-3
-            py-4
-            sm:px-6
-            sm:py-6
-          "
+                        flex
+                        min-w-0
+                        w-full
+                        max-w-5xl
+                        flex-1
+                        flex-col
+                        overflow-hidden
+                        px-3
+                        py-4
+                        sm:px-6
+                        sm:py-6
+                    "
         >
 
-          {/* =================================================
-              CONVERSATION AREA
-          ================================================= */}
+          {/* =====================================
+                        CONVERSATION
+                    ===================================== */}
 
           <div
             className="
-              flex
-              w-full
-              max-w-4xl
-              min-h-0
-              flex-1
-              flex-col
-              overflow-y-auto
-              overscroll-contain
-              px-1
-              pb-6
-            "
+                            answer-scroll
+                            min-h-0
+                            flex-1
+                            overflow-y-auto
+                            overscroll-contain
+                            px-1
+                            pb-6
+                        "
           >
 
             <div
               className="
-                flex
-                w-full
-                flex-col
-                items-center
-                pt-4
-                sm:pt-8
-              "
+                                flex
+                                w-full
+                                flex-col
+                                items-center
+                            "
             >
 
-              {/* ASSISTANT IMAGE */}
+              {/* ASSISTANT */}
 
               <div
                 className={`
-                  mb-5
-                  rounded-full
-                  p-1
-                  transition
-                  sm:mb-6
-                  ${
-                    isAIActive
-                      ? "ring-4 ring-cyan-400/30"
-                      : ""
+                                    mt-2
+                                    mb-4
+                                    rounded-full
+                                    p-1
+                                    transition
+                                    sm:mt-4
+                                    sm:mb-5
+                                    ${isAIActive
+                    ? "ring-4 ring-cyan-400/30"
+                    : ""
                   }
-                `}
+                                `}
               >
 
                 <img
@@ -3663,19 +4529,20 @@ function Home() {
                     userData?.assistantImage ||
                     aiImg
                   }
+
                   alt="Assistant"
+
                   className="
-                    h-24
-                    w-24
-                    rounded-full
-                    object-cover
-                    shadow-2xl
-                    shadow-cyan-950/30
-                    sm:h-32
-                    sm:w-32
-                    md:h-40
-                    md:w-40
-                  "
+                                        h-24
+                                        w-24
+                                        rounded-full
+                                        object-cover
+                                        shadow-2xl
+                                        sm:h-28
+                                        sm:w-28
+                                        md:h-32
+                                        md:w-32
+                                    "
                 />
 
               </div>
@@ -3685,18 +4552,19 @@ function Home() {
 
               <h1
                 className="
-                  max-w-full
-                  wrap-break-word
-                  text-center
-                  text-xl
-                  font-semibold
-                  text-white
-                  sm:text-2xl
-                  md:text-3xl
-                "
+                                    w-full
+                                    max-w-3xl
+wrap-break-word                                    text-center
+                                    text-xl
+                                    font-semibold
+                                    sm:text-2xl
+                                    md:text-3xl
+                                "
               >
-                {userData?.assistantName ||
-                  "Assistant"}
+                {
+                  userData?.assistantName ||
+                  "Assistant"
+                }
               </h1>
 
 
@@ -3704,71 +4572,172 @@ function Home() {
 
               <p
                 className="
-                  mt-2
-                  text-center
-                  text-xs
-                  text-gray-500
-                  sm:text-sm
-                "
+                                    mt-2
+                                    text-center
+                                    text-xs
+                                    text-gray-500
+                                    sm:text-sm
+                                "
               >
 
                 {isListening
                   ? "Listening..."
-                  : isImageAnalyzing
-                  ? "Analyzing image..."
-                  : speakingRef.current
-                  ? "Speaking..."
-                  : "How can I help you?"}
+                  : isPdfAnalyzing
+                    ? "Analyzing PDF..."
+                    : isImageAnalyzing
+                      ? "Analyzing image..."
+                      : speakingRef.current
+                        ? "Speaking..."
+                        : activePdf
+                          ? `PDF active: ${activePdf.name}`
+                          : "How can I help you?"}
 
               </p>
 
 
-              {/* =================================================
-                  RESTORED HISTORICAL IMAGE
+              {/* PDF SESSION */}
 
-                  This is the main new feature.
-              ================================================= */}
+              {activePdf && (
+
+                <div
+                  className="
+                                        mt-5
+                                        flex
+                                        w-full
+                                        max-w-2xl
+                                        items-center
+                                        gap-3
+                                        rounded-2xl
+                                        border
+                                        border-cyan-400/20
+                                        bg-cyan-400/5
+                                        p-3
+                                    "
+                >
+
+                  <div
+                    className="
+                                            flex
+                                            h-11
+                                            w-11
+                                            shrink-0
+                                            items-center
+                                            justify-center
+                                            rounded-xl
+                                            bg-cyan-400/10
+                                            text-cyan-300
+                                        "
+                  >
+
+                    <FiFileText
+                      size={21}
+                    />
+
+                  </div>
+
+
+                  <div
+                    className="
+                                            min-w-0
+                                            flex-1
+                                        "
+                  >
+
+                    <p
+                      className="
+                                                truncate
+                                                text-sm
+                                                font-medium
+                                                text-white
+                                            "
+                    >
+                      {
+                        activePdf.name
+                      }
+                    </p>
+
+
+                    <p
+                      className="
+                                                text-xs
+                                                text-cyan-300/70
+                                            "
+                    >
+                      PDF analysis active
+                    </p>
+
+                  </div>
+
+
+                  <button
+                    type="button"
+
+                    onClick={() =>
+                      setActivePdf(
+                        null
+                      )
+                    }
+
+                    className="
+                                            flex
+                                            h-8
+                                            w-8
+                                            shrink-0
+                                            items-center
+                                            justify-center
+                                            rounded-lg
+                                            text-gray-500
+                                            hover:bg-white/5
+                                            hover:text-red-400
+                                        "
+                  >
+
+                    <FiX
+                      size={17}
+                    />
+
+                  </button>
+
+                </div>
+
+              )}
+
+
+              {/* OLD IMAGE */}
 
               {historyImage && (
 
                 <div
                   className="
-                    mt-6
-                    w-full
-                    max-w-2xl
-                    overflow-hidden
-                    rounded-2xl
-                    border
-                    border-cyan-400/10
-                    bg-black/20
-                    p-2
-                    sm:mt-8
-                  "
+                                        mt-5
+                                        w-full
+                                        max-w-2xl
+                                        overflow-hidden
+                                        rounded-2xl
+                                        border
+                                        border-cyan-400/10
+                                        bg-black/20
+                                        p-2
+                                    "
                 >
 
                   <img
-                    src={historyImage}
-                    alt="Previous image question"
+                    src={
+                      historyImage
+                    }
+
+                    alt="Previous image"
+
                     className="
-                      max-h-112
-                      w-full
-                      rounded-xl
-                      object-contain
-                    "
+                                            max-h-105
+                                            w-full
+                                            rounded-xl
+                                            object-contain
+                                        "
                   />
 
-                  <p
-                    className="
-                      mt-2
-                      text-center
-                      text-[10px]
-                      text-gray-600
-                    "
-                  >
-                    Previous image from history
-                  </p>
-
                 </div>
+
               )}
 
 
@@ -3778,59 +4747,68 @@ function Home() {
 
                 <div
                   className="
-                    mt-6
-                    w-full
-                    max-w-2xl
-                    wrap-break-word
-                    rounded-2xl
-                    border
-                    border-cyan-400/10
-                    bg-cyan-400/5
-                    px-4
-                    py-3
-                    text-left
-                    text-sm
-                    leading-relaxed
-                    text-gray-300
-                    sm:mt-8
-                    sm:px-5
-                  "
+                                        mt-5
+                                        w-full
+                                        max-w-3xl
+                                       wrap-break-word             
+                                        rounded-2xl
+                                        border
+                                        border-cyan-400/10
+                                        bg-cyan-400/5
+                                        px-4
+                                        py-3
+                                        text-left
+                                        text-sm
+                                        leading-relaxed
+                                        text-gray-300
+                                        sm:px-5
+                                    "
                 >
                   {userText}
                 </div>
+
               )}
 
 
-              {/* AI ANSWER */}
+              {/* ANSWER */}
 
               {showAIText &&
                 aiText && (
 
                   <div
+                    ref={
+                      answerRef
+                    }
+
                     className="
-                      mt-4
-                      mb-6
-                      w-full
-                      max-w-3xl
-                      wrap-break-word
-                      rounded-2xl
-                      border
-                      border-white/10
-                      bg-white/3
-                      px-4
-                      py-5
-                      text-left
-                      text-sm
-                      leading-7
-                      whitespace-pre-wrap
-                      text-gray-200
-                      sm:px-6
-                      sm:py-6
-                      sm:text-base
-                    "
+                                            answer-box
+                                            mt-4
+                                            mb-6
+                                            w-full
+                                            max-w-3xl
+                                            max-h-[55vh]
+                                            overflow-y-auto
+                                            overscroll-contain
+                                           wrap-break-word             
+                                            rounded-2xl
+                                            border
+                                            border-white/10
+                                            bg-white/3
+                                            px-4
+                                            py-5
+                                            text-left
+                                            text-sm
+                                            leading-7
+                                            whitespace-pre-wrap
+                                            text-gray-200
+                                            sm:px-6
+                                            sm:py-6
+                                            sm:text-base
+                                        "
                   >
                     {aiText}
                   </div>
+
                 )}
 
             </div>
@@ -3838,64 +4816,65 @@ function Home() {
           </div>
 
 
-          {/* =================================================
-              CURRENT IMAGE PREVIEW
-          ================================================= */}
+          {/* =====================================
+                        IMAGE PREVIEW
+                    ===================================== */}
 
           {imagePreview && (
 
             <div
               className="
-                mb-3
-                w-full
-                max-w-3xl
-                self-center
-                rounded-2xl
-                border
-                border-cyan-400/20
-                bg-[#0A1020]
-                p-3
-              "
+                                mb-3
+                                w-full
+                                max-w-3xl
+                                self-center
+                                rounded-2xl
+                                border
+                                border-cyan-400/20
+                                bg-[#0A1020]
+                                p-3
+                            "
             >
 
               <div
                 className="
-                  flex
-                  min-w-0
-                  items-center
-                  gap-3
-                "
+                                    flex
+                                    min-w-0
+                                    items-center
+                                    gap-3
+                                "
               >
 
                 <img
-                  src={imagePreview}
+                  src={
+                    imagePreview
+                  }
+
                   alt="Selected"
+
                   className="
-                    h-14
-                    w-14
-                    shrink-0
-                    rounded-xl
-                    object-cover
-                    sm:h-16
-                    sm:w-16
-                  "
+                                        h-14
+                                        w-14
+                                        shrink-0
+                                        rounded-xl
+                                        object-cover
+                                    "
                 />
 
 
                 <div
                   className="
-                    min-w-0
-                    flex-1
-                  "
+                                        min-w-0
+                                        flex-1
+                                    "
                 >
 
                   <p
                     className="
-                      truncate
-                      text-sm
-                      font-medium
-                      text-white
-                    "
+                                            truncate
+                                            text-sm
+                                            font-medium
+                                        "
                   >
                     Image selected
                   </p>
@@ -3903,14 +4882,14 @@ function Home() {
 
                   <p
                     className="
-                      mt-1
-                      hidden
-                      text-xs
-                      text-gray-500
-                      sm:block
-                    "
+                                            mt-1
+                                            hidden
+                                            text-xs
+                                            text-gray-500
+                                            sm:block
+                                        "
                   >
-                    Type your question below and press Send.
+                    Ask your question and press Send.
                   </p>
 
                 </div>
@@ -3918,21 +4897,22 @@ function Home() {
 
                 <button
                   type="button"
+
                   onClick={
                     removeImage
                   }
+
                   className="
-                    flex
-                    h-8
-                    w-8
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-lg
-                    text-gray-500
-                    hover:bg-white/5
-                    hover:text-red-400
-                  "
+                                        flex
+                                        h-8
+                                        w-8
+                                        shrink-0
+                                        items-center
+                                        justify-center
+                                        rounded-lg
+                                        text-gray-500
+                                        hover:text-red-400
+                                    "
                 >
 
                   <FiX
@@ -3944,61 +4924,179 @@ function Home() {
               </div>
 
             </div>
+
           )}
 
 
-          {/* =================================================
-              INPUT
-          ================================================= */}
+          {/* =====================================
+                        PDF PREVIEW
+                    ===================================== */}
+
+          {pdfPreview && (
+
+            <div
+              className="
+                                mb-3
+                                w-full
+                                max-w-3xl
+                                self-center
+                                rounded-2xl
+                                border
+                                border-cyan-400/20
+                                bg-[#0A1020]
+                                p-3
+                            "
+            >
+
+              <div
+                className="
+                                    flex
+                                    min-w-0
+                                    items-center
+                                    gap-3
+                                "
+              >
+
+                <div
+                  className="
+                                        flex
+                                        h-14
+                                        w-14
+                                        shrink-0
+                                        items-center
+                                        justify-center
+                                        rounded-xl
+                                        bg-red-400/10
+                                        text-red-300
+                                    "
+                >
+
+                  <FiFileText
+                    size={24}
+                  />
+
+                </div>
+
+
+                <div
+                  className="
+                                        min-w-0
+                                        flex-1
+                                    "
+                >
+
+                  <p
+                    className="
+                                            truncate
+                                            text-sm
+                                            font-medium
+                                        "
+                  >
+                    {pdfName}
+                  </p>
+
+
+                  <p
+                    className="
+                                            mt-1
+                                            text-xs
+                                            text-gray-500
+                                        "
+                  >
+                    Ask a question about this PDF.
+                  </p>
+
+                </div>
+
+
+                <button
+                  type="button"
+
+                  onClick={
+                    removePdf
+                  }
+
+                  className="
+                                        flex
+                                        h-8
+                                        w-8
+                                        shrink-0
+                                        items-center
+                                        justify-center
+                                        rounded-lg
+                                        text-gray-500
+                                        hover:text-red-400
+                                    "
+                >
+
+                  <FiX
+                    size={18}
+                  />
+
+                </button>
+
+              </div>
+
+            </div>
+
+          )}
+
+
+          {/* =====================================
+                        INPUT
+                    ===================================== */}
 
           <div
             className="
-              w-full
-              max-w-3xl
-              self-center
-            "
+                            w-full
+                            max-w-3xl
+                            self-center
+                        "
           >
 
             <form
-              onSubmit={handleSend}
+              onSubmit={
+                handleSend
+              }
+
               className="
-                flex
-                min-w-0
-                items-center
-                gap-1
-                rounded-2xl
-                border
-                border-white/10
-                bg-[#0A1020]
-                p-1.5
-                shadow-2xl
-                sm:gap-2
-                sm:p-2
-              "
+                                flex
+                                min-w-0
+                                items-center
+                                gap-1
+                                rounded-2xl
+                                border
+                                border-white/10
+                                bg-[#0A1020]
+                                p-1.5
+                                shadow-2xl
+                                sm:gap-2
+                                sm:p-2
+                            "
             >
 
               {/* IMAGE */}
 
               <button
                 type="button"
+
                 onClick={() =>
                   imageInputRef.current?.click()
                 }
+
                 className="
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-xl
-                  text-gray-400
-                  transition
-                  hover:bg-white/5
-                  hover:text-cyan-300
-                  sm:h-11
-                  sm:w-11
-                "
+                                    flex
+                                    h-10
+                                    w-10
+                                    shrink-0
+                                    items-center
+                                    justify-center
+                                    rounded-xl
+                                    text-gray-400
+                                    hover:bg-white/5
+                                    hover:text-cyan-300
+                                "
+
                 title="Analyze image"
               >
 
@@ -4010,12 +5108,67 @@ function Home() {
 
 
               <input
-                ref={imageInputRef}
+                ref={
+                  imageInputRef
+                }
+
                 type="file"
+
                 accept="image/*"
+
                 onChange={
                   handleImageSelect
                 }
+
+                className="hidden"
+              />
+
+
+              {/* PDF */}
+
+              <button
+                type="button"
+
+                onClick={() =>
+                  pdfInputRef.current?.click()
+                }
+
+                className="
+                                    flex
+                                    h-10
+                                    w-10
+                                    shrink-0
+                                    items-center
+                                    justify-center
+                                    rounded-xl
+                                    text-gray-400
+                                    hover:bg-white/5
+                                    hover:text-cyan-300
+                                "
+
+                title="Upload PDF"
+              >
+
+                <FiFileText
+                  size={19}
+                />
+
+              </button>
+
+
+              <input
+                ref={
+                  pdfInputRef
+                }
+
+                type="file"
+
+                accept="application/pdf,.pdf"
+
+                onChange={
+                  handlePdfSelect
+                }
+
                 className="hidden"
               />
 
@@ -4023,63 +5176,71 @@ function Home() {
               {/* TEXT */}
 
               <input
-                value={typedText}
+                value={
+                  typedText
+                }
+
                 onChange={e =>
                   setTypedText(
                     e.target.value
                   )
                 }
-                onPaste={handlePaste}
-                placeholder={
-                  imagePreview
-                    ? "Ask about the image..."
-                    : "Ask me anything..."
+
+                onPaste={
+                  handlePaste
                 }
+
+                placeholder={
+                  selectedImage
+                    ? "Ask about the image..."
+                    : selectedPdf
+                      ? "Ask about the PDF..."
+                      : activePdf
+                        ? "Ask another question about the PDF..."
+                        : "Ask me anything..."
+                }
+
                 className="
-                  min-w-0
-                  flex-1
-                  bg-transparent
-                  px-1
-                  text-sm
-                  text-white
-                  outline-none
-                  placeholder:text-gray-600
-                  sm:px-2
-                "
+                                    min-w-0
+                                    flex-1
+                                    bg-transparent
+                                    px-1
+                                    text-sm
+                                    text-white
+                                    outline-none
+                                    placeholder:text-gray-600
+                                    sm:px-2
+                                "
               />
 
 
-              {/* MICROPHONE */}
+              {/* MIC */}
 
               <button
                 type="button"
+
                 onClick={
                   isListening
                     ? stopListening
                     : startListening
                 }
+
                 className={`
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-xl
-                  transition
-                  sm:h-11
-                  sm:w-11
-                  ${
-                    isListening
-                      ? "bg-red-400/10 text-red-400"
-                      : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
+                                    flex
+                                    h-10
+                                    w-10
+                                    shrink-0
+                                    items-center
+                                    justify-center
+                                    rounded-xl
+                                    transition
+                                    sm:h-11
+                                    sm:w-11
+                                    ${isListening
+                    ? "bg-red-400/10 text-red-400"
+                    : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
                   }
-                `}
-                title={
-                  isListening
-                    ? "Stop microphone"
-                    : "Start microphone"
-                }
+                                `}
               >
 
                 {isListening ? (
@@ -4093,6 +5254,7 @@ function Home() {
                   <FiMic
                     size={19}
                   />
+
                 )}
 
               </button>
@@ -4102,35 +5264,39 @@ function Home() {
 
               <button
                 type="submit"
+
                 disabled={
-                  imagePreview
-                    ? isImageAnalyzing ||
-                      !selectedImage
-                    : isSending ||
-                      !typedText.trim()
+
+                  isImageAnalyzing ||
+                  isPdfAnalyzing ||
+                  isSending ||
+
+                  (
+                    !selectedImage &&
+                    !selectedPdf &&
+                    !activePdf &&
+                    !typedText.trim()
+                  )
+
                 }
+
                 className="
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-xl
-                  bg-cyan-400
-                  text-black
-                  transition
-                  hover:bg-cyan-300
-                  disabled:cursor-not-allowed
-                  disabled:opacity-40
-                  sm:h-11
-                  sm:w-11
-                "
-                title={
-                  imagePreview
-                    ? "Analyze image"
-                    : "Send"
-                }
+                                    flex
+                                    h-10
+                                    w-10
+                                    shrink-0
+                                    items-center
+                                    justify-center
+                                    rounded-xl
+                                    bg-cyan-400
+                                    text-black
+                                    transition
+                                    hover:bg-cyan-300
+                                    disabled:cursor-not-allowed
+                                    disabled:opacity-40
+                                    sm:h-11
+                                    sm:w-11
+                                "
               >
 
                 <FiSend
@@ -4144,15 +5310,15 @@ function Home() {
 
             <p
               className="
-                mt-2
-                text-center
-                text-[10px]
-                text-gray-700
-                sm:mt-3
-                sm:text-[11px]
-              "
+                                mt-2
+                                text-center
+                                text-[10px]
+                                text-gray-700
+                                sm:mt-3
+                                sm:text-[11px]
+                            "
             >
-              Text • Voice • Image Analysis
+              Text • Voice • Image • PDF Analysis
             </p>
 
           </div>
@@ -4161,8 +5327,57 @@ function Home() {
 
       </main>
 
+
+      {/* =========================================
+                CUSTOM SCROLLBAR
+            ========================================= */}
+
+      <style>
+        {`
+                    .answer-scroll,
+                    .answer-box,
+                    .history-scroll {
+                        scrollbar-width: thin;
+                        scrollbar-color: rgba(103, 232, 249, 0.25) transparent;
+                    }
+
+                    .answer-scroll::-webkit-scrollbar,
+                    .answer-box::-webkit-scrollbar,
+                    .history-scroll::-webkit-scrollbar {
+                        width: 5px;
+                    }
+
+                    .answer-scroll::-webkit-scrollbar-track,
+                    .answer-box::-webkit-scrollbar-track,
+                    .history-scroll::-webkit-scrollbar-track {
+                        background: transparent;
+                    }
+
+                    .answer-scroll::-webkit-scrollbar-thumb,
+                    .answer-box::-webkit-scrollbar-thumb,
+                    .history-scroll::-webkit-scrollbar-thumb {
+                        background: rgba(103, 232, 249, 0.22);
+                        border-radius: 999px;
+                    }
+
+                    .answer-scroll::-webkit-scrollbar-thumb:hover,
+                    .answer-box::-webkit-scrollbar-thumb:hover,
+                    .history-scroll::-webkit-scrollbar-thumb:hover {
+                        background: rgba(103, 232, 249, 0.45);
+                    }
+
+                    @media (max-width: 640px) {
+                        .answer-box {
+                            max-height: 48vh;
+                        }
+                    }
+                `}
+      </style>
+
     </div>
+
   );
+
 }
 
 
