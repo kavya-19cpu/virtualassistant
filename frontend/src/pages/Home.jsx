@@ -14,7 +14,6 @@ import {
 } from "react-router-dom";
 
 import axios from "axios";
-
 import aiImg from "../assets/ai.gif";
 
 import {
@@ -158,16 +157,13 @@ function Home() {
   const assistantNameRef =
     useRef("Assistant");
 
-  /*
-   * IMPORTANT
-   *
-   * Keep the latest Gemini function in a ref.
-   * This prevents SpeechRecognition from being
-   * destroyed/recreated on every React render.
-   */
   const getGeminiResponseRef =
     useRef(getGeminiResponse);
 
+
+  // =====================================================
+  // KEEP LATEST GEMINI FUNCTION
+  // =====================================================
 
   useEffect(() => {
 
@@ -218,13 +214,11 @@ function Home() {
     let cleaned =
       String(text);
 
-
     cleaned =
       cleaned.replace(
         /```(?:json|javascript|js|text|markdown|md)?/gi,
         ""
       );
-
 
     cleaned =
       cleaned.replace(
@@ -232,13 +226,11 @@ function Home() {
         ""
       );
 
-
     cleaned =
       cleaned.replace(
         /\*\*/g,
         ""
       );
-
 
     cleaned =
       cleaned.replace(
@@ -246,13 +238,11 @@ function Home() {
         ""
       );
 
-
     cleaned =
       cleaned.replace(
         /^\s*#{1,6}\s*/gm,
         ""
       );
-
 
     cleaned =
       cleaned.replace(
@@ -260,13 +250,11 @@ function Home() {
         ""
       );
 
-
     cleaned =
       cleaned.replace(
         /^\s*[-*+]\s+/gm,
         ""
       );
-
 
     cleaned =
       cleaned.replace(
@@ -274,13 +262,11 @@ function Home() {
         ""
       );
 
-
     cleaned =
       cleaned.replace(
         /\$\$/g,
         ""
       );
-
 
     cleaned =
       cleaned.replace(
@@ -288,13 +274,11 @@ function Home() {
         ""
       );
 
-
     cleaned =
       cleaned.replace(
         /\\\]/g,
         ""
       );
-
 
     cleaned =
       cleaned.replace(
@@ -302,19 +286,15 @@ function Home() {
         ""
       );
 
-
     cleaned =
       cleaned.replace(
         /\\\)/g,
         ""
       );
 
-
     let previous = "";
 
-    while (
-      previous !== cleaned
-    ) {
+    while (previous !== cleaned) {
 
       previous = cleaned;
 
@@ -323,9 +303,7 @@ function Home() {
           /\\(?:frac|dfrac|tfrac)\{([^{}]+)\}\{([^{}]+)\}/g,
           "$1/$2"
         );
-
     }
-
 
     cleaned =
       cleaned
@@ -402,20 +380,17 @@ function Home() {
           "±"
         );
 
-
     cleaned =
       cleaned.replace(
         /\\left\b/g,
         ""
       );
 
-
     cleaned =
       cleaned.replace(
         /\\right\b/g,
         ""
       );
-
 
     cleaned =
       cleaned
@@ -436,7 +411,6 @@ function Home() {
           ""
         );
 
-
     cleaned =
       cleaned
         .replace(
@@ -456,7 +430,6 @@ function Home() {
           "³"
         );
 
-
     cleaned =
       cleaned
         .replace(
@@ -472,13 +445,11 @@ function Home() {
           "tan⁻¹"
         );
 
-
     cleaned =
       cleaned.replace(
         /[{}]/g,
         ""
       );
-
 
     cleaned =
       cleaned.replace(
@@ -486,13 +457,11 @@ function Home() {
         " "
       );
 
-
     cleaned =
       cleaned.replace(
         /\n[ \t]+/g,
         "\n"
       );
-
 
     cleaned =
       cleaned.replace(
@@ -500,9 +469,7 @@ function Home() {
         "\n\n"
       );
 
-
     return cleaned.trim();
-
   };
 
 
@@ -525,20 +492,16 @@ function Home() {
             );
 
             return;
-
           }
-
 
           const reader =
             new FileReader();
-
 
           reader.onload =
             () => {
 
               const img =
                 new Image();
-
 
               img.onload =
                 () => {
@@ -551,7 +514,6 @@ function Home() {
 
                   let height =
                     img.height;
-
 
                   if (
                     width > maxSize ||
@@ -583,17 +545,13 @@ function Home() {
 
                       height =
                         maxSize;
-
                     }
-
                   }
-
 
                   const canvas =
                     document.createElement(
                       "canvas"
                     );
-
 
                   canvas.width =
                     width;
@@ -601,12 +559,10 @@ function Home() {
                   canvas.height =
                     height;
 
-
                   const ctx =
                     canvas.getContext(
                       "2d"
                     );
-
 
                   if (!ctx) {
 
@@ -617,9 +573,7 @@ function Home() {
                     );
 
                     return;
-
                   }
-
 
                   ctx.drawImage(
                     img,
@@ -629,16 +583,13 @@ function Home() {
                     height
                   );
 
-
                   resolve(
                     canvas.toDataURL(
                       "image/jpeg",
                       0.72
                     )
                   );
-
                 };
-
 
               img.onerror =
                 () => {
@@ -648,15 +599,11 @@ function Home() {
                       "Could not load image"
                     )
                   );
-
                 };
-
 
               img.src =
                 reader.result;
-
             };
-
 
           reader.onerror =
             () => {
@@ -666,17 +613,13 @@ function Home() {
                   "Could not read image"
                 )
               );
-
             };
-
 
           reader.readAsDataURL(
             file
           );
-
         }
       );
-
     };
 
 
@@ -710,9 +653,7 @@ function Home() {
 
         createdAt:
           new Date().toISOString()
-
       };
-
 
       setHistoryItems(
         previous => [
@@ -721,14 +662,11 @@ function Home() {
         ]
       );
 
-
       try {
 
         const response =
           await axios.post(
-
             `${serverUrl}/api/user/savehistory`,
-
             {
               command,
               answer,
@@ -736,13 +674,10 @@ function Home() {
               image,
               fileName
             },
-
             {
               withCredentials: true
             }
-
           );
-
 
         if (
           response.data?.history
@@ -752,7 +687,6 @@ function Home() {
             response.data.history
           );
 
-
           setUserData(
             previous => ({
               ...previous,
@@ -760,7 +694,6 @@ function Home() {
                 response.data.history
             })
           );
-
         }
 
       } catch (error) {
@@ -770,9 +703,7 @@ function Home() {
           error.response?.data ||
           error.message
         );
-
       }
-
     };
 
 
@@ -787,30 +718,23 @@ function Home() {
         return;
       }
 
-
       try {
 
         const response =
           await axios.delete(
-
             `${serverUrl}/api/user/history/${historyId}`,
-
             {
               withCredentials: true
             }
-
           );
-
 
         const updatedHistory =
           response.data?.history ||
           [];
 
-
         setHistoryItems(
           updatedHistory
         );
-
 
         setUserData(
           previous => ({
@@ -827,9 +751,7 @@ function Home() {
           error.response?.data ||
           error.message
         );
-
       }
-
     };
 
 
@@ -843,35 +765,26 @@ function Home() {
       if (
         historyItems.length === 0
       ) {
-
         return;
-
       }
-
 
       const confirmed =
         window.confirm(
           "Clear all history?"
         );
 
-
       if (!confirmed) {
         return;
       }
 
-
       try {
 
         await axios.delete(
-
           `${serverUrl}/api/user/history`,
-
           {
             withCredentials: true
           }
-
         );
-
 
         setHistoryItems([]);
 
@@ -884,7 +797,6 @@ function Home() {
         setAiText("");
 
         setShowAIText(false);
-
 
         setUserData(
           previous => ({
@@ -900,9 +812,7 @@ function Home() {
           error.response?.data ||
           error.message
         );
-
       }
-
     };
 
 
@@ -917,30 +827,20 @@ function Home() {
         speechTimeoutRef.current
       );
 
-
       window.speechSynthesis.cancel();
-
 
       speakingRef.current =
         false;
 
-
       setIsSpeaking(false);
-
 
       if (
         !processingRef.current
       ) {
 
         setIsAIActive(false);
-
       }
 
-
-      /*
-       * If the user had microphone mode enabled,
-       * start listening again after stopping speech.
-       */
       if (
         listeningRef.current &&
         !processingRef.current &&
@@ -963,17 +863,12 @@ function Home() {
               setIsListening(true);
 
             } catch {
-
-              // Recognition may already be active.
-
+              // Already running.
             }
-
           }
 
         }, 300);
-
       }
-
     };
 
 
@@ -988,40 +883,29 @@ function Home() {
         return;
       }
 
-
       const speechText =
         String(text).trim();
-
 
       if (!speechText) {
         return;
       }
 
-
       clearTimeout(
         speechTimeoutRef.current
       );
 
-
       window.speechSynthesis.cancel();
 
-
-      /*
-       * Break long answers into small chunks.
-       * This prevents Chrome from stopping long speech.
-       */
       const sentences =
         speechText.match(
           /[^.!?]+[.!?]+|[^.!?]+$/g
         ) ||
         [speechText];
 
-
       const chunks = [];
 
       let currentChunk =
         "";
-
 
       sentences.forEach(
         sentence => {
@@ -1029,11 +913,9 @@ function Home() {
           const cleanSentence =
             sentence.trim();
 
-
           if (!cleanSentence) {
             return;
           }
-
 
           if (
             cleanSentence.length > 160
@@ -1044,17 +926,14 @@ function Home() {
                 /\s+/
               );
 
-
             let wordChunk =
               "";
-
 
             words.forEach(word => {
 
               const combined =
                 `${wordChunk} ${word}`
                   .trim();
-
 
               if (
                 combined.length > 160
@@ -1067,9 +946,7 @@ function Home() {
                   chunks.push(
                     wordChunk.trim()
                   );
-
                 }
-
 
                 wordChunk =
                   word;
@@ -1078,11 +955,8 @@ function Home() {
 
                 wordChunk =
                   combined;
-
               }
-
             });
-
 
             if (
               wordChunk.trim()
@@ -1091,19 +965,14 @@ function Home() {
               chunks.push(
                 wordChunk.trim()
               );
-
             }
 
-
             return;
-
           }
-
 
           const combined =
             `${currentChunk} ${cleanSentence}`
               .trim();
-
 
           if (
             combined.length > 160
@@ -1116,9 +985,7 @@ function Home() {
               chunks.push(
                 currentChunk.trim()
               );
-
             }
-
 
             currentChunk =
               cleanSentence;
@@ -1127,12 +994,9 @@ function Home() {
 
             currentChunk =
               combined;
-
           }
-
         }
       );
-
 
       if (
         currentChunk.trim()
@@ -1141,9 +1005,7 @@ function Home() {
         chunks.push(
           currentChunk.trim()
         );
-
       }
-
 
       if (
         chunks.length === 0
@@ -1152,30 +1014,18 @@ function Home() {
         chunks.push(
           speechText
         );
-
       }
-
 
       let currentIndex =
         0;
 
-
       speakingRef.current =
         true;
-
 
       setIsSpeaking(true);
 
       setIsAIActive(true);
 
-
-      /*
-       * IMPORTANT:
-       *
-       * Stop microphone while assistant is speaking.
-       * Otherwise the microphone can hear the assistant's
-       * own voice.
-       */
       if (
         recognitionRef.current
       ) {
@@ -1185,9 +1035,7 @@ function Home() {
           recognitionRef.current.stop();
 
         } catch {}
-
       }
-
 
       const speakNextChunk =
         () => {
@@ -1195,11 +1043,8 @@ function Home() {
           if (
             !speakingRef.current
           ) {
-
             return;
-
           }
-
 
           if (
             currentIndex >=
@@ -1209,22 +1054,15 @@ function Home() {
             speakingRef.current =
               false;
 
-
             setIsSpeaking(false);
-
 
             if (
               !processingRef.current
             ) {
 
               setIsAIActive(false);
-
             }
 
-
-            /*
-             * Restart microphone after speech.
-             */
             if (
               listeningRef.current &&
               !processingRef.current &&
@@ -1248,24 +1086,18 @@ function Home() {
                     );
 
                   } catch {}
-
                 }
 
               }, 400);
-
             }
 
-
             return;
-
           }
-
 
           const utterance =
             new SpeechSynthesisUtterance(
               chunks[currentIndex]
             );
-
 
           utterance.rate =
             1;
@@ -1279,7 +1111,6 @@ function Home() {
           utterance.lang =
             "en-US";
 
-
           utterance.onstart =
             () => {
 
@@ -1290,16 +1121,12 @@ function Home() {
                 window.speechSynthesis.cancel();
 
                 return;
-
               }
-
 
               setIsSpeaking(true);
 
               setIsAIActive(true);
-
             };
-
 
           utterance.onend =
             () => {
@@ -1307,14 +1134,10 @@ function Home() {
               if (
                 !speakingRef.current
               ) {
-
                 return;
-
               }
 
-
               currentIndex++;
-
 
               speechTimeoutRef.current =
                 setTimeout(
@@ -1325,9 +1148,7 @@ function Home() {
                   },
                   80
                 );
-
             };
-
 
           utterance.onerror =
             event => {
@@ -1337,18 +1158,13 @@ function Home() {
                 event.error
               );
 
-
               if (
                 !speakingRef.current
               ) {
-
                 return;
-
               }
 
-
               currentIndex++;
-
 
               speechTimeoutRef.current =
                 setTimeout(
@@ -1359,9 +1175,7 @@ function Home() {
                   },
                   80
                 );
-
             };
-
 
           try {
 
@@ -1369,16 +1183,12 @@ function Home() {
 
           } catch {}
 
-
           window.speechSynthesis.speak(
             utterance
           );
-
         };
 
-
       speakNextChunk();
-
     };
 
 
@@ -1393,13 +1203,11 @@ function Home() {
         return;
       }
 
-
       window.open(
         url,
         "_blank",
         "noopener,noreferrer"
       );
-
     };
 
 
@@ -1414,13 +1222,11 @@ function Home() {
         return;
       }
 
-
       openUrl(
         `https://www.google.com/search?q=${encodeURIComponent(
           query.trim()
         )}`
       );
-
     };
 
 
@@ -1435,13 +1241,11 @@ function Home() {
         return;
       }
 
-
       openUrl(
         `https://www.youtube.com/results?search_query=${encodeURIComponent(
           query.trim()
         )}`
       );
-
     };
 
 
@@ -1513,7 +1317,6 @@ function Home() {
 
     telegram:
       "https://web.telegram.org"
-
   };
 
 
@@ -1532,87 +1335,54 @@ function Home() {
           query.trim()
         );
 
-
       switch (site) {
 
         case "google":
-
           return `https://www.google.com/search?q=${encodedQuery}`;
 
-
         case "youtube":
-
           return `https://www.youtube.com/results?search_query=${encodedQuery}`;
 
-
         case "yahoo":
-
           return `https://search.yahoo.com/search?p=${encodedQuery}`;
 
-
         case "amazon":
-
           return `https://www.amazon.in/s?k=${encodedQuery}`;
 
-
         case "flipkart":
-
           return `https://www.flipkart.com/search?q=${encodedQuery}`;
 
-
         case "wikipedia":
-
           return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
 
-
         case "reddit":
-
           return `https://www.reddit.com/search/?q=${encodedQuery}`;
 
-
         case "github":
-
           return `https://github.com/search?q=${encodedQuery}`;
 
-
         case "linkedin":
-
           return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
 
-
         case "spotify":
-
           return `https://open.spotify.com/search/${encodedQuery}`;
 
-
         case "pinterest":
-
           return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
 
-
         case "facebook":
-
           return `https://www.facebook.com/search/top?q=${encodedQuery}`;
 
-
         case "x":
-
         case "twitter":
-
           return `https://x.com/search?q=${encodedQuery}`;
 
-
         case "instagram":
-
           return `https://www.instagram.com/explore/search/keyword/?q=${encodedQuery}`;
 
-
         default:
-
           return null;
-
       }
-
     };
 
 
@@ -1627,7 +1397,6 @@ function Home() {
         return null;
       }
 
-
       const text =
         command
           .trim()
@@ -1640,11 +1409,9 @@ function Home() {
             " "
           );
 
-
       if (!text) {
         return null;
       }
-
 
       const siteAliases = {
 
@@ -1728,42 +1495,35 @@ function Home() {
 
         telegram:
           "telegram"
-
       };
-
 
       const siteNames =
         Object.keys(
           siteAliases
         ).join("|");
 
-
       let match;
 
 
       // search cats on google
+
       match =
         text.match(
-
           new RegExp(
             `^(?:search|find|look\\s+up)\\s+(?:for\\s+)?(.+?)\\s+(?:on|in|using)\\s+(${siteNames})$`,
             "i"
           )
-
         );
-
 
       if (match) {
 
         const query =
           match[1].trim();
 
-
         const site =
           siteAliases[
             match[2].toLowerCase()
           ];
-
 
         if (
           query &&
@@ -1774,23 +1534,19 @@ function Home() {
             site,
             query
           };
-
         }
-
       }
 
 
       // search google for cats
+
       match =
         text.match(
-
           new RegExp(
             `^(?:search|find|look\\s+up)\\s+(${siteNames})\\s+(?:for|about)\\s+(.+)$`,
             "i"
           )
-
         );
-
 
       if (match) {
 
@@ -1799,10 +1555,8 @@ function Home() {
             match[1].toLowerCase()
           ];
 
-
         const query =
           match[2].trim();
-
 
         if (
           site &&
@@ -1813,23 +1567,19 @@ function Home() {
             site,
             query
           };
-
         }
-
       }
 
 
       // search google cats
+
       match =
         text.match(
-
           new RegExp(
             `^(?:search|find|look\\s+up)\\s+(${siteNames})\\s+(.+)$`,
             "i"
           )
-
         );
-
 
       if (match) {
 
@@ -1838,10 +1588,8 @@ function Home() {
             match[1].toLowerCase()
           ];
 
-
         const query =
           match[2].trim();
-
 
         if (
           site &&
@@ -1852,30 +1600,26 @@ function Home() {
             site,
             query
           };
-
         }
-
       }
 
 
       // search cats
+
       match =
         text.match(
           /^(?:search|find|look\s+up)\s+(?:for\s+)?(.+)$/i
         );
-
 
       if (match) {
 
         const query =
           match[1].trim();
 
-
         const possibleSite =
           siteAliases[
             query.toLowerCase()
           ];
-
 
         if (
           query &&
@@ -1883,20 +1627,13 @@ function Home() {
         ) {
 
           return {
-            site:
-              "google",
-
+            site: "google",
             query
-
           };
-
         }
-
       }
 
-
       return null;
-
     };
 
 
@@ -1914,11 +1651,9 @@ function Home() {
       const cleanedCommand =
         command.trim();
 
-
       if (!cleanedCommand) {
         return;
       }
-
 
       setHistoryImage("");
 
@@ -1936,10 +1671,8 @@ function Home() {
 
       setIsSending(true);
 
-
       processingRef.current =
         true;
-
 
       try {
 
@@ -1952,7 +1685,6 @@ function Home() {
             cleanedCommand
           );
 
-
         if (searchCommand) {
 
           const {
@@ -1961,24 +1693,20 @@ function Home() {
           } =
             searchCommand;
 
-
           const siteName =
             site === "x"
               ? "X"
               : site
-                .charAt(0)
-                .toUpperCase() +
-              site.slice(1);
-
+                  .charAt(0)
+                  .toUpperCase() +
+                site.slice(1);
 
           const answer =
             `Searching ${siteName} for ${query}.`;
 
-
           setAiText(answer);
 
           setShowAIText(true);
-
 
           await addHistory(
             cleanedCommand,
@@ -1986,32 +1714,25 @@ function Home() {
             type
           );
 
-
           const searchUrl =
             getWebsiteSearchUrl(
               site,
               query
             );
 
-
           if (searchUrl) {
 
             openUrl(
               searchUrl
             );
-
           }
-
 
           if (shouldSpeak) {
 
             speak(answer);
-
           }
 
-
           return;
-
         }
 
 
@@ -2024,21 +1745,17 @@ function Home() {
             /^(?:google)\s+(.+)$/i
           );
 
-
         if (googleMatch) {
 
           const query =
             googleMatch[1].trim();
 
-
           const answer =
             `Searching Google for ${query}.`;
-
 
           setAiText(answer);
 
           setShowAIText(true);
-
 
           await addHistory(
             cleanedCommand,
@@ -2046,21 +1763,16 @@ function Home() {
             type
           );
 
-
           googleSearch(
             query
           );
 
-
           if (shouldSpeak) {
 
             speak(answer);
-
           }
 
-
           return;
-
         }
 
 
@@ -2073,21 +1785,17 @@ function Home() {
             /^(?:youtube|yt)\s+(.+)$/i
           );
 
-
         if (youtubeMatch) {
 
           const query =
             youtubeMatch[1].trim();
 
-
           const answer =
             `Searching YouTube for ${query}.`;
-
 
           setAiText(answer);
 
           setShowAIText(true);
-
 
           await addHistory(
             cleanedCommand,
@@ -2095,21 +1803,16 @@ function Home() {
             type
           );
 
-
           youtubeSearch(
             query
           );
 
-
           if (shouldSpeak) {
 
             speak(answer);
-
           }
 
-
           return;
-
         }
 
 
@@ -2122,7 +1825,6 @@ function Home() {
             /^(?:open|launch|visit|go\s+to|take\s+me\s+to)\s+(.+)$/i
           );
 
-
         if (directMatch) {
 
           let site =
@@ -2134,26 +1836,22 @@ function Home() {
                 ""
               );
 
-
           if (websites[site]) {
 
             const displayName =
               site === "x"
                 ? "X"
                 : site
-                  .charAt(0)
-                  .toUpperCase() +
-                site.slice(1);
-
+                    .charAt(0)
+                    .toUpperCase() +
+                  site.slice(1);
 
             const answer =
               `Opening ${displayName}.`;
 
-
             setAiText(answer);
 
             setShowAIText(true);
-
 
             await addHistory(
               cleanedCommand,
@@ -2161,23 +1859,17 @@ function Home() {
               type
             );
 
-
             openUrl(
               websites[site]
             );
 
-
             if (shouldSpeak) {
 
               speak(answer);
-
             }
 
-
             return;
-
           }
-
         }
 
 
@@ -2190,10 +1882,8 @@ function Home() {
             cleanedCommand
           );
 
-
         let parsedResult =
           result;
-
 
         if (
           typeof result ===
@@ -2212,7 +1902,6 @@ function Home() {
               )
               .trim();
 
-
           try {
 
             parsedResult =
@@ -2229,20 +1918,15 @@ function Home() {
 
               response:
                 cleanResult
-
             };
-
           }
-
         }
-
 
         const rawResponse =
           parsedResult?.response ||
           parsedResult?.answer ||
           parsedResult?.text ||
           "Sorry, I could not understand that.";
-
 
         const response =
           cleanAIResponse(
@@ -2263,9 +1947,7 @@ function Home() {
             "https://www.google.com"
           );
 
-        }
-
-        else if (
+        } else if (
           parsedResult?.type ===
           "google_search"
         ) {
@@ -2277,9 +1959,7 @@ function Home() {
             googleSearch(
               parsedResult.query
             );
-
           }
-
         }
 
 
@@ -2296,9 +1976,7 @@ function Home() {
             "https://www.youtube.com"
           );
 
-        }
-
-        else if (
+        } else if (
           parsedResult?.type ===
             "youtube_search" ||
           parsedResult?.type ===
@@ -2312,9 +1990,7 @@ function Home() {
             youtubeSearch(
               parsedResult.query
             );
-
           }
-
         }
 
 
@@ -2330,7 +2006,6 @@ function Home() {
           openUrl(
             "https://www.google.com/search?q=calculator"
           );
-
         }
 
 
@@ -2345,7 +2020,6 @@ function Home() {
         setShowAIText(
           true
         );
-
 
         await addHistory(
           cleanedCommand,
@@ -2363,7 +2037,6 @@ function Home() {
           speak(
             response
           );
-
         }
 
       } catch (error) {
@@ -2373,10 +2046,8 @@ function Home() {
           error
         );
 
-
         const errorMessage =
           "Sorry, I could not complete that request right now.";
-
 
         setAiText(
           errorMessage
@@ -2386,13 +2057,11 @@ function Home() {
           true
         );
 
-
         if (shouldSpeak) {
 
           speak(
             errorMessage
           );
-
         }
 
       } finally {
@@ -2400,11 +2069,9 @@ function Home() {
         processingRef.current =
           false;
 
-
         setIsSending(
           false
         );
-
 
         if (
           !speakingRef.current
@@ -2413,14 +2080,8 @@ function Home() {
           setIsAIActive(
             false
           );
-
         }
 
-
-        /*
-         * Restart microphone if speech recognition
-         * ended while Gemini was processing.
-         */
         if (
           listeningRef.current &&
           !speakingRef.current &&
@@ -2430,7 +2091,6 @@ function Home() {
           clearTimeout(
             restartTimeoutRef.current
           );
-
 
           restartTimeoutRef.current =
             setTimeout(() => {
@@ -2451,19 +2111,13 @@ function Home() {
                   );
 
                 } catch {
-
                   // Already running.
-
                 }
-
               }
 
             }, 500);
-
         }
-
       }
-
     };
 
 
@@ -2476,24 +2130,19 @@ function Home() {
 
       e?.preventDefault();
 
-
       if (selectedImage) {
 
         await analyzeImage();
 
         return;
-
       }
-
 
       if (selectedPdf) {
 
         await analyzePdf();
 
         return;
-
       }
-
 
       if (
         !typedText.trim() ||
@@ -2501,23 +2150,18 @@ function Home() {
       ) {
 
         return;
-
       }
-
 
       const command =
         typedText.trim();
 
-
       setTypedText("");
-
 
       await processCommand(
         command,
         "text",
         false
       );
-
     };
 
 
@@ -2531,11 +2175,9 @@ function Home() {
       const file =
         e.target.files?.[0];
 
-
       if (!file) {
         return;
       }
-
 
       if (
         !file.type.startsWith(
@@ -2548,9 +2190,7 @@ function Home() {
         );
 
         return;
-
       }
-
 
       if (
         file.size >
@@ -2562,26 +2202,18 @@ function Home() {
         );
 
         return;
-
       }
-
 
       if (imagePreview) {
 
         URL.revokeObjectURL(
           imagePreview
         );
-
       }
 
+      setSelectedPdf(null);
 
-      setSelectedPdf(
-        null
-      );
-
-      setPdfPreviewName(
-        ""
-      );
+      setPdfPreviewName("");
 
       setSelectedImage(
         file
@@ -2594,7 +2226,6 @@ function Home() {
       setHistoryImage("");
 
       setHistoryFileName("");
-
     };
 
 
@@ -2608,11 +2239,9 @@ function Home() {
       const file =
         e.target.files?.[0];
 
-
       if (!file) {
         return;
       }
-
 
       if (
         file.type !==
@@ -2624,9 +2253,7 @@ function Home() {
         );
 
         return;
-
       }
-
 
       if (
         file.size >
@@ -2638,12 +2265,9 @@ function Home() {
         );
 
         return;
-
       }
 
-
       removeImage();
-
 
       setSelectedPdf(
         file
@@ -2656,7 +2280,6 @@ function Home() {
       setHistoryImage("");
 
       setHistoryFileName("");
-
     };
 
 
@@ -2670,11 +2293,9 @@ function Home() {
       const clipboardItems =
         event.clipboardData?.items;
 
-
       if (!clipboardItems) {
         return;
       }
-
 
       for (
         let i = 0;
@@ -2685,7 +2306,6 @@ function Home() {
         const item =
           clipboardItems[i];
 
-
         if (
           item.type &&
           item.type.startsWith(
@@ -2695,32 +2315,23 @@ function Home() {
 
           event.preventDefault();
 
-
           const file =
             item.getAsFile();
-
 
           if (!file) {
             return;
           }
-
 
           if (imagePreview) {
 
             URL.revokeObjectURL(
               imagePreview
             );
-
           }
 
+          setSelectedPdf(null);
 
-          setSelectedPdf(
-            null
-          );
-
-          setPdfPreviewName(
-            ""
-          );
+          setPdfPreviewName("");
 
           setSelectedImage(
             file
@@ -2735,11 +2346,8 @@ function Home() {
           setHistoryFileName("");
 
           return;
-
         }
-
       }
-
     };
 
 
@@ -2755,9 +2363,7 @@ function Home() {
         URL.revokeObjectURL(
           imagePreview
         );
-
       }
-
 
       setSelectedImage(
         null
@@ -2767,16 +2373,13 @@ function Home() {
         ""
       );
 
-
       if (
         imageInputRef.current
       ) {
 
         imageInputRef.current.value =
           "";
-
       }
-
     };
 
 
@@ -2795,16 +2398,13 @@ function Home() {
         ""
       );
 
-
       if (
         pdfInputRef.current
       ) {
 
         pdfInputRef.current.value =
           "";
-
       }
-
     };
 
 
@@ -2821,14 +2421,11 @@ function Home() {
       ) {
 
         return;
-
       }
-
 
       const question =
         typedText.trim() ||
         "Analyze this PDF and explain its important contents.";
-
 
       setIsPdfAnalyzing(
         true
@@ -2848,50 +2445,39 @@ function Home() {
         true
       );
 
-
       try {
 
         const formData =
           new FormData();
-
 
         formData.append(
           "pdf",
           selectedPdf
         );
 
-
         formData.append(
           "command",
           question
         );
 
-
         const response =
           await axios.post(
-
             `${serverUrl}/api/user/analyze-pdf`,
-
             formData,
-
             {
               withCredentials: true
             }
-
           );
-
 
         const rawAnswer =
           response.data?.response ||
           response.data?.answer ||
           "I could not analyze the PDF.";
 
-
         const answer =
           cleanAIResponse(
             rawAnswer
           );
-
 
         setAiText(
           answer
@@ -2901,7 +2487,6 @@ function Home() {
           true
         );
 
-
         await addHistory(
           question,
           answer,
@@ -2909,7 +2494,6 @@ function Home() {
           "",
           selectedPdf.name
         );
-
 
         removePdf();
 
@@ -2923,11 +2507,9 @@ function Home() {
           error.message
         );
 
-
         const errorMessage =
           error.response?.data?.message ||
           "Unable to analyze the PDF.";
-
 
         setAiText(
           cleanAIResponse(
@@ -2945,7 +2527,6 @@ function Home() {
           false
         );
 
-
         if (
           !speakingRef.current
         ) {
@@ -2953,11 +2534,8 @@ function Home() {
           setIsAIActive(
             false
           );
-
         }
-
       }
-
     };
 
 
@@ -2974,14 +2552,11 @@ function Home() {
       ) {
 
         return;
-
       }
-
 
       const question =
         typedText.trim() ||
         "Analyze this image and explain what you see.";
-
 
       setIsImageAnalyzing(
         true
@@ -3001,50 +2576,39 @@ function Home() {
         true
       );
 
-
       try {
 
         const formData =
           new FormData();
-
 
         formData.append(
           "image",
           selectedImage
         );
 
-
         formData.append(
           "command",
           question
         );
 
-
         const response =
           await axios.post(
-
             `${serverUrl}/api/user/analyze-image`,
-
             formData,
-
             {
               withCredentials: true
             }
-
           );
-
 
         const rawAnswer =
           response.data?.response ||
           response.data?.answer ||
           "I could not analyze the image.";
 
-
         const answer =
           cleanAIResponse(
             rawAnswer
           );
-
 
         setAiText(
           answer
@@ -3054,10 +2618,8 @@ function Home() {
           true
         );
 
-
         let imageForHistory =
           "";
-
 
         try {
 
@@ -3072,9 +2634,7 @@ function Home() {
             "IMAGE HISTORY ERROR:",
             error
           );
-
         }
-
 
         await addHistory(
           question,
@@ -3082,7 +2642,6 @@ function Home() {
           "image",
           imageForHistory
         );
-
 
         removeImage();
 
@@ -3096,11 +2655,9 @@ function Home() {
           error.message
         );
 
-
         const errorMessage =
           error.response?.data?.message ||
           "Unable to analyze the image.";
-
 
         setAiText(
           cleanAIResponse(
@@ -3118,7 +2675,6 @@ function Home() {
           false
         );
 
-
         if (
           !speakingRef.current
         ) {
@@ -3126,11 +2682,8 @@ function Home() {
           setIsAIActive(
             false
           );
-
         }
-
       }
-
     };
 
 
@@ -3144,7 +2697,6 @@ function Home() {
       window.SpeechRecognition ||
       window.webkitSpeechRecognition;
 
-
     if (!SpeechRecognition) {
 
       console.warn(
@@ -3152,41 +2704,22 @@ function Home() {
       );
 
       return;
-
     }
-
 
     const recognition =
       new SpeechRecognition();
 
-
-    /*
-     * IMPORTANT:
-     *
-     * continuous=false gives one clean utterance.
-     * After processing/speaking, we start it again.
-     */
     recognition.continuous =
       false;
 
-
-    /*
-     * IMPORTANT:
-     *
-     * interimResults=true makes your words
-     * appear as text while you are speaking.
-     */
     recognition.interimResults =
       true;
-
 
     recognition.lang =
       "en-US";
 
-
     recognition.maxAlternatives =
       1;
-
 
     recognitionRef.current =
       recognition;
@@ -3203,11 +2736,9 @@ function Home() {
           "Microphone started"
         );
 
-
         setIsListening(
           true
         );
-
       };
 
 
@@ -3224,20 +2755,16 @@ function Home() {
         let interimTranscript =
           "";
 
-
         for (
           let i =
             event.resultIndex;
-
           i <
           event.results.length;
-
           i++
         ) {
 
           const result =
             event.results[i];
-
 
           if (
             result.isFinal
@@ -3252,54 +2779,34 @@ function Home() {
             interimTranscript +=
               result[0]?.transcript ||
               "";
-
           }
-
         }
 
-
-        /*
-         * LIVE TEXT
-         *
-         * This is what makes your spoken words
-         * appear in the UI while you are talking.
-         */
         const liveText =
           `${finalTranscript} ${interimTranscript}`
             .trim();
-
 
         if (liveText) {
 
           setUserText(
             liveText
           );
-
         }
 
-
-        /*
-         * Don't send interim text to Gemini.
-         * Wait until Chrome marks the sentence final.
-         */
         if (
           !finalTranscript.trim()
         ) {
 
           return;
-
         }
-
 
         const transcript =
           finalTranscript.trim();
-
 
         console.log(
           "Final recognized speech:",
           transcript
         );
-
 
         const lowerTranscript =
           transcript
@@ -3314,16 +2821,21 @@ function Home() {
         const stopCommands = [
 
           "stop listening",
+
           "stop microphone",
+
           "turn off microphone",
+
           "cancel microphone",
+
           "stop",
+
           "cancel",
+
           "goodbye",
+
           "bye"
-
         ];
-
 
         if (
           stopCommands.includes(
@@ -3334,24 +2846,14 @@ function Home() {
           stopListening();
 
           return;
-
         }
 
 
-        /*
-         * IMPORTANT:
-         *
-         * Do NOT await processCommand here.
-         *
-         * Calling it asynchronously prevents the
-         * browser recognition event from getting stuck.
-         */
         processCommand(
           transcript,
           "voice",
           true
         );
-
       };
 
 
@@ -3366,7 +2868,6 @@ function Home() {
           "Microphone ended"
         );
 
-
         if (
           !listeningRef.current
         ) {
@@ -3376,45 +2877,29 @@ function Home() {
           );
 
           return;
-
         }
-
 
         setIsListening(
           false
         );
 
-
-        /*
-         * Gemini is processing.
-         * processCommand finally{} will restart it.
-         */
         if (
           processingRef.current
         ) {
 
           return;
-
         }
 
-
-        /*
-         * Assistant is speaking.
-         * speak() will restart microphone when done.
-         */
         if (
           speakingRef.current
         ) {
 
           return;
-
         }
-
 
         clearTimeout(
           restartTimeoutRef.current
         );
-
 
         restartTimeoutRef.current =
           setTimeout(() => {
@@ -3439,15 +2924,11 @@ function Home() {
                 );
 
               } catch {
-
                 // Already active.
-
               }
-
             }
 
           }, 400);
-
       };
 
 
@@ -3463,7 +2944,6 @@ function Home() {
           event.error
         );
 
-
         if (
           event.error ===
             "not-allowed" ||
@@ -3474,21 +2954,16 @@ function Home() {
           listeningRef.current =
             false;
 
-
           setIsListening(
             false
           );
-
 
           alert(
             "Microphone permission is blocked. Please allow microphone access in Chrome."
           );
 
-
           return;
-
         }
-
 
         if (
           event.error ===
@@ -3498,28 +2973,17 @@ function Home() {
           listeningRef.current =
             false;
 
-
           setIsListening(
             false
           );
-
 
           alert(
             "No microphone was detected. Please check your microphone."
           );
 
-
           return;
-
         }
 
-
-        /*
-         * no-speech is normal when Chrome doesn't
-         * detect anything for a moment.
-         *
-         * onend handles restarting.
-         */
         if (
           event.error ===
             "no-speech" ||
@@ -3528,9 +2992,7 @@ function Home() {
         ) {
 
           return;
-
         }
-
       };
 
 
@@ -3543,16 +3005,13 @@ function Home() {
       listeningRef.current =
         false;
 
-
       clearTimeout(
         restartTimeoutRef.current
       );
 
-
       clearTimeout(
         speechTimeoutRef.current
       );
-
 
       try {
 
@@ -3560,20 +3019,10 @@ function Home() {
 
       } catch {}
 
-
       recognitionRef.current =
         null;
-
     };
 
-
-    /*
-     * VERY IMPORTANT:
-     *
-     * Do NOT put getGeminiResponse here.
-     *
-     * The recognition object must be created only once.
-     */
   }, []);
 
 
@@ -3593,9 +3042,7 @@ function Home() {
         );
 
         return;
-
       }
-
 
       if (
         speakingRef.current ||
@@ -3603,23 +3050,18 @@ function Home() {
       ) {
 
         stopSpeaking();
-
       }
-
 
       clearTimeout(
         restartTimeoutRef.current
       );
 
-
       listeningRef.current =
         true;
-
 
       setIsListening(
         true
       );
-
 
       try {
 
@@ -3636,17 +3078,10 @@ function Home() {
           error.message
         );
 
-
-        /*
-         * If Chrome says recognition is already
-         * running, keep the UI in listening state.
-         */
         setIsListening(
           true
         );
-
       }
-
     };
 
 
@@ -3660,16 +3095,13 @@ function Home() {
       listeningRef.current =
         false;
 
-
       setIsListening(
         false
       );
 
-
       clearTimeout(
         restartTimeoutRef.current
       );
-
 
       if (
         recognitionRef.current
@@ -3680,14 +3112,11 @@ function Home() {
           recognitionRef.current.stop();
 
         } catch {}
-
       }
-
 
       console.log(
         "Microphone stopped"
       );
-
     };
 
 
@@ -3698,13 +3127,6 @@ function Home() {
   const handleMicClick =
     () => {
 
-      /*
-       * SAME BUTTON:
-       *
-       * If assistant is speaking,
-       * this microphone button becomes
-       * the STOP button.
-       */
       if (
         isSpeaking ||
         speakingRef.current ||
@@ -3714,14 +3136,8 @@ function Home() {
         stopSpeaking();
 
         return;
-
       }
 
-
-      /*
-       * Otherwise it is the normal microphone
-       * on/off button.
-       */
       if (isListening) {
 
         stopListening();
@@ -3729,9 +3145,7 @@ function Home() {
       } else {
 
         startListening();
-
       }
-
     };
 
 
@@ -3746,19 +3160,14 @@ function Home() {
 
       stopListening();
 
-
       try {
 
         await axios.post(
-
           `${serverUrl}/api/auth/logout`,
-
           {},
-
           {
             withCredentials: true
           }
-
         );
 
       } catch (error) {
@@ -3767,19 +3176,15 @@ function Home() {
           "LOGOUT ERROR:",
           error
         );
-
       }
-
 
       setUserData(
         null
       );
 
-
       navigate(
         "/signin"
       );
-
     };
 
 
@@ -3803,17 +3208,14 @@ function Home() {
           item?.fileName ||
           "";
 
-
         const search =
           historySearch
             .toLowerCase()
             .trim();
 
-
         if (!search) {
           return true;
         }
-
 
         return (
 
@@ -3828,9 +3230,7 @@ function Home() {
           fileName
             .toLowerCase()
             .includes(search)
-
         );
-
       }
     );
 
@@ -3844,7 +3244,6 @@ function Home() {
 
       stopSpeaking();
 
-
       const command =
         item?.command ||
         "";
@@ -3853,11 +3252,9 @@ function Home() {
         item?.answer ||
         "";
 
-
       setUserText(
         command
       );
-
 
       setAiText(
         cleanAIResponse(
@@ -3865,11 +3262,9 @@ function Home() {
         )
       );
 
-
       setShowAIText(
         true
       );
-
 
       if (
         item?.type ===
@@ -3886,9 +3281,7 @@ function Home() {
         setHistoryImage(
           ""
         );
-
       }
-
 
       if (
         item?.type ===
@@ -3905,14 +3298,11 @@ function Home() {
         setHistoryFileName(
           ""
         );
-
       }
-
 
       setShowHistory(
         false
       );
-
     };
 
 
@@ -3926,7 +3316,6 @@ function Home() {
       if (!date) {
         return "";
       }
-
 
       try {
 
@@ -3946,9 +3335,7 @@ function Home() {
       } catch {
 
         return "";
-
       }
-
     };
 
 
@@ -3964,8 +3351,11 @@ function Home() {
       }
       className="
         relative
-        min-h-screen
+        flex
+        h-screen
+        min-h-0
         w-full
+        flex-col
         overflow-hidden
         bg-[#070B14]
         text-white
@@ -3983,6 +3373,7 @@ function Home() {
           flex
           h-16
           w-full
+          shrink-0
           items-center
           justify-between
           border-b
@@ -4016,7 +3407,6 @@ function Home() {
               setShowProfileMenu(
                 false
               );
-
             }}
             className="
               flex
@@ -4052,7 +3442,6 @@ function Home() {
               <IoMdMenu
                 size={22}
               />
-
             )}
 
           </button>
@@ -4088,12 +3477,9 @@ function Home() {
                 text-white
               "
             >
-
               {userData?.assistantName ||
                 "Assistant"}
-
             </p>
-
 
             <p
               className="
@@ -4103,9 +3489,7 @@ function Home() {
                 sm:block
               "
             >
-
               Virtual Assistant
-
             </p>
 
           </div>
@@ -4157,7 +3541,6 @@ function Home() {
               setShowHistory(
                 false
               );
-
             }}
             className="
               flex
@@ -4200,7 +3583,6 @@ function Home() {
               <FiSettings
                 size={19}
               />
-
             )}
 
           </button>
@@ -4243,12 +3625,9 @@ function Home() {
                     font-semibold
                   "
                 >
-
                   {userData?.name ||
                     "User"}
-
                 </p>
-
 
                 <p
                   className="
@@ -4257,10 +3636,8 @@ function Home() {
                     text-gray-500
                   "
                 >
-
                   {userData?.email ||
                     "Account"}
-
                 </p>
 
               </div>
@@ -4276,7 +3653,6 @@ function Home() {
                   setShowProfileMenu(
                     false
                   );
-
                 }}
                 className="
                   flex
@@ -4353,7 +3729,6 @@ function Home() {
                   setShowProfileMenu(
                     false
                   );
-
                 }}
                 className="
                   flex
@@ -4417,7 +3792,6 @@ function Home() {
               </button>
 
             </div>
-
           )}
 
         </div>
@@ -4487,7 +3861,6 @@ function Home() {
                 >
                   History
                 </h2>
-
 
                 <p
                   className="
@@ -4598,7 +3971,7 @@ function Home() {
             >
 
               {filteredHistory.length >
-              0 ? (
+                0 ? (
 
                 filteredHistory.map(
                   item => (
@@ -4653,10 +4026,8 @@ function Home() {
                               text-cyan-300
                             "
                           >
-
                             {item.type ||
                               "text"}
-
                           </span>
 
 
@@ -4700,7 +4071,6 @@ function Home() {
                                 object-cover
                               "
                             />
-
                           )}
 
 
@@ -4724,7 +4094,6 @@ function Home() {
                                 className="text-cyan-400"
                               />
 
-
                               <span
                                 className="
                                   truncate
@@ -4732,14 +4101,11 @@ function Home() {
                                   text-gray-400
                                 "
                               >
-
                                 {item.fileName ||
                                   "PDF document"}
-
                               </span>
 
                             </div>
-
                           )}
 
 
@@ -4750,9 +4116,7 @@ function Home() {
                             text-gray-300
                           "
                         >
-
                           {item.command}
-
                         </p>
 
 
@@ -4766,11 +4130,8 @@ function Home() {
                               text-gray-600
                             "
                           >
-
                             {item.answer}
-
                           </p>
-
                         )}
 
                       </button>
@@ -4807,13 +4168,10 @@ function Home() {
                             Delete
 
                           </button>
-
                         )}
 
                     </div>
-
                   )
-
                 )
 
               ) : (
@@ -4828,11 +4186,8 @@ function Home() {
                     text-gray-500
                   "
                 >
-
                   No history found
-
                 </div>
-
               )}
 
             </div>
@@ -4840,7 +4195,6 @@ function Home() {
           </aside>
 
         </>
-
       )}
 
 
@@ -4851,8 +4205,9 @@ function Home() {
       <main
         className="
           flex
-          h-[calc(100vh-4rem)]
+          min-h-0
           w-full
+          flex-1
           justify-center
           overflow-hidden
         "
@@ -4861,6 +4216,7 @@ function Home() {
         <section
           className="
             flex
+            min-h-0
             h-full
             w-full
             max-w-6xl
@@ -4874,25 +4230,36 @@ function Home() {
           "
         >
 
+
           {/* =================================================
-              CHAT
+              CHAT AREA
+
+              IMPORTANT:
+              This is the ONLY scrolling area.
+
+              flex-1 + min-h-0 + overflow-y-auto
+              means even an extremely long answer stays
+              inside this area.
+
+              pb-8 guarantees space at the bottom.
           ================================================= */}
 
-         <div
-  className="
-    flex
-    min-h-0
-    w-full
-    flex-1
-    justify-center
-    overflow-y-auto
-    px-1
-    pb-8
-  "
->
+          <div
+            className="
+              min-h-0
+              w-full
+              flex-1
+              overflow-y-auto
+              overscroll-contain
+              px-1
+              pb-8
+              scrollbar-thin
+            "
+          >
 
             <div
               className="
+                mx-auto
                 flex
                 w-full
                 max-w-3xl
@@ -4903,7 +4270,10 @@ function Home() {
               "
             >
 
-              {/* AI IMAGE */}
+
+              {/* =================================================
+                  AI IMAGE
+              ================================================= */}
 
               <div
                 className={`
@@ -4940,7 +4310,9 @@ function Home() {
               </div>
 
 
-              {/* NAME */}
+              {/* =================================================
+                  NAME
+              ================================================= */}
 
               <h1
                 className="
@@ -4952,14 +4324,14 @@ function Home() {
                   md:text-3xl
                 "
               >
-
                 {userData?.assistantName ||
                   "Assistant"}
-
               </h1>
 
 
-              {/* STATUS */}
+              {/* =================================================
+                  STATUS
+              ================================================= */}
 
               <p
                 className="
@@ -4992,7 +4364,9 @@ function Home() {
               </p>
 
 
-              {/* HISTORY IMAGE */}
+              {/* =================================================
+                  HISTORY IMAGE
+              ================================================= */}
 
               {historyImage && (
 
@@ -5021,11 +4395,12 @@ function Home() {
                   />
 
                 </div>
-
               )}
 
 
-              {/* HISTORY PDF */}
+              {/* =================================================
+                  HISTORY PDF
+              ================================================= */}
 
               {historyFileName && (
 
@@ -5050,7 +4425,6 @@ function Home() {
                     className="text-cyan-400"
                   />
 
-
                   <div
                     className="
                       min-w-0
@@ -5067,7 +4441,6 @@ function Home() {
                       Previous PDF
                     </p>
 
-
                     <p
                       className="
                         truncate
@@ -5075,19 +4448,18 @@ function Home() {
                         text-gray-300
                       "
                     >
-
                       {historyFileName}
-
                     </p>
 
                   </div>
 
                 </div>
-
               )}
 
 
-              {/* USER TEXT */}
+              {/* =================================================
+                  USER QUESTION
+              ================================================= */}
 
               {userText && (
 
@@ -5108,46 +4480,48 @@ function Home() {
                     text-gray-300
                   "
                 >
-
                   {userText}
-
                 </div>
-
               )}
 
 
-              {/* AI ANSWER */}
+              {/* =================================================
+                  AI ANSWER
+
+                  mb-6 = 24px space AFTER answer.
+
+                  This space is inside the scrolling chat
+                  area, so it remains there regardless of
+                  answer length.
+              ================================================= */}
 
               {showAIText &&
                 aiText && (
 
                   <div
-  className="
-    mt-4
-    mb-6
-    w-full
-    max-w-3xl
-    wrap-break-word
-    rounded-2xl
-    border
-    border-white/10
-    bg-white/3
-    px-4
-    py-4
-    text-sm
-    leading-7
-    whitespace-pre-wrap
-    text-gray-200
-    sm:px-6
-    sm:py-5
-    sm:text-base
-  "
->
-
+                    className="
+                      mt-4
+                      mb-6
+                      w-full
+                      max-w-3xl
+                      wrap-break-word
+                      rounded-2xl
+                      border
+                      border-white/10
+                      bg-white/3
+                      px-4
+                      py-4
+                      text-sm
+                      leading-7
+                      whitespace-pre-wrap
+                      text-gray-200
+                      sm:px-6
+                      sm:py-5
+                      sm:text-base
+                    "
+                  >
                     {aiText}
-
                   </div>
-
                 )}
 
             </div>
@@ -5157,6 +4531,8 @@ function Home() {
 
           {/* =================================================
               IMAGE PREVIEW
+
+              This stays OUTSIDE the scrolling chat.
           ================================================= */}
 
           {imagePreview && (
@@ -5166,6 +4542,7 @@ function Home() {
                 mb-3
                 w-full
                 max-w-3xl
+                shrink-0
                 rounded-2xl
                 border
                 border-cyan-400/20
@@ -5194,7 +4571,6 @@ function Home() {
                   "
                 />
 
-
                 <div
                   className="
                     min-w-0
@@ -5211,7 +4587,6 @@ function Home() {
                     Image selected
                   </p>
 
-
                   <p
                     className="
                       text-xs
@@ -5222,7 +4597,6 @@ function Home() {
                   </p>
 
                 </div>
-
 
                 <button
                   type="button"
@@ -5250,7 +4624,6 @@ function Home() {
               </div>
 
             </div>
-
           )}
 
 
@@ -5265,6 +4638,7 @@ function Home() {
                 mb-3
                 w-full
                 max-w-3xl
+                shrink-0
                 rounded-2xl
                 border
                 border-cyan-400/20
@@ -5318,7 +4692,6 @@ function Home() {
                     PDF selected
                   </p>
 
-
                   <p
                     className="
                       truncate
@@ -5326,9 +4699,7 @@ function Home() {
                       text-white
                     "
                   >
-
                     {pdfPreviewName}
-
                   </p>
 
                 </div>
@@ -5360,14 +4731,16 @@ function Home() {
               </div>
 
             </div>
-
           )}
 
 
           {/* =================================================
-              INPUT AREA
-              
-              NO STOP SPEAKING BUTTON HERE.
+              FIXED INPUT AREA
+
+              shrink-0 is VERY IMPORTANT.
+
+              It prevents the input area from being pushed
+              away by a huge answer.
           ================================================= */}
 
           <div
@@ -5398,7 +4771,10 @@ function Home() {
               "
             >
 
-              {/* IMAGE */}
+
+              {/* =================================================
+                  IMAGE BUTTON
+              ================================================= */}
 
               <button
                 type="button"
@@ -5440,7 +4816,9 @@ function Home() {
               />
 
 
-              {/* PDF */}
+              {/* =================================================
+                  PDF BUTTON
+              ================================================= */}
 
               <button
                 type="button"
@@ -5482,7 +4860,9 @@ function Home() {
               />
 
 
-              {/* TEXT */}
+              {/* =================================================
+                  QUESTION INPUT
+              ================================================= */}
 
               <input
                 value={
@@ -5495,11 +4875,17 @@ function Home() {
                 }
                 placeholder={
                   imagePreview
+
                     ? "Ask about the image..."
+
                     : pdfPreviewName
+
                       ? "Ask about the PDF..."
+
                       : isListening
+
                         ? "Listening..."
+
                         : "Ask me anything..."
                 }
                 className="
@@ -5517,9 +4903,18 @@ function Home() {
 
 
               {/* =================================================
-                  MIC / STOP BUTTON
+                  MIC / STOP
 
                   THIS IS THE ONLY STOP BUTTON.
+
+                  Speaking:
+                    square icon = stop speaking
+
+                  Listening:
+                    mic-off = stop microphone
+
+                  Normal:
+                    microphone = start microphone
               ================================================= */}
 
               <button
@@ -5541,27 +4936,31 @@ function Home() {
 
                   ${
                     isSpeaking
+
                       ? "bg-red-400/15 text-red-400 hover:bg-red-400/25"
+
                       : isListening
+
                         ? "bg-red-400/10 text-red-400 hover:bg-red-400/20"
+
                         : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
                   }
                 `}
                 title={
                   isSpeaking
+
                     ? "Stop speaking"
+
                     : isListening
+
                       ? "Stop microphone"
+
                       : "Start microphone"
                 }
               >
 
                 {isSpeaking ? (
 
-                  /*
-                   * Assistant speaking:
-                   * SAME MIC POSITION becomes STOP.
-                   */
                   <FiSquare
                     size={17}
                     fill="currentColor"
@@ -5578,21 +4977,26 @@ function Home() {
                   <FiMic
                     size={19}
                   />
-
                 )}
 
               </button>
 
 
-              {/* SEND */}
+              {/* =================================================
+                  SEND
+              ================================================= */}
 
               <button
                 type="submit"
                 disabled={
                   selectedImage
+
                     ? isImageAnalyzing
+
                     : selectedPdf
+
                       ? isPdfAnalyzing
+
                       : isSending ||
                         !typedText.trim()
                 }
@@ -5644,9 +5048,7 @@ function Home() {
       </main>
 
     </div>
-
   );
-
 }
 
 
