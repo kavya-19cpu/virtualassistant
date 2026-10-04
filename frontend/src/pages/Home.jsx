@@ -34,7 +34,8 @@ import {
   FiSettings,
   FiLogOut,
   FiLock,
-  FiEdit3
+  FiEdit3,
+  FiFileText
 } from "react-icons/fi";
 
 
@@ -44,15 +45,16 @@ function Home() {
     userData,
     serverUrl,
     setUserData,
-    getGeminiResponse
+    getGeminiResponse,
+    analyzePdfFile
   } = useContext(userDataContext);
 
   const navigate = useNavigate();
 
 
-  // =====================================================
-  // STATE
-  // =====================================================
+  /* =====================================================
+     STATE
+     ===================================================== */
 
   const [isListening, setIsListening] =
     useState(false);
@@ -87,6 +89,11 @@ function Home() {
   const [historySearch, setHistorySearch] =
     useState("");
 
+
+  /* =====================================================
+     IMAGE
+     ===================================================== */
+
   const [selectedImage, setSelectedImage] =
     useState(null);
 
@@ -96,24 +103,48 @@ function Home() {
   const [isImageAnalyzing, setIsImageAnalyzing] =
     useState(false);
 
-  /*
-  -----------------------------------------------------
-  NEW:
-  Image belonging to an opened history item.
-  This is separate from imagePreview so that an old
-  image cannot accidentally be submitted again.
-  -----------------------------------------------------
-  */
+
+  /* =====================================================
+     PDF
+     ===================================================== */
+
+  const [selectedPdf, setSelectedPdf] =
+    useState(null);
+
+  const [pdfPreview, setPdfPreview] =
+    useState("");
+
+  const [isPdfAnalyzing, setIsPdfAnalyzing] =
+    useState(false);
+
+  const [pdfName, setPdfName] =
+    useState("");
+
+
+  /* =====================================================
+     HISTORY IMAGE
+     ===================================================== */
 
   const [historyImage, setHistoryImage] =
     useState("");
 
 
-  // =====================================================
-  // REFS
-  // =====================================================
+  /* =====================================================
+     CURRENT PDF SESSION
+     ===================================================== */
+
+  const [activePdf, setActivePdf] =
+    useState(null);
+
+
+  /* =====================================================
+     REFS
+     ===================================================== */
 
   const imageInputRef =
+    useRef(null);
+
+  const pdfInputRef =
     useRef(null);
 
   const recognitionRef =
@@ -134,13 +165,16 @@ function Home() {
   const speechTimeoutRef =
     useRef(null);
 
+  const answerRef =
+    useRef(null);
+
   const assistantNameRef =
     useRef("");
 
 
-  // =====================================================
-  // ASSISTANT NAME
-  // =====================================================
+  /* =====================================================
+     ASSISTANT NAME
+     ===================================================== */
 
   useEffect(() => {
 
@@ -148,12 +182,14 @@ function Home() {
       userData?.assistantName ||
       "Assistant";
 
-  }, [userData?.assistantName]);
+  }, [
+    userData?.assistantName
+  ]);
 
 
-  // =====================================================
-  // LOAD HISTORY
-  // =====================================================
+  /* =====================================================
+     LOAD HISTORY
+     ===================================================== */
 
   useEffect(() => {
 
@@ -163,429 +199,298 @@ function Home() {
         : []
     );
 
-  }, [userData?.history]);
+  }, [
+    userData?.history
+  ]);
 
 
-  // =====================================================
-  // CLEAN GEMINI RESPONSE
-  // =====================================================
+  /* =====================================================
+     CLEAN AI RESPONSE
+     ===================================================== */
 
-  const cleanAIResponse = text => {
+  const cleanAIResponse = (text) => {
 
     if (!text) {
       return "";
     }
 
-    let cleaned = String(text);
+    let cleaned =
+      String(text);
 
-
-    // Remove code fences
-
-    cleaned = cleaned.replace(
-      /```(?:json|javascript|js|text|markdown|md)?/gi,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /```/g,
-      ""
-    );
-
-
-    // Remove bold
-
-    cleaned = cleaned.replace(
-      /\*\*/g,
-      ""
-    );
-
-
-    // Remove underline/bold
-
-    cleaned = cleaned.replace(
-      /__/g,
-      ""
-    );
-
-
-    // Remove headings
-
-    cleaned = cleaned.replace(
-      /^\s*#{1,6}\s*/gm,
-      ""
-    );
-
-
-    // Remove blockquote
-
-    cleaned = cleaned.replace(
-      /^\s*>\s?/gm,
-      ""
-    );
-
-
-    // Remove markdown bullets
-
-    cleaned = cleaned.replace(
-      /^\s*[-*+]\s+/gm,
-      ""
-    );
-
-
-    // Remove backticks
-
-    cleaned = cleaned.replace(
-      /`/g,
-      ""
-    );
-
-
-    // Remove math delimiters
-
-    cleaned = cleaned.replace(
-      /\$\$/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\$/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\[/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\]/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\(/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\)/g,
-      ""
-    );
-
-
-    // Convert fractions
-
-    let previous = "";
-
-    while (previous !== cleaned) {
-
-      previous = cleaned;
-
-      cleaned = cleaned.replace(
-        /\\(?:frac|dfrac|tfrac)\{([^{}]+)\}\{([^{}]+)\}/g,
-        "$1/$2"
+    cleaned =
+      cleaned.replace(
+        /```(?:json|javascript|js|text|markdown|md)?/gi,
+        ""
       );
-    }
 
+    cleaned =
+      cleaned.replace(
+        /```/g,
+        ""
+      );
 
-    // Common LaTeX symbols
+    cleaned =
+      cleaned.replace(
+        /\*\*/g,
+        ""
+      );
 
-    cleaned = cleaned
-      .replace(/\\pi\b/g, "π")
-      .replace(
-        /\\sqrt\{([^{}]+)\}/g,
-        "√($1)"
-      )
-      .replace(/\\sin\b/g, "sin")
-      .replace(/\\cos\b/g, "cos")
-      .replace(/\\tan\b/g, "tan")
-      .replace(/\\cot\b/g, "cot")
-      .replace(/\\sec\b/g, "sec")
-      .replace(/\\csc\b/g, "csc")
-      .replace(/\\log\b/g, "log")
-      .replace(/\\ln\b/g, "ln")
-      .replace(/\\lim\b/g, "lim")
-      .replace(/\\infty\b/g, "∞")
-      .replace(/\\times\b/g, "×")
-      .replace(/\\cdot\b/g, "·")
-      .replace(/\\leq\b/g, "≤")
-      .replace(/\\geq\b/g, "≥")
-      .replace(/\\neq\b/g, "≠")
-      .replace(/\\pm\b/g, "±");
+    cleaned =
+      cleaned.replace(
+        /__/g,
+        ""
+      );
 
+    cleaned =
+      cleaned.replace(
+        /^\s*#{1,6}\s*/gm,
+        ""
+      );
 
-    // Remove positioning commands
+    cleaned =
+      cleaned.replace(
+        /^\s*>\s?/gm,
+        ""
+      );
 
-    cleaned = cleaned.replace(
-      /\\left\b/g,
-      ""
-    );
+    cleaned =
+      cleaned.replace(
+        /^\s*[-*+]\s+/gm,
+        ""
+      );
 
-    cleaned = cleaned.replace(
-      /\\right\b/g,
-      ""
-    );
+    cleaned =
+      cleaned.replace(
+        /`/g,
+        ""
+      );
 
+    cleaned =
+      cleaned.replace(
+        /\$\$/g,
+        ""
+      );
 
-    // Common commands
+    cleaned =
+      cleaned.replace(
+        /\$/g,
+        ""
+      );
 
-    cleaned = cleaned
-      .replace(
-        /\\text\{([^{}]*)\}/g,
-        "$1"
-      )
-      .replace(
-        /\\mathrm\{([^{}]*)\}/g,
-        "$1"
-      )
-      .replace(
-        /\\mathbf\{([^{}]*)\}/g,
-        "$1"
-      )
-      .replace(
-        /\\displaystyle/g,
+    cleaned =
+      cleaned.replace(
+        /\\\[/g,
+        ""
+      );
+
+    cleaned =
+      cleaned.replace(
+        /\\\]/g,
+        ""
+      );
+
+    cleaned =
+      cleaned.replace(
+        /\\\(/g,
+        ""
+      );
+
+    cleaned =
+      cleaned.replace(
+        /\\\)/g,
         ""
       );
 
 
-    // Superscripts
+    let previous = "";
 
-    cleaned = cleaned
-      .replace(
-        /\^\{2\}/g,
-        "²"
-      )
-      .replace(
-        /\^\{3\}/g,
-        "³"
-      )
-      .replace(
-        /\^2/g,
-        "²"
-      )
-      .replace(
-        /\^3/g,
-        "³"
+    while (
+      previous !== cleaned
+    ) {
+
+      previous =
+        cleaned;
+
+      cleaned =
+        cleaned.replace(
+          /\\(?:frac|dfrac|tfrac)\{([^{}]+)\}\{([^{}]+)\}/g,
+          "$1/$2"
+        );
+    }
+
+
+    cleaned =
+      cleaned
+        .replace(
+          /\\pi\b/g,
+          "π"
+        )
+        .replace(
+          /\\sqrt\{([^{}]+)\}/g,
+          "√($1)"
+        )
+        .replace(
+          /\\sin\b/g,
+          "sin"
+        )
+        .replace(
+          /\\cos\b/g,
+          "cos"
+        )
+        .replace(
+          /\\tan\b/g,
+          "tan"
+        )
+        .replace(
+          /\\cot\b/g,
+          "cot"
+        )
+        .replace(
+          /\\sec\b/g,
+          "sec"
+        )
+        .replace(
+          /\\csc\b/g,
+          "csc"
+        )
+        .replace(
+          /\\log\b/g,
+          "log"
+        )
+        .replace(
+          /\\ln\b/g,
+          "ln"
+        )
+        .replace(
+          /\\infty\b/g,
+          "∞"
+        )
+        .replace(
+          /\\times\b/g,
+          "×"
+        )
+        .replace(
+          /\\cdot\b/g,
+          "·"
+        )
+        .replace(
+          /\\leq\b/g,
+          "≤"
+        )
+        .replace(
+          /\\geq\b/g,
+          "≥"
+        )
+        .replace(
+          /\\neq\b/g,
+          "≠"
+        )
+        .replace(
+          /\\pm\b/g,
+          "±"
+        );
+
+
+    cleaned =
+      cleaned.replace(
+        /\\left\b/g,
+        ""
+      );
+
+    cleaned =
+      cleaned.replace(
+        /\\right\b/g,
+        ""
       );
 
 
-    // Inverse trig
+    cleaned =
+      cleaned
+        .replace(
+          /\\text\{([^{}]*)\}/g,
+          "$1"
+        )
+        .replace(
+          /\\mathrm\{([^{}]*)\}/g,
+          "$1"
+        )
+        .replace(
+          /\\mathbf\{([^{}]*)\}/g,
+          "$1"
+        )
+        .replace(
+          /\\displaystyle/g,
+          ""
+        );
 
-    cleaned = cleaned
-      .replace(
-        /sin\^\{-1\}/g,
-        "sin⁻¹"
-      )
-      .replace(
-        /cos\^\{-1\}/g,
-        "cos⁻¹"
-      )
-      .replace(
-        /tan\^\{-1\}/g,
-        "tan⁻¹"
+
+    cleaned =
+      cleaned
+        .replace(
+          /\^\{2\}/g,
+          "²"
+        )
+        .replace(
+          /\^\{3\}/g,
+          "³"
+        )
+        .replace(
+          /\^2/g,
+          "²"
+        )
+        .replace(
+          /\^3/g,
+          "³"
+        );
+
+
+    cleaned =
+      cleaned
+        .replace(
+          /sin\^\{-1\}/g,
+          "sin⁻¹"
+        )
+        .replace(
+          /cos\^\{-1\}/g,
+          "cos⁻¹"
+        )
+        .replace(
+          /tan\^\{-1\}/g,
+          "tan⁻¹"
+        );
+
+
+    cleaned =
+      cleaned.replace(
+        /[{}]/g,
+        ""
       );
 
+    cleaned =
+      cleaned.replace(
+        /[ \t]+/g,
+        " "
+      );
 
-    // Remove remaining braces
+    cleaned =
+      cleaned.replace(
+        /\n[ \t]+/g,
+        "\n"
+      );
 
-    cleaned = cleaned.replace(
-      /[{}]/g,
-      ""
-    );
-
-
-    // Spaces
-
-    cleaned = cleaned.replace(
-      /[ \t]+/g,
-      " "
-    );
-
-
-    cleaned = cleaned.replace(
-      /\n[ \t]+/g,
-      "\n"
-    );
-
-
-    cleaned = cleaned.replace(
-      /\n{3,}/g,
-      "\n\n"
-    );
-
+    cleaned =
+      cleaned.replace(
+        /\n{3,}/g,
+        "\n\n"
+      );
 
     return cleaned.trim();
   };
 
 
-  // =====================================================
-  // IMAGE -> COMPRESSED DATA URL
-  //
-  // This is what makes the old image persistent.
-  //
-  // We resize large images before saving them to MongoDB.
-  // =====================================================
-
-  const imageFileToDataUrl = file => {
-
-    return new Promise(
-      (resolve, reject) => {
-
-        if (!file) {
-          reject(
-            new Error(
-              "No image file provided"
-            )
-          );
-
-          return;
-        }
-
-        const reader =
-          new FileReader();
-
-        reader.onload = () => {
-
-          const img =
-            new Image();
-
-          img.onload = () => {
-
-            const maxSize = 1000;
-
-            let width =
-              img.width;
-
-            let height =
-              img.height;
-
-
-            if (
-              width > maxSize ||
-              height > maxSize
-            ) {
-
-              if (
-                width > height
-              ) {
-
-                height =
-                  Math.round(
-                    (
-                      height *
-                      maxSize
-                    ) / width
-                  );
-
-                width =
-                  maxSize;
-
-              } else {
-
-                width =
-                  Math.round(
-                    (
-                      width *
-                      maxSize
-                    ) / height
-                  );
-
-                height =
-                  maxSize;
-              }
-            }
-
-
-            const canvas =
-              document.createElement(
-                "canvas"
-              );
-
-            canvas.width =
-              width;
-
-            canvas.height =
-              height;
-
-
-            const ctx =
-              canvas.getContext(
-                "2d"
-              );
-
-
-            if (!ctx) {
-
-              reject(
-                new Error(
-                  "Could not create image canvas"
-                )
-              );
-
-              return;
-            }
-
-
-            ctx.drawImage(
-              img,
-              0,
-              0,
-              width,
-              height
-            );
-
-
-            /*
-            JPEG is used because it is much
-            smaller than the original image
-            for most photos/screenshots.
-            */
-
-            const compressed =
-              canvas.toDataURL(
-                "image/jpeg",
-                0.72
-              );
-
-
-            resolve(compressed);
-          };
-
-
-          img.onerror = () => {
-
-            reject(
-              new Error(
-                "Could not load image"
-              )
-            );
-          };
-
-
-          img.src =
-            reader.result;
-        };
-
-
-        reader.onerror = () => {
-
-          reject(
-            new Error(
-              "Could not read image"
-            )
-          );
-        };
-
-
-        reader.readAsDataURL(file);
-      }
-    );
-  };
-
-
-  // =====================================================
-  // SAVE HISTORY
-  // =====================================================
+  /* =====================================================
+     SAVE HISTORY
+     ===================================================== */
 
   const addHistory = async (
     command,
@@ -609,6 +514,7 @@ function Home() {
 
       createdAt:
         new Date().toISOString()
+
     };
 
 
@@ -624,16 +530,21 @@ function Home() {
 
       const response =
         await axios.post(
+
           `${serverUrl}/api/user/savehistory`,
+
           {
             command,
             answer,
             type,
             image
           },
+
           {
-            withCredentials: true
+            withCredentials:
+              true
           }
+
         );
 
 
@@ -645,11 +556,9 @@ function Home() {
           response.data.history
         );
 
-
         setUserData(
           previous => ({
             ...previous,
-
             history:
               response.data.history
           })
@@ -663,68 +572,70 @@ function Home() {
         error.response?.data ||
         error.message
       );
-
     }
   };
 
 
-  // =====================================================
-  // DELETE HISTORY
-  // =====================================================
+  /* =====================================================
+     DELETE HISTORY
+     ===================================================== */
 
-  const deleteHistory =
-    async historyId => {
+  const deleteHistory = async (
+    historyId
+  ) => {
 
-      if (!historyId) {
-        return;
-      }
-
-
-      try {
-
-        const response =
-          await axios.delete(
-            `${serverUrl}/api/user/history/${historyId}`,
-            {
-              withCredentials: true
-            }
-          );
+    if (!historyId) {
+      return;
+    }
 
 
-        const updatedHistory =
-          response.data.history ||
-          [];
+    try {
 
+      const response =
+        await axios.delete(
 
-        setHistoryItems(
-          updatedHistory
+          `${serverUrl}/api/user/history/${historyId}`,
+
+          {
+            withCredentials:
+              true
+          }
+
         );
 
 
-        setUserData(
-          previous => ({
-            ...previous,
-
-            history:
-              updatedHistory
-          })
-        );
+      const updatedHistory =
+        response.data.history ||
+        [];
 
 
-      } catch (error) {
-
-        console.error(
-          "DELETE HISTORY ERROR:",
-          error.response?.data ||
-          error.message
-        );
-      }
-    };
+      setHistoryItems(
+        updatedHistory
+      );
 
 
-  // =====================================================
-  // CLEAR HISTORY
-  // =====================================================
+      setUserData(
+        previous => ({
+          ...previous,
+          history:
+            updatedHistory
+        })
+      );
+
+    } catch (error) {
+
+      console.error(
+        "DELETE HISTORY ERROR:",
+        error.response?.data ||
+        error.message
+      );
+    }
+  };
+
+
+  /* =====================================================
+     CLEAR HISTORY
+     ===================================================== */
 
   const clearHistory = async () => {
 
@@ -749,10 +660,14 @@ function Home() {
     try {
 
       await axios.delete(
+
         `${serverUrl}/api/user/history`,
+
         {
-          withCredentials: true
+          withCredentials:
+            true
         }
+
       );
 
 
@@ -766,15 +681,14 @@ function Home() {
 
       setShowAIText(false);
 
+      setActivePdf(null);
 
       setUserData(
         previous => ({
           ...previous,
-
           history: []
         })
       );
-
 
     } catch (error) {
 
@@ -787,11 +701,11 @@ function Home() {
   };
 
 
-  // =====================================================
-  // SPEECH
-  // =====================================================
+  /* =====================================================
+     SPEECH
+     ===================================================== */
 
-  const speak = text => {
+  const speak = (text) => {
 
     if (!text) {
       return;
@@ -817,7 +731,9 @@ function Home() {
     const sentences =
       speechText.match(
         /[^.!?]+[.!?]+|[^.!?]+$/g
-      ) || [speechText];
+      ) || [
+        speechText
+      ];
 
 
     const chunks = [];
@@ -838,7 +754,8 @@ function Home() {
 
 
         const combined =
-          `${currentChunk} ${cleanSentence}`.trim();
+          `${currentChunk} ${cleanSentence}`
+            .trim();
 
 
         if (
@@ -890,7 +807,8 @@ function Home() {
     let currentIndex = 0;
 
 
-    speakingRef.current = true;
+    speakingRef.current =
+      true;
 
     setIsAIActive(true);
 
@@ -905,7 +823,9 @@ function Home() {
         speakingRef.current =
           false;
 
-        setIsAIActive(false);
+        setIsAIActive(
+          false
+        );
 
 
         if (
@@ -915,7 +835,9 @@ function Home() {
         ) {
 
           try {
+
             recognitionRef.current.start();
+
           } catch {}
         }
 
@@ -962,13 +884,7 @@ function Home() {
       };
 
 
-      utterance.onerror = error => {
-
-        console.error(
-          "SPEECH SYNTHESIS ERROR:",
-          error
-        );
-
+      utterance.onerror = () => {
 
         currentIndex++;
 
@@ -993,30 +909,63 @@ function Home() {
   };
 
 
-  // =====================================================
-  // OPEN URL
-  // =====================================================
+  /* =====================================================
+     OPEN URL
+     ===================================================== */
 
-  const openUrl = url => {
+  const openUrl = (url) => {
 
     if (!url) {
       return;
     }
 
 
-    window.open(
-      url,
-      "_blank",
-      "noopener,noreferrer"
-    );
+    try {
+
+      const finalUrl =
+        /^https?:\/\//i.test(url)
+          ? url
+          : `https://${url}`;
+
+
+      const newWindow =
+        window.open(
+          finalUrl,
+          "_blank",
+          "noopener,noreferrer"
+        );
+
+
+      /*
+       * Some browsers block window.open
+       * after asynchronous operations.
+       *
+       * Use current page as fallback.
+       */
+
+      if (!newWindow) {
+
+        window.location.href =
+          finalUrl;
+      }
+
+    } catch (error) {
+
+      console.error(
+        "OPEN URL ERROR:",
+        error
+      );
+    }
   };
 
 
-  // =====================================================
-  // GOOGLE SEARCH
-  // =====================================================
+  /* =====================================================
+     GOOGLE SEARCH
+     ===================================================== */
 
-  const googleSearch = query => {
+  const googleSearch = (
+    query
+  ) => {
 
     if (!query?.trim()) {
       return;
@@ -1031,11 +980,13 @@ function Home() {
   };
 
 
-  // =====================================================
-  // YOUTUBE SEARCH
-  // =====================================================
+  /* =====================================================
+     YOUTUBE SEARCH
+     ===================================================== */
 
-  const youtubeSearch = query => {
+  const youtubeSearch = (
+    query
+  ) => {
 
     if (!query?.trim()) {
       return;
@@ -1050,14 +1001,20 @@ function Home() {
   };
 
 
-  // =====================================================
-  // WEBSITES
-  // =====================================================
+  /* =====================================================
+     WEBSITES
+     ===================================================== */
 
   const websites = {
 
     google:
       "https://www.google.com",
+
+    yahoo:
+      "https://www.yahoo.com",
+
+    bing:
+      "https://www.bing.com",
 
     youtube:
       "https://www.youtube.com",
@@ -1115,29 +1072,186 @@ function Home() {
 
     telegram:
       "https://web.telegram.org"
+
   };
 
 
-  // =====================================================
-  // WEBSITE SEARCH URL
-  // =====================================================
+  /* =====================================================
+     NORMALIZE SITE
+     ===================================================== */
+
+  const normalizeSite = (
+    site
+  ) => {
+
+    const value =
+      String(site || "")
+        .trim()
+        .toLowerCase()
+        .replace(
+          /^www\./,
+          ""
+        )
+        .replace(
+          /\.(com|in|org|net|co|tv)$/i,
+          ""
+        );
+
+
+    const aliases = {
+
+      google:
+        "google",
+
+      "google search":
+        "google",
+
+      yahoo:
+        "yahoo",
+
+      "yahoo search":
+        "yahoo",
+
+      bing:
+        "bing",
+
+      "bing search":
+        "bing",
+
+      youtube:
+        "youtube",
+
+      yt:
+        "youtube",
+
+      instagram:
+        "instagram",
+
+      insta:
+        "instagram",
+
+      facebook:
+        "facebook",
+
+      fb:
+        "facebook",
+
+      wikipedia:
+        "wikipedia",
+
+      wiki:
+        "wikipedia",
+
+      reddit:
+        "reddit",
+
+      amazon:
+        "amazon",
+
+      flipkart:
+        "flipkart",
+
+      spotify:
+        "spotify",
+
+      github:
+        "github",
+
+      linkedin:
+        "linkedin",
+
+      pinterest:
+        "pinterest",
+
+      twitter:
+        "twitter",
+
+      x:
+        "x",
+
+      quora:
+        "quora",
+
+      twitch:
+        "twitch",
+
+      imdb:
+        "imdb",
+
+      soundcloud:
+        "soundcloud",
+
+      deezer:
+        "deezer",
+
+      udemy:
+        "udemy",
+
+      coursera:
+        "coursera",
+
+      canva:
+        "canva",
+
+      stackoverflow:
+        "stackoverflow"
+
+    };
+
+
+    return (
+      aliases[value] ||
+      value
+    );
+  };
+
+
+  /* =====================================================
+     WEBSITE SEARCH URL
+     ===================================================== */
 
   const getWebsiteSearchUrl = (
     site,
     query
   ) => {
 
+    const normalizedSite =
+      normalizeSite(site);
+
+
+    const cleanQuery =
+      String(query || "")
+        .trim();
+
+
+    if (!cleanQuery) {
+      return null;
+    }
+
+
     const encodedQuery =
       encodeURIComponent(
-        query.trim()
+        cleanQuery
       );
 
 
-    switch (site) {
+    switch (
+      normalizedSite
+    ) {
 
       case "google":
 
         return `https://www.google.com/search?q=${encodedQuery}`;
+
+
+      case "yahoo":
+
+        return `https://search.yahoo.com/search?p=${encodedQuery}`;
+
+
+      case "bing":
+
+        return `https://www.bing.com/search?q=${encodedQuery}`;
 
 
       case "youtube":
@@ -1145,14 +1259,14 @@ function Home() {
         return `https://www.youtube.com/results?search_query=${encodedQuery}`;
 
 
-      case "amazon":
+      case "instagram":
 
-        return `https://www.amazon.in/s?k=${encodedQuery}`;
+        return `https://www.instagram.com/explore/search/keyword/?q=${encodedQuery}`;
 
 
-      case "flipkart":
+      case "facebook":
 
-        return `https://www.flipkart.com/search?q=${encodedQuery}`;
+        return `https://www.facebook.com/search/top?q=${encodedQuery}`;
 
 
       case "wikipedia":
@@ -1165,6 +1279,21 @@ function Home() {
         return `https://www.reddit.com/search/?q=${encodedQuery}`;
 
 
+      case "amazon":
+
+        return `https://www.amazon.in/s?k=${encodedQuery}`;
+
+
+      case "flipkart":
+
+        return `https://www.flipkart.com/search?q=${encodedQuery}`;
+
+
+      case "spotify":
+
+        return `https://open.spotify.com/search/${encodedQuery}`;
+
+
       case "github":
 
         return `https://github.com/search?q=${encodedQuery}`;
@@ -1175,25 +1304,60 @@ function Home() {
         return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
 
 
-      case "spotify":
-
-        return `https://open.spotify.com/search/${encodedQuery}`;
-
-
       case "pinterest":
 
         return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
 
 
-      case "facebook":
-
-        return `https://www.facebook.com/search/top?q=${encodedQuery}`;
-
-
-      case "x":
       case "twitter":
+      case "x":
 
         return `https://x.com/search?q=${encodedQuery}`;
+
+
+      case "quora":
+
+        return `https://www.quora.com/search?q=${encodedQuery}`;
+
+
+      case "twitch":
+
+        return `https://www.twitch.tv/search?term=${encodedQuery}`;
+
+
+      case "imdb":
+
+        return `https://www.imdb.com/find/?q=${encodedQuery}`;
+
+
+      case "soundcloud":
+
+        return `https://soundcloud.com/search?q=${encodedQuery}`;
+
+
+      case "deezer":
+
+        return `https://www.deezer.com/search/${encodedQuery}`;
+
+
+      case "stackoverflow":
+
+        return `https://stackoverflow.com/search?q=${encodedQuery}`;
+
+
+      case "udemy":
+
+        return `https://www.udemy.com/courses/search/?q=${encodedQuery}`;
+
+
+      case "coursera":
+
+        return `https://www.coursera.org/search?query=${encodedQuery}`;
+
+
+      case "canva":
+
+        return `https://www.canva.com/search?q=${encodedQuery}`;
 
 
       default:
@@ -1203,834 +1367,1031 @@ function Home() {
   };
 
 
-  // =====================================================
-  // EXTRACT SEARCH COMMAND
-  // =====================================================
+  /* =====================================================
+     EXTRACT SEARCH COMMAND
+     ===================================================== */
 
-  const extractSearchCommand =
-    command => {
+  const extractSearchCommand = (
+    command
+  ) => {
 
-      if (!command) {
-        return null;
-      }
-
-
-      const text =
-        command
-          .trim()
-          .replace(/\s+/g, " ");
-
-
-      let match;
-
-
-      /*
-      search photosynthesis on Google
-      */
-
-      match =
-        text.match(
-          /^(?:search|find|look up)\s+(.+?)\s+(?:on|in)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s*$/i
-        );
-
-
-      if (match) {
-
-        return {
-
-          site:
-            match[2]
-              .trim()
-              .toLowerCase(),
-
-          query:
-            match[1].trim()
-        };
-      }
-
-
-      /*
-      search Google for photosynthesis
-      */
-
-      match =
-        text.match(
-          /^(?:search|find|look up)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s+(?:for)\s+(.+)$/i
-        );
-
-
-      if (match) {
-
-        return {
-
-          site:
-            match[1]
-              .trim()
-              .toLowerCase(),
-
-          query:
-            match[2].trim()
-        };
-      }
-
-
-      /*
-      open YouTube and search Sun Savaria
-      */
-
-      match =
-        text.match(
-          /^(?:open|launch|visit|go to|take me to)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)(?:\s+website|\s+site)?\s+(?:and\s+)?(?:search|find|look up)\s+(.+)$/i
-        );
-
-
-      if (match) {
-
-        return {
-
-          site:
-            match[1]
-              .trim()
-              .toLowerCase(),
-
-          query:
-            match[2].trim()
-        };
-      }
-
-
+    if (!command) {
       return null;
-    };
+    }
 
 
-  // =====================================================
-  // YOUTUBE QUERY
-  // =====================================================
-
-  const getYouTubeQuery =
-    command => {
-
-      const result =
-        extractSearchCommand(
-          command
+    const text =
+      String(command)
+        .trim()
+        .replace(
+          /\s+/g,
+          " "
+        )
+        .replace(
+          /[?!.]+$/,
+          ""
         );
 
 
-      if (
-        result?.site ===
-        "youtube"
-      ) {
-
-        return result.query;
-      }
+    if (!text) {
+      return null;
+    }
 
 
-      return "";
-    };
+    let match;
 
 
-  // =====================================================
-  // PROCESS COMMAND
-  // =====================================================
+    /* =================================================
+       OPEN SITE AND SEARCH FOR QUERY
 
-  const processCommand =
-    async (
-      command,
-      type = "text",
-      shouldSpeak = false
-    ) => {
+       Examples:
 
-      const cleanedCommand =
-        command.trim();
+       open spotify and search for Savriabdul
+       open yahoo and search for cats
+       open google and search for photosynthesis
+       open youtube and search for arijit singh
+       ================================================= */
 
-
-      if (!cleanedCommand) {
-        return;
-      }
-
-
-      /*
-      A new question is no longer
-      the previously opened history item.
-      */
-
-      setHistoryImage("");
-
-
-      setUserText(
-        cleanedCommand
+    match =
+      text.match(
+        /^(?:open|launch|visit|go to|take me to)\s+([a-zA-Z0-9.-]+)(?:\s+(?:website|site))?\s+(?:and\s+)?(?:search|find|look for|look up)(?:\s+for|\s+about|\s+regarding)?\s+(.+)$/i
       );
 
-      setAiText("");
 
-      setShowAIText(false);
+    if (match) {
 
-      setIsAIActive(true);
+      const site =
+        normalizeSite(
+          match[1]
+        );
 
-      setIsSending(true);
+      const query =
+        match[2].trim();
 
-      processingRef.current =
-        true;
 
+      const url =
+        getWebsiteSearchUrl(
+          site,
+          query
+        );
 
-      try {
 
-        // =================================================
-        // EXPLICIT SEARCH
-        // =================================================
+      if (url) {
 
-        const searchCommand =
-          extractSearchCommand(
-            cleanedCommand
-          );
+        return {
+          site,
+          query,
+          url
+        };
+      }
+    }
 
 
-        if (searchCommand) {
+    /* =================================================
+       SEARCH QUERY ON SITE
 
-          const {
-            site,
-            query
-          } = searchCommand;
+       search cats on yahoo
+       search cats in yahoo
+       search cats at yahoo
+       search cats using yahoo
+       find cats on google
+       look for cats on youtube
+       ================================================= */
 
+    match =
+      text.match(
+        /^(?:search|find|look for|look up)\s+(.+?)\s+(?:on|in|at|using)\s+([a-zA-Z0-9.-]+)$/i
+      );
 
-          const siteName =
-            site === "x"
-              ? "X"
-              : site
-                  .charAt(0)
-                  .toUpperCase() +
-                site.slice(1);
 
+    if (match) {
 
-          const answer =
-            `Searching ${siteName} for ${query}.`;
+      const query =
+        match[1].trim();
 
+      const site =
+        normalizeSite(
+          match[2]
+        );
 
-          setAiText(answer);
 
-          setShowAIText(true);
+      const url =
+        getWebsiteSearchUrl(
+          site,
+          query
+        );
 
 
-          await addHistory(
-            cleanedCommand,
-            answer,
-            type
-          );
+      if (url) {
 
+        return {
+          site,
+          query,
+          url
+        };
+      }
+    }
 
-          const searchUrl =
-            getWebsiteSearchUrl(
-              site,
-              query
-            );
 
+    /* =================================================
+       SEARCH SITE FOR QUERY
 
-          if (searchUrl) {
+       search yahoo for cats
+       search google for photosynthesis
+       search youtube for arijit singh
+       ================================================= */
 
-            openUrl(searchUrl);
+    match =
+      text.match(
+        /^(?:search|find|look for|look up)\s+([a-zA-Z0-9.-]+)\s+(?:for|about|regarding)\s+(.+)$/i
+      );
 
-          } else if (
-            site === "youtube"
-          ) {
 
-            youtubeSearch(query);
+    if (match) {
 
-          } else if (
-            site === "google"
-          ) {
+      const site =
+        normalizeSite(
+          match[1]
+        );
 
-            googleSearch(query);
-          }
+      const query =
+        match[2].trim();
 
 
-          if (shouldSpeak) {
-            speak(answer);
-          }
+      const url =
+        getWebsiteSearchUrl(
+          site,
+          query
+        );
 
 
-          return;
-        }
+      if (url) {
 
+        return {
+          site,
+          query,
+          url
+        };
+      }
+    }
 
-        // =================================================
-        // SIMPLE GOOGLE SEARCH
-        // =================================================
 
-        const googleSearchMatch =
-          cleanedCommand.match(
-            /^(?:search|google)\s+(.+)$/i
-          );
+    /* =================================================
+       SITE SEARCH QUERY
 
+       yahoo search cats
+       google search photosynthesis
+       youtube search arijit singh
+       spotify search Savriabdul
+       ================================================= */
 
-        if (googleSearchMatch) {
+    match =
+      text.match(
+        /^([a-zA-Z0-9.-]+)\s+search\s+(.+)$/i
+      );
 
-          const query =
-            googleSearchMatch[1].trim();
 
+    if (match) {
 
-          const answer =
-            `Searching Google for ${query}.`;
+      const site =
+        normalizeSite(
+          match[1]
+        );
 
+      const query =
+        match[2].trim();
 
-          setAiText(answer);
 
-          setShowAIText(true);
+      const url =
+        getWebsiteSearchUrl(
+          site,
+          query
+        );
 
 
-          await addHistory(
-            cleanedCommand,
-            answer,
-            type
-          );
+      if (url) {
 
+        return {
+          site,
+          query,
+          url
+        };
+      }
+    }
 
-          googleSearch(query);
 
+    /* =================================================
+       SEARCH SITE QUERY
 
-          if (shouldSpeak) {
-            speak(answer);
-          }
+       search yahoo cats
+       search google photosynthesis
+       search youtube music
+       ================================================= */
 
+    match =
+      text.match(
+        /^(?:search|find)\s+([a-zA-Z0-9.-]+)\s+(.+)$/i
+      );
 
-          return;
-        }
 
+    if (match) {
 
-        // =================================================
-        // SIMPLE YOUTUBE SEARCH
-        // =================================================
+      const site =
+        normalizeSite(
+          match[1]
+        );
 
-        const youtubeQuery =
-          getYouTubeQuery(
-            cleanedCommand
-          );
+      const query =
+        match[2].trim();
 
 
-        if (youtubeQuery) {
+      const url =
+        getWebsiteSearchUrl(
+          site,
+          query
+        );
 
-          const answer =
-            `Searching YouTube for ${youtubeQuery}.`;
 
+      if (url) {
 
-          setAiText(answer);
+        return {
+          site,
+          query,
+          url
+        };
+      }
+    }
 
-          setShowAIText(true);
 
+    /* =================================================
+       SEARCH QUERY SITE
 
-          await addHistory(
-            cleanedCommand,
-            answer,
-            type
-          );
+       search cats yahoo
+       search photosynthesis google
+       search arijit singh youtube
+       ================================================= */
 
+    match =
+      text.match(
+        /^(?:search|find|look for|look up)\s+(.+?)\s+([a-zA-Z0-9.-]+)$/i
+      );
 
-          youtubeSearch(
-            youtubeQuery
-          );
 
+    if (match) {
 
-          if (shouldSpeak) {
-            speak(answer);
-          }
+      const query =
+        match[1].trim();
 
+      const site =
+        normalizeSite(
+          match[2]
+        );
 
-          return;
-        }
 
+      const url =
+        getWebsiteSearchUrl(
+          site,
+          query
+        );
 
-        // =================================================
-        // DIRECT WEBSITE OPEN
-        // =================================================
 
-        const directMatch =
-          cleanedCommand.match(
-            /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
-          );
+      if (url) {
 
+        return {
+          site,
+          query,
+          url
+        };
+      }
+    }
 
-        if (directMatch) {
 
-          const site =
-            directMatch[1]
-              .trim()
-              .toLowerCase()
-              .replace(
-                /\s+(website|site)$/i,
-                ""
-              );
+    return null;
+  };
 
 
-          if (websites[site]) {
+  /* =====================================================
+     YOUTUBE QUERY
+     ===================================================== */
 
-            const answer =
-              `Opening ${site}.`;
+  const getYouTubeQuery = (
+    command
+  ) => {
 
+    const result =
+      extractSearchCommand(
+        command
+      );
 
-            setAiText(answer);
 
-            setShowAIText(true);
+    if (
+      result?.site ===
+      "youtube"
+    ) {
 
+      return result.query;
+    }
 
-            await addHistory(
-              cleanedCommand,
-              answer,
-              type
-            );
 
+    return "";
+  };
 
-            openUrl(
-              websites[site]
-            );
 
+  /* =====================================================
+     PROCESS COMMAND
+     ===================================================== */
 
-            if (shouldSpeak) {
-              speak(answer);
-            }
+  const processCommand = async (
+    command,
+    type = "text",
+    shouldSpeak = false
+  ) => {
 
+    const cleanedCommand =
+      String(command || "").trim();
 
-            return;
-          }
-        }
 
+    if (!cleanedCommand) {
+      return;
+    }
 
-        // =================================================
-        // GEMINI
-        // =================================================
 
-        const result =
-          await getGeminiResponse(
-            cleanedCommand
-          );
+    setHistoryImage("");
 
+    setUserText(
+      cleanedCommand
+    );
 
-        let parsedResult =
-          result;
+    setAiText("");
 
+    setShowAIText(false);
 
-        // =================================================
-        // PARSE GEMINI RESULT
-        // =================================================
+    setIsAIActive(true);
 
-        if (
-          typeof result ===
-          "string"
-        ) {
+    setIsSending(true);
 
-          const cleanResult =
-            result
-              .replace(
-                /```json/gi,
-                ""
-              )
-              .replace(
-                /```/g,
-                ""
-              )
-              .trim();
+    processingRef.current =
+      true;
 
 
-          try {
+    try {
 
-            parsedResult =
-              JSON.parse(
-                cleanResult
-              );
+      /* =================================================
+         WEBSITE SEARCH
+         ================================================= */
 
-          } catch {
+      const searchCommand =
+        extractSearchCommand(
+          cleanedCommand
+        );
 
-            parsedResult = {
 
-              type:
-                "general",
+      if (searchCommand) {
 
-              response:
-                cleanResult
-            };
-          }
-        }
+        const {
+          site,
+          query,
+          url
+        } = searchCommand;
 
 
-        // =================================================
-        // COMPLETE GEMINI RESPONSE
-        // =================================================
+        const normalizedSite =
+          normalizeSite(site);
 
-        const rawResponse =
-          parsedResult?.response ||
-          parsedResult?.answer ||
-          parsedResult?.text ||
-          "Sorry, I could not understand that.";
 
+        const siteName =
+          normalizedSite === "x"
+            ? "X"
+            : normalizedSite
+                .charAt(0)
+                .toUpperCase() +
+              normalizedSite.slice(1);
 
-        // =================================================
-        // CLEAN RESPONSE
-        // =================================================
 
-        const response =
-          cleanAIResponse(
-            rawResponse
-          );
+        const answer =
+          `Searching ${siteName} for ${query}.`;
 
 
-        // =================================================
-        // GOOGLE OPEN
-        // =================================================
+        setAiText(
+          answer
+        );
 
-        if (
-          parsedResult?.type ===
-          "google_open"
-        ) {
-
-          openUrl(
-            "https://www.google.com"
-          );
-        }
-
-
-        // =================================================
-        // GOOGLE SEARCH
-        // =================================================
-
-        else if (
-          parsedResult?.type ===
-          "google_search"
-        ) {
-
-          const extractedSearch =
-            extractSearchCommand(
-              cleanedCommand
-            );
-
-
-          const query =
-            extractedSearch?.site ===
-            "google"
-              ? extractedSearch.query
-              : parsedResult?.query;
-
-
-          if (query?.trim()) {
-
-            googleSearch(query);
-          }
-        }
-
-
-        // =================================================
-        // YOUTUBE OPEN
-        // =================================================
-
-        else if (
-          parsedResult?.type ===
-          "youtube_open"
-        ) {
-
-          openUrl(
-            "https://www.youtube.com"
-          );
-        }
-
-
-        // =================================================
-        // YOUTUBE SEARCH / PLAY
-        // =================================================
-
-        else if (
-          parsedResult?.type ===
-            "youtube_search" ||
-          parsedResult?.type ===
-            "youtube_play"
-        ) {
-
-          const extractedQuery =
-            getYouTubeQuery(
-              cleanedCommand
-            );
-
-
-          const query =
-            extractedQuery ||
-            parsedResult?.query;
-
-
-          if (query?.trim()) {
-
-            youtubeSearch(
-              query
-            );
-          }
-        }
-
-
-        // =================================================
-        // CALCULATOR
-        // =================================================
-
-        else if (
-          parsedResult?.type ===
-          "calculator_open"
-        ) {
-
-          openUrl(
-            "https://www.google.com/search?q=calculator"
-          );
-        }
-
-
-        // =================================================
-        // SHOW COMPLETE ANSWER
-        // =================================================
-
-        setAiText(response);
-
-        setShowAIText(true);
+        setShowAIText(
+          true
+        );
 
 
         await addHistory(
           cleanedCommand,
-          response,
+          answer,
           type
         );
 
 
-        // =================================================
-        // ONLY VOICE INPUT SPEAKS
-        // =================================================
+        if (url) {
 
-        if (shouldSpeak) {
-
-          speak(response);
+          openUrl(url);
         }
 
 
-      } catch (error) {
+        if (shouldSpeak) {
 
-        console.error(
-          "COMMAND ERROR:",
-          error
+          speak(answer);
+        }
+
+
+        return;
+      }
+
+
+      /* =================================================
+         SIMPLE GOOGLE SEARCH
+         ================================================= */
+
+      const googleSearchMatch =
+        cleanedCommand.match(
+          /^(?:search|google)\s+(.+)$/i
         );
 
 
-        const errorMessage =
-          "Sorry, I could not complete that request right now.";
+      if (
+        googleSearchMatch
+      ) {
+
+        const query =
+          googleSearchMatch[1]
+            .trim();
+
+
+        const answer =
+          `Searching Google for ${query}.`;
 
 
         setAiText(
-          errorMessage
+          answer
         );
 
-        setShowAIText(true);
+        setShowAIText(
+          true
+        );
+
+
+        await addHistory(
+          cleanedCommand,
+          answer,
+          type
+        );
+
+
+        googleSearch(
+          query
+        );
 
 
         if (shouldSpeak) {
 
-          speak(
-            errorMessage
-          );
+          speak(answer);
         }
 
-      } finally {
 
-        processingRef.current =
-          false;
-
-        setIsSending(false);
+        return;
+      }
 
 
-        if (
-          !speakingRef.current
-        ) {
+      /* =================================================
+         SIMPLE YOUTUBE SEARCH
+         ================================================= */
 
-          setIsAIActive(false);
+      const youtubeSimpleMatch =
+        cleanedCommand.match(
+          /^(?:youtube)\s+(.+)$/i
+        );
+
+
+      if (
+        youtubeSimpleMatch
+      ) {
+
+        const query =
+          youtubeSimpleMatch[1]
+            .trim();
+
+
+        const answer =
+          `Searching YouTube for ${query}.`;
+
+
+        setAiText(
+          answer
+        );
+
+        setShowAIText(
+          true
+        );
+
+
+        await addHistory(
+          cleanedCommand,
+          answer,
+          type
+        );
+
+
+        youtubeSearch(
+          query
+        );
+
+
+        if (shouldSpeak) {
+
+          speak(answer);
         }
-      }
-    };
 
-
-  // =====================================================
-  // SEND TYPED MESSAGE
-  // =====================================================
-
-  const handleSend =
-    async e => {
-
-      e?.preventDefault();
-
-
-      if (selectedImage) {
-
-        await analyzeImage();
 
         return;
       }
 
 
-      if (
-        !typedText.trim() ||
-        isSending
-      ) {
+      /* =================================================
+         DIRECT WEBSITE
+         ================================================= */
 
-        return;
-      }
-
-
-      const command =
-        typedText.trim();
-
-
-      setTypedText("");
-
-
-      setHistoryImage("");
-
-
-      /*
-      Typed questions NEVER speak.
-      */
-
-      await processCommand(
-        command,
-        "text",
-        false
-      );
-    };
-
-
-  // =====================================================
-  // IMAGE SELECT
-  // =====================================================
-
-  const handleImageSelect =
-    e => {
-
-      const file =
-        e.target.files?.[0];
-
-
-      if (!file) {
-        return;
-      }
-
-
-      if (
-        !file.type.startsWith(
-          "image/"
-        )
-      ) {
-
-        alert(
-          "Please select an image file."
+      const directMatch =
+        cleanedCommand.match(
+          /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
         );
 
-        return;
-      }
 
+      if (directMatch) {
 
-      if (
-        file.size >
-        10 * 1024 * 1024
-      ) {
-
-        alert(
-          "Image must be smaller than 10 MB."
-        );
-
-        return;
-      }
-
-
-      if (imagePreview) {
-
-        URL.revokeObjectURL(
-          imagePreview
-        );
-      }
-
-
-      setHistoryImage("");
-
-
-      setSelectedImage(file);
-
-
-      setImagePreview(
-        URL.createObjectURL(file)
-      );
-    };
-
-
-  // =====================================================
-  // PASTE IMAGE
-  // =====================================================
-
-  const handlePaste =
-    event => {
-
-      const clipboardItems =
-        event.clipboardData?.items;
-
-
-      if (!clipboardItems) {
-        return;
-      }
-
-
-      for (
-        let i = 0;
-        i < clipboardItems.length;
-        i++
-      ) {
-
-        const item =
-          clipboardItems[i];
-
-
-        if (
-          item.type &&
-          item.type.startsWith(
-            "image/"
-          )
-        ) {
-
-          event.preventDefault();
-
-
-          const file =
-            item.getAsFile();
-
-
-          if (!file) {
-            return;
-          }
-
-
-          if (imagePreview) {
-
-            URL.revokeObjectURL(
-              imagePreview
+        const site =
+          directMatch[1]
+            .trim()
+            .toLowerCase()
+            .replace(
+              /\s+(website|site)$/i,
+              ""
             );
-          }
 
 
-          setHistoryImage("");
+        const normalizedSite =
+          normalizeSite(site);
 
 
-          setSelectedImage(file);
+        if (
+          websites[
+            normalizedSite
+          ]
+        ) {
+
+          const answer =
+            `Opening ${normalizedSite}.`;
 
 
-          setImagePreview(
-            URL.createObjectURL(file)
+          setAiText(
+            answer
           );
+
+          setShowAIText(
+            true
+          );
+
+
+          await addHistory(
+            cleanedCommand,
+            answer,
+            type
+          );
+
+
+          openUrl(
+            websites[
+              normalizedSite
+            ]
+          );
+
+
+          if (shouldSpeak) {
+
+            speak(answer);
+          }
 
 
           return;
         }
       }
-    };
 
 
-  // =====================================================
-  // REMOVE IMAGE
-  // =====================================================
+      /* =================================================
+         NORMAL GEMINI
+         ================================================= */
+
+      const result =
+        await getGeminiResponse(
+          cleanedCommand
+        );
+
+
+      let parsedResult =
+        result;
+
+
+      if (
+        typeof result ===
+        "string"
+      ) {
+
+        const cleanResult =
+          result
+            .replace(
+              /```json/gi,
+              ""
+            )
+            .replace(
+              /```/g,
+              ""
+            )
+            .trim();
+
+
+        try {
+
+          parsedResult =
+            JSON.parse(
+              cleanResult
+            );
+
+        } catch {
+
+          parsedResult = {
+
+            type:
+              "general",
+
+            response:
+              cleanResult
+          };
+        }
+      }
+
+
+      const rawResponse =
+        parsedResult?.response ||
+        parsedResult?.answer ||
+        parsedResult?.text ||
+        "Sorry, I could not understand that.";
+
+
+      const response =
+        cleanAIResponse(
+          rawResponse
+        );
+
+
+      /* =================================================
+         GEMINI ACTIONS
+         ================================================= */
+
+      if (
+        parsedResult?.type ===
+        "google_open"
+      ) {
+
+        openUrl(
+          "https://www.google.com"
+        );
+
+      } else if (
+        parsedResult?.type ===
+        "google_search"
+      ) {
+
+        if (
+          parsedResult?.query
+        ) {
+
+          googleSearch(
+            parsedResult.query
+          );
+        }
+
+      } else if (
+        parsedResult?.type ===
+        "youtube_open"
+      ) {
+
+        openUrl(
+          "https://www.youtube.com"
+        );
+
+      } else if (
+        parsedResult?.type ===
+          "youtube_search" ||
+        parsedResult?.type ===
+          "youtube_play"
+      ) {
+
+        if (
+          parsedResult?.query
+        ) {
+
+          youtubeSearch(
+            parsedResult.query
+          );
+        }
+
+      } else if (
+        parsedResult?.type ===
+        "calculator_open"
+      ) {
+
+        openUrl(
+          "https://www.google.com/search?q=calculator"
+        );
+      }
+
+
+      setAiText(
+        response
+      );
+
+      setShowAIText(
+        true
+      );
+
+
+      await addHistory(
+        cleanedCommand,
+        response,
+        type
+      );
+
+
+      if (shouldSpeak) {
+
+        speak(response);
+      }
+
+    } catch (error) {
+
+      console.error(
+        "COMMAND ERROR:",
+        error
+      );
+
+
+      const errorMessage =
+        "Sorry, I could not complete that request right now.";
+
+
+      setAiText(
+        errorMessage
+      );
+
+      setShowAIText(
+        true
+      );
+
+
+      if (shouldSpeak) {
+
+        speak(
+          errorMessage
+        );
+      }
+
+    } finally {
+
+      processingRef.current =
+        false;
+
+      setIsSending(
+        false
+      );
+
+
+      if (
+        !speakingRef.current
+      ) {
+
+        setIsAIActive(
+          false
+        );
+      }
+    }
+  };
+
+
+  /* =====================================================
+     SEND MESSAGE
+     ===================================================== */
+
+  const handleSend = async (
+    e
+  ) => {
+
+    e?.preventDefault();
+
+
+    if (selectedImage) {
+
+      await analyzeImage();
+
+      return;
+    }
+
+
+    if (selectedPdf) {
+
+      await analyzePdf();
+
+      return;
+    }
+
+
+    if (
+      !typedText.trim() ||
+      isSending
+    ) {
+
+      return;
+    }
+
+
+    const command =
+      typedText.trim();
+
+
+    setTypedText("");
+
+    setHistoryImage("");
+
+
+    if (activePdf) {
+
+      await analyzePdfQuestion(
+        command
+      );
+
+      return;
+    }
+
+
+    await processCommand(
+      command,
+      "text",
+      false
+    );
+  };
+
+
+  /* =====================================================
+     IMAGE SELECT
+     ===================================================== */
+
+  const handleImageSelect = (
+    e
+  ) => {
+
+    const file =
+      e.target.files?.[0];
+
+
+    if (!file) {
+      return;
+    }
+
+
+    if (
+      !file.type.startsWith(
+        "image/"
+      )
+    ) {
+
+      alert(
+        "Please select an image file."
+      );
+
+      return;
+    }
+
+
+    if (
+      file.size >
+      10 * 1024 * 1024
+    ) {
+
+      alert(
+        "Image must be smaller than 10 MB."
+      );
+
+      return;
+    }
+
+
+    if (imagePreview) {
+
+      URL.revokeObjectURL(
+        imagePreview
+      );
+    }
+
+
+    removePdf();
+
+    setHistoryImage("");
+
+    setSelectedImage(
+      file
+    );
+
+    setImagePreview(
+      URL.createObjectURL(
+        file
+      )
+    );
+  };
+
+
+  /* =====================================================
+     PDF SELECT
+     ===================================================== */
+
+  const handlePdfSelect = (
+    e
+  ) => {
+
+    const file =
+      e.target.files?.[0];
+
+
+    if (!file) {
+      return;
+    }
+
+
+    const isPdf =
+      file.type ===
+        "application/pdf" ||
+      file.name
+        .toLowerCase()
+        .endsWith(".pdf");
+
+
+    if (!isPdf) {
+
+      alert(
+        "Please select a PDF file."
+      );
+
+      return;
+    }
+
+
+    if (
+      file.size >
+      20 * 1024 * 1024
+    ) {
+
+      alert(
+        "PDF must be smaller than 20 MB."
+      );
+
+      return;
+    }
+
+
+    removeImage();
+
+    setHistoryImage("");
+
+    setActivePdf(null);
+
+    setSelectedPdf(
+      file
+    );
+
+    setPdfName(
+      file.name
+    );
+
+    setPdfPreview(
+      URL.createObjectURL(
+        file
+      )
+    );
+
+    setUserText("");
+
+    setAiText("");
+
+    setShowAIText(false);
+  };
+
+
+  /* =====================================================
+     REMOVE IMAGE
+     ===================================================== */
 
   const removeImage = () => {
 
@@ -2057,184 +2418,675 @@ function Home() {
   };
 
 
-  // =====================================================
-  // IMAGE ANALYSIS
-  // =====================================================
+  /* =====================================================
+     REMOVE PDF
+     ===================================================== */
 
-  const analyzeImage =
-    async () => {
+  const removePdf = () => {
 
-      if (
-        !selectedImage ||
-        isImageAnalyzing
-      ) {
+    if (pdfPreview) {
 
-        return;
-      }
+      URL.revokeObjectURL(
+        pdfPreview
+      );
+    }
 
 
-      const question =
-        typedText.trim() ||
-        "Analyze this image and explain what you see.";
+    setSelectedPdf(null);
+
+    setPdfPreview("");
+
+    setPdfName("");
 
 
-      setHistoryImage("");
+    if (
+      pdfInputRef.current
+    ) {
+
+      pdfInputRef.current.value =
+        "";
+    }
+  };
 
 
-      setIsImageAnalyzing(true);
+  /* =====================================================
+     PDF ANALYSIS
+     ===================================================== */
 
-      setUserText(question);
+  const analyzePdf = async () => {
 
-      setAiText("");
+    if (
+      !selectedPdf ||
+      isPdfAnalyzing
+    ) {
 
-      setShowAIText(false);
-
-      setIsAIActive(true);
-
-
-      try {
-
-        // =================================================
-        // SEND ORIGINAL IMAGE TO GEMINI
-        // =================================================
-
-        const formData =
-          new FormData();
+      return;
+    }
 
 
-        formData.append(
-          "image",
-          selectedImage
-        );
+    const question =
+      typedText.trim() ||
+      "Analyze this PDF and explain its important contents.";
 
 
-        formData.append(
-          "command",
+    setIsPdfAnalyzing(true);
+
+    setIsAIActive(true);
+
+    setUserText(
+      question
+    );
+
+    setAiText("");
+
+    setShowAIText(false);
+
+
+    try {
+
+      const result =
+        await analyzePdfFile(
+          selectedPdf,
           question
         );
 
 
-        const response =
-          await axios.post(
-            `${serverUrl}/api/user/analyze-image`,
-            formData,
-            {
-              withCredentials: true
-            }
+      const answer =
+        cleanAIResponse(
+          result?.response ||
+          result?.answer ||
+          "I could not analyze this PDF."
+        );
+
+
+      setAiText(
+        answer
+      );
+
+      setShowAIText(
+        true
+      );
+
+
+      setActivePdf(
+        selectedPdf
+      );
+
+
+      await addHistory(
+        question,
+        answer,
+        "pdf"
+      );
+
+
+      setTypedText("");
+
+      removePdf();
+
+    } catch (error) {
+
+      console.error(
+        "PDF ANALYSIS ERROR:",
+        error.response?.data ||
+        error.message
+      );
+
+
+      const errorMessage =
+        error.response?.data?.message ||
+        "Unable to analyze the PDF.";
+
+
+      setAiText(
+        errorMessage
+      );
+
+      setShowAIText(
+        true
+      );
+
+    } finally {
+
+      setIsPdfAnalyzing(
+        false
+      );
+
+
+      if (
+        !speakingRef.current
+      ) {
+
+        setIsAIActive(
+          false
+        );
+      }
+    }
+  };
+
+
+  /* =====================================================
+     ASK QUESTION ABOUT ACTIVE PDF
+     ===================================================== */
+
+  const analyzePdfQuestion = async (
+    question
+  ) => {
+
+    if (
+      !activePdf ||
+      !question.trim() ||
+      isPdfAnalyzing
+    ) {
+
+      return;
+    }
+
+
+    setIsPdfAnalyzing(
+      true
+    );
+
+    setIsAIActive(
+      true
+    );
+
+    setUserText(
+      question
+    );
+
+    setAiText("");
+
+    setShowAIText(
+      false
+    );
+
+
+    try {
+
+      const result =
+        await analyzePdfFile(
+          activePdf,
+          question
+        );
+
+
+      const answer =
+        cleanAIResponse(
+          result?.response ||
+          result?.answer ||
+          "I could not answer that question from the PDF."
+        );
+
+
+      setAiText(
+        answer
+      );
+
+      setShowAIText(
+        true
+      );
+
+
+      await addHistory(
+        question,
+        answer,
+        "pdf"
+      );
+
+    } catch (error) {
+
+      console.error(
+        "PDF QUESTION ERROR:",
+        error.response?.data ||
+        error.message
+      );
+
+
+      setAiText(
+        "Unable to answer the question from the PDF."
+      );
+
+      setShowAIText(
+        true
+      );
+
+    } finally {
+
+      setIsPdfAnalyzing(
+        false
+      );
+
+      setIsAIActive(
+        false
+      );
+    }
+  };
+
+
+  /* =====================================================
+     IMAGE ANALYSIS
+     ===================================================== */
+
+  const analyzeImage = async () => {
+
+    if (
+      !selectedImage ||
+      isImageAnalyzing
+    ) {
+
+      return;
+    }
+
+
+    const question =
+      typedText.trim() ||
+      "Analyze this image and explain what you see.";
+
+
+    setHistoryImage("");
+
+    setIsImageAnalyzing(
+      true
+    );
+
+    setUserText(
+      question
+    );
+
+    setAiText("");
+
+    setShowAIText(
+      false
+    );
+
+    setIsAIActive(
+      true
+    );
+
+
+    try {
+
+      const formData =
+        new FormData();
+
+
+      formData.append(
+        "image",
+        selectedImage
+      );
+
+
+      formData.append(
+        "command",
+        question
+      );
+
+
+      const response =
+        await axios.post(
+
+          `${serverUrl}/api/user/analyze-image`,
+
+          formData,
+
+          {
+            withCredentials:
+              true,
+
+            timeout:
+              120000
+          }
+
+        );
+
+
+      const rawAnswer =
+        response.data?.response ||
+        response.data?.answer ||
+        "I could not analyze the image.";
+
+
+      const answer =
+        cleanAIResponse(
+          rawAnswer
+        );
+
+
+      setAiText(
+        answer
+      );
+
+      setShowAIText(
+        true
+      );
+
+
+      let imageForHistory =
+        "";
+
+
+      try {
+
+        imageForHistory =
+          await imageFileToDataUrl(
+            selectedImage
           );
 
+      } catch (
+        imageError
+      ) {
 
-        const rawAnswer =
-          response.data?.response ||
-          response.data?.answer ||
-          "I could not analyze the image.";
+        console.error(
+          "IMAGE HISTORY ERROR:",
+          imageError
+        );
+      }
 
 
-        const answer =
-          cleanAIResponse(
-            rawAnswer
+      await addHistory(
+        question,
+        answer,
+        "image",
+        imageForHistory
+      );
+
+
+      removeImage();
+
+      setTypedText("");
+
+    } catch (error) {
+
+      console.error(
+        "IMAGE ANALYSIS ERROR:",
+        error.response?.data ||
+        error.message
+      );
+
+
+      const errorMessage =
+        error.response?.data?.message ||
+        "Unable to analyze the image.";
+
+
+      setAiText(
+        cleanAIResponse(
+          errorMessage
+        )
+      );
+
+      setShowAIText(
+        true
+      );
+
+    } finally {
+
+      setIsImageAnalyzing(
+        false
+      );
+
+
+      if (
+        !speakingRef.current
+      ) {
+
+        setIsAIActive(
+          false
+        );
+      }
+    }
+  };
+
+
+  /* =====================================================
+     IMAGE TO DATA URL
+     ===================================================== */
+
+  const imageFileToDataUrl = (
+    file
+  ) => {
+
+    return new Promise(
+      (
+        resolve,
+        reject
+      ) => {
+
+        if (!file) {
+
+          reject(
+            new Error(
+              "No image file provided"
+            )
           );
 
-
-        setAiText(answer);
-
-        setShowAIText(true);
-
-
-        // =================================================
-        // COMPRESS IMAGE FOR HISTORY
-        // =================================================
-
-        let imageForHistory = "";
-
-
-        try {
-
-          imageForHistory =
-            await imageFileToDataUrl(
-              selectedImage
-            );
-
-        } catch (imageError) {
-
-          console.error(
-            "IMAGE HISTORY CONVERSION ERROR:",
-            imageError
-          );
-
-          /*
-          The AI answer can still work even
-          if history-image conversion fails.
-          */
-
-          imageForHistory = "";
+          return;
         }
 
 
-        // =================================================
-        // SAVE QUESTION + ANSWER + IMAGE
-        // =================================================
+        const reader =
+          new FileReader();
 
-        await addHistory(
-          question,
-          answer,
-          "image",
-          imageForHistory
+
+        reader.onload = () => {
+
+          const img =
+            new Image();
+
+
+          img.onload = () => {
+
+            const maxSize =
+              1000;
+
+
+            let width =
+              img.width;
+
+            let height =
+              img.height;
+
+
+            if (
+              width > maxSize ||
+              height > maxSize
+            ) {
+
+              if (
+                width > height
+              ) {
+
+                height =
+                  Math.round(
+                    (
+                      height *
+                      maxSize
+                    ) /
+                    width
+                  );
+
+                width =
+                  maxSize;
+
+              } else {
+
+                width =
+                  Math.round(
+                    (
+                      width *
+                      maxSize
+                    ) /
+                    height
+                  );
+
+                height =
+                  maxSize;
+              }
+            }
+
+
+            const canvas =
+              document.createElement(
+                "canvas"
+              );
+
+
+            canvas.width =
+              width;
+
+            canvas.height =
+              height;
+
+
+            const ctx =
+              canvas.getContext(
+                "2d"
+              );
+
+
+            if (!ctx) {
+
+              reject(
+                new Error(
+                  "Could not create canvas"
+                )
+              );
+
+              return;
+            }
+
+
+            ctx.drawImage(
+              img,
+              0,
+              0,
+              width,
+              height
+            );
+
+
+            resolve(
+              canvas.toDataURL(
+                "image/jpeg",
+                0.72
+              )
+            );
+          };
+
+
+          img.onerror = () => {
+
+            reject(
+              new Error(
+                "Could not load image"
+              )
+            );
+          };
+
+
+          img.src =
+            reader.result;
+        };
+
+
+        reader.onerror = () => {
+
+          reject(
+            new Error(
+              "Could not read image"
+            )
+          );
+        };
+
+
+        reader.readAsDataURL(
+          file
+        );
+      }
+    );
+  };
+
+
+  /* =====================================================
+     PASTE IMAGE
+     ===================================================== */
+
+  const handlePaste = (
+    event
+  ) => {
+
+    const clipboardItems =
+      event.clipboardData?.items;
+
+
+    if (!clipboardItems) {
+      return;
+    }
+
+
+    for (
+      let i = 0;
+      i < clipboardItems.length;
+      i++
+    ) {
+
+      const item =
+        clipboardItems[i];
+
+
+      if (
+        item.type &&
+        item.type.startsWith(
+          "image/"
+        )
+      ) {
+
+        event.preventDefault();
+
+
+        const file =
+          item.getAsFile();
+
+
+        if (!file) {
+          return;
+        }
+
+
+        removePdf();
+
+
+        if (imagePreview) {
+
+          URL.revokeObjectURL(
+            imagePreview
+          );
+        }
+
+
+        setHistoryImage("");
+
+        setSelectedImage(
+          file
         );
 
-
-        // =================================================
-        // REMOVE CURRENT SELECTED IMAGE
-        // =================================================
-
-        removeImage();
-
-        setTypedText("");
-
-
-      } catch (error) {
-
-        console.error(
-          "IMAGE ANALYSIS ERROR:",
-          error.response?.data ||
-          error.message
-        );
-
-
-        const errorMessage =
-          error.response?.data?.message ||
-          "Unable to analyze the image.";
-
-
-        setAiText(
-          cleanAIResponse(
-            errorMessage
+        setImagePreview(
+          URL.createObjectURL(
+            file
           )
         );
 
 
-        setShowAIText(true);
-
-      } finally {
-
-        setIsImageAnalyzing(
-          false
-        );
-
-
-        if (
-          !speakingRef.current
-        ) {
-
-          setIsAIActive(false);
-        }
+        return;
       }
-    };
+    }
+  };
 
 
-  // =====================================================
-  // SPEECH RECOGNITION
-  // =====================================================
+  /* =====================================================
+     SPEECH RECOGNITION
+     ===================================================== */
 
   useEffect(() => {
 
@@ -2274,14 +3126,15 @@ function Home() {
       recognition;
 
 
-    recognition.onstart =
-      () => {
+    recognition.onstart = () => {
 
-        listeningRef.current =
-          true;
+      listeningRef.current =
+        true;
 
-        setIsListening(true);
-      };
+      setIsListening(
+        true
+      );
+    };
 
 
     recognition.onresult =
@@ -2336,6 +3189,7 @@ function Home() {
           "stop listening",
 
           "cancel"
+
         ];
 
 
@@ -2356,10 +3210,24 @@ function Home() {
         );
 
 
-        /*
-        Voice questions speak the
-        complete answer.
-        */
+        /* =============================================
+           PDF VOICE QUESTION
+           ============================================= */
+
+        if (activePdf) {
+
+          await analyzePdfQuestion(
+            transcript
+          );
+
+
+          return;
+        }
+
+
+        /* =============================================
+           NORMAL VOICE QUESTION
+           ============================================= */
 
         await processCommand(
           transcript,
@@ -2369,40 +3237,41 @@ function Home() {
       };
 
 
-    recognition.onend =
-      () => {
+    recognition.onend = () => {
 
-        if (
-          listeningRef.current &&
-          !speakingRef.current &&
-          !processingRef.current
-        ) {
+      if (
+        listeningRef.current &&
+        !speakingRef.current &&
+        !processingRef.current
+      ) {
 
-          clearTimeout(
-            restartTimeoutRef.current
+        clearTimeout(
+          restartTimeoutRef.current
+        );
+
+
+        restartTimeoutRef.current =
+          setTimeout(
+            () => {
+
+              try {
+
+                recognition.start();
+
+              } catch {}
+            },
+            400
           );
 
+      } else if (
+        !listeningRef.current
+      ) {
 
-          restartTimeoutRef.current =
-            setTimeout(
-              () => {
-
-                try {
-
-                  recognition.start();
-
-                } catch {}
-              },
-              400
-            );
-
-        } else if (
-          !listeningRef.current
-        ) {
-
-          setIsListening(false);
-        }
-      };
+        setIsListening(
+          false
+        );
+      }
+    };
 
 
     recognition.onerror =
@@ -2424,7 +3293,9 @@ function Home() {
           listeningRef.current =
             false;
 
-          setIsListening(false);
+          setIsListening(
+            false
+          );
         }
       };
 
@@ -2462,122 +3333,133 @@ function Home() {
         null;
     };
 
-  }, [getGeminiResponse]);
+  }, [
+    getGeminiResponse,
+    activePdf
+  ]);
 
 
-  // =====================================================
-  // START LISTENING
-  // =====================================================
+  /* =====================================================
+     START LISTENING
+     ===================================================== */
 
-  const startListening =
-    () => {
+  const startListening = () => {
 
-      if (
-        !recognitionRef.current
-      ) {
+    if (
+      !recognitionRef.current
+    ) {
 
-        alert(
-          "Speech recognition is not supported in this browser."
-        );
+      alert(
+        "Speech recognition is not supported in this browser."
+      );
 
-        return;
-      }
-
-
-      try {
-
-        window.speechSynthesis.cancel();
+      return;
+    }
 
 
-        speakingRef.current =
-          false;
+    try {
+
+      window.speechSynthesis.cancel();
 
 
-        listeningRef.current =
-          true;
-
-
-        setIsListening(true);
-
-
-        recognitionRef.current.start();
-
-      } catch {
-
-        console.log(
-          "Microphone already running."
-        );
-      }
-    };
-
-
-  // =====================================================
-  // STOP LISTENING
-  // =====================================================
-
-  const stopListening =
-    () => {
-
-      listeningRef.current =
+      speakingRef.current =
         false;
 
 
-      setIsListening(false);
+      listeningRef.current =
+        true;
 
 
-      clearTimeout(
-        restartTimeoutRef.current
+      setIsListening(
+        true
       );
 
 
-      if (
-        recognitionRef.current
-      ) {
+      recognitionRef.current.start();
 
-        try {
+    } catch {
 
-          recognitionRef.current.stop();
-
-        } catch {}
-      }
-    };
+      console.log(
+        "Microphone already running."
+      );
+    }
+  };
 
 
-  // =====================================================
-  // LOGOUT
-  // =====================================================
+  /* =====================================================
+     STOP LISTENING
+     ===================================================== */
 
-  const handleLogout =
-    async () => {
+  const stopListening = () => {
+
+    listeningRef.current =
+      false;
+
+
+    setIsListening(
+      false
+    );
+
+
+    clearTimeout(
+      restartTimeoutRef.current
+    );
+
+
+    if (
+      recognitionRef.current
+    ) {
 
       try {
 
-        await axios.post(
-          `${serverUrl}/api/auth/logout`,
-          {},
-          {
-            withCredentials: true
-          }
-        );
+        recognitionRef.current.stop();
 
-      } catch (error) {
-
-        console.error(
-          "LOGOUT ERROR:",
-          error
-        );
-      }
+      } catch {}
+    }
+  };
 
 
-      setUserData(null);
+  /* =====================================================
+     LOGOUT
+     ===================================================== */
 
-      navigate("/signin");
-    };
+  const handleLogout = async () => {
+
+    try {
+
+      await axios.post(
+
+        `${serverUrl}/api/auth/logout`,
+
+        {},
+
+        {
+          withCredentials:
+            true
+        }
+
+      );
+
+    } catch (error) {
+
+      console.error(
+        "LOGOUT ERROR:",
+        error
+      );
+    }
 
 
-  // =====================================================
-  // FILTER HISTORY
-  // =====================================================
+    setUserData(null);
+
+    navigate(
+      "/signin"
+    );
+  };
+
+
+  /* =====================================================
+     FILTER HISTORY
+     ===================================================== */
 
   const filteredHistory =
     historyItems.filter(
@@ -2610,7 +3492,6 @@ function Home() {
           command
             .toLowerCase()
             .includes(search) ||
-
           answer
             .toLowerCase()
             .includes(search)
@@ -2619,110 +3500,124 @@ function Home() {
     );
 
 
-  // =====================================================
-  // OPEN HISTORY
-  // =====================================================
+  /* =====================================================
+     OPEN HISTORY
+     ===================================================== */
 
-  const openHistory =
-    item => {
+  const openHistory = (
+    item
+  ) => {
 
-      const command =
-        item?.command || "";
-
-
-      const answer =
-        item?.answer || "";
+    const command =
+      item?.command ||
+      "";
 
 
-      setUserText(
-        command
+    const answer =
+      item?.answer ||
+      "";
+
+
+    setUserText(
+      command
+    );
+
+
+    setAiText(
+      cleanAIResponse(
+        answer
+      )
+    );
+
+
+    setShowAIText(
+      true
+    );
+
+
+    if (
+      item?.type ===
+        "image" &&
+      item?.image
+    ) {
+
+      setHistoryImage(
+        item.image
       );
 
+    } else {
 
-      setAiText(
-        cleanAIResponse(
-          answer
-        )
+      setHistoryImage(
+        ""
       );
+    }
 
 
-      setShowAIText(true);
+    setActivePdf(
+      null
+    );
 
 
-      /*
-      -----------------------------------------------
-      IMPORTANT:
-      Restore old image here.
-      -----------------------------------------------
-      */
+    setShowHistory(
+      false
+    );
+  };
 
-      if (
-        item?.type === "image" &&
-        item?.image
-      ) {
 
-        setHistoryImage(
-          item.image
-        );
+  /* =====================================================
+     FORMAT DATE
+     ===================================================== */
 
-      } else {
+  const formatDate = (
+    date
+  ) => {
 
-        setHistoryImage("");
+    if (!date) {
+      return "";
+    }
+
+
+    return new Date(
+      date
+    ).toLocaleString(
+      "en-IN",
+      {
+        day:
+          "2-digit",
+
+        month:
+          "short",
+
+        year:
+          "numeric",
+
+        hour:
+          "2-digit",
+
+        minute:
+          "2-digit"
       }
+    );
+  };
 
 
-      /*
-      The old image is NOT placed into
-      selectedImage/imagePreview.
-
-      Therefore clicking old history
-      will not accidentally send it again.
-      */
-
-
-      setShowHistory(false);
-    };
-
-
-  // =====================================================
-  // FORMAT DATE
-  // =====================================================
-
-  const formatDate =
-    date => {
-
-      if (!date) {
-        return "";
-      }
-
-
-      return new Date(
-        date
-      ).toLocaleString(
-        "en-IN",
-        {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit"
-        }
-      );
-    };
-
-
-  // =====================================================
-  // UI
-  // =====================================================
+  /* =====================================================
+     UI
+     ===================================================== */
 
   return (
 
     <div
-      onPaste={handlePaste}
+      onPaste={
+        handlePaste
+      }
+
       className="
         relative
+        flex
         min-h-screen
         w-full
+        flex-col
         overflow-hidden
         bg-[#070B14]
         text-white
@@ -2731,7 +3626,7 @@ function Home() {
 
       {/* =================================================
           HEADER
-      ================================================= */}
+          ================================================= */}
 
       <header
         className="
@@ -2739,6 +3634,7 @@ function Home() {
           z-40
           flex
           h-16
+          shrink-0
           items-center
           justify-between
           border-b
@@ -2750,8 +3646,6 @@ function Home() {
           md:px-6
         "
       >
-
-        {/* LEFT */}
 
         <div
           className="
@@ -2775,6 +3669,7 @@ function Home() {
                 false
               );
             }}
+
             className="
               flex
               h-10
@@ -2789,20 +3684,17 @@ function Home() {
               transition
               hover:bg-white/5
               hover:text-cyan-300
-              active:scale-95
             "
-            title={
-              showHistory
-                ? "Close history"
-                : "Open history"
-            }
           >
 
             {showHistory ? (
+
               <IoMdClose
                 size={22}
               />
+
             ) : (
+
               <IoMdMenu
                 size={22}
               />
@@ -2816,7 +3708,9 @@ function Home() {
               userData?.assistantImage ||
               aiImg
             }
+
             alt="Assistant"
+
             className="
               h-9
               w-9
@@ -2831,7 +3725,11 @@ function Home() {
           />
 
 
-          <div className="min-w-0">
+          <div
+            className="
+              min-w-0
+            "
+          >
 
             <p
               className="
@@ -2841,8 +3739,10 @@ function Home() {
                 text-white
               "
             >
-              {userData?.assistantName ||
-                "Assistant"}
+              {
+                userData?.assistantName ||
+                "Assistant"
+              }
             </p>
 
 
@@ -2862,8 +3762,6 @@ function Home() {
         </div>
 
 
-        {/* RIGHT */}
-
         <div
           className="
             relative
@@ -2879,6 +3777,7 @@ function Home() {
                 "/customize2"
               )
             }
+
             className="
               hidden
               rounded-full
@@ -2905,8 +3804,11 @@ function Home() {
                   !previous
               );
 
-              setShowHistory(false);
+              setShowHistory(
+                false
+              );
             }}
+
             className="
               flex
               h-10
@@ -2923,10 +3825,7 @@ function Home() {
               transition
               hover:border-cyan-400/30
               hover:bg-cyan-400/10
-              hover:text-cyan-300
-              active:scale-95
             "
-            title="Account and settings"
           >
 
             {userData?.assistantImage ? (
@@ -2935,7 +3834,9 @@ function Home() {
                 src={
                   userData.assistantImage
                 }
+
                 alt="Profile"
+
                 className="
                   h-full
                   w-full
@@ -2952,8 +3853,6 @@ function Home() {
 
           </button>
 
-
-          {/* PROFILE MENU */}
 
           {showProfileMenu && (
 
@@ -2972,7 +3871,6 @@ function Home() {
                 bg-[#0B1222]
                 p-2
                 shadow-2xl
-                shadow-black/50
               "
             >
 
@@ -2991,11 +3889,12 @@ function Home() {
                     truncate
                     text-sm
                     font-semibold
-                    text-white
                   "
                 >
-                  {userData?.name ||
-                    "User"}
+                  {
+                    userData?.name ||
+                    "User"
+                  }
                 </p>
 
 
@@ -3006,8 +3905,10 @@ function Home() {
                     text-gray-500
                   "
                 >
-                  {userData?.email ||
-                    "Account"}
+                  {
+                    userData?.email ||
+                    "Account"
+                  }
                 </p>
 
               </div>
@@ -3024,6 +3925,7 @@ function Home() {
                     false
                   );
                 }}
+
                 className="
                   flex
                   w-full
@@ -3035,9 +3937,7 @@ function Home() {
                   text-left
                   text-sm
                   text-gray-300
-                  transition
                   hover:bg-white/5
-                  hover:text-white
                 "
               >
 
@@ -3046,25 +3946,28 @@ function Home() {
                   className="text-cyan-400"
                 />
 
-                <span>
-                  Customize Assistant
-                </span>
+                Customize Assistant
 
               </button>
 
 
               <button
-                onClick={async () => {
+                onClick={
+                  async () => {
 
-                  await clearHistory();
+                    await clearHistory();
 
-                  setShowProfileMenu(
-                    false
-                  );
-                }}
-                disabled={
-                  historyItems.length === 0
+                    setShowProfileMenu(
+                      false
+                    );
+                  }
                 }
+
+                disabled={
+                  historyItems.length ===
+                  0
+                }
+
                 className="
                   flex
                   w-full
@@ -3076,10 +3979,8 @@ function Home() {
                   text-left
                   text-sm
                   text-gray-300
-                  transition
                   hover:bg-red-400/10
                   hover:text-red-400
-                  disabled:cursor-not-allowed
                   disabled:opacity-40
                 "
               >
@@ -3088,9 +3989,7 @@ function Home() {
                   size={17}
                 />
 
-                <span>
-                  Clear All History
-                </span>
+                Clear All History
 
               </button>
 
@@ -3106,6 +4005,7 @@ function Home() {
                     false
                   );
                 }}
+
                 className="
                   flex
                   w-full
@@ -3117,9 +4017,7 @@ function Home() {
                   text-left
                   text-sm
                   text-gray-300
-                  transition
                   hover:bg-white/5
-                  hover:text-white
                 "
               >
 
@@ -3128,9 +4026,7 @@ function Home() {
                   className="text-cyan-400"
                 />
 
-                <span>
-                  Change Password
-                </span>
+                Change Password
 
               </button>
 
@@ -3148,6 +4044,7 @@ function Home() {
                 onClick={
                   handleLogout
                 }
+
                 className="
                   flex
                   w-full
@@ -3159,7 +4056,6 @@ function Home() {
                   text-left
                   text-sm
                   text-red-400
-                  transition
                   hover:bg-red-400/10
                 "
               >
@@ -3168,9 +4064,7 @@ function Home() {
                   size={17}
                 />
 
-                <span>
-                  Logout
-                </span>
+                Logout
 
               </button>
 
@@ -3183,8 +4077,8 @@ function Home() {
 
 
       {/* =================================================
-          HISTORY DRAWER
-      ================================================= */}
+          HISTORY
+          ================================================= */}
 
       {showHistory && (
 
@@ -3192,8 +4086,11 @@ function Home() {
 
           <div
             onClick={() =>
-              setShowHistory(false)
+              setShowHistory(
+                false
+              )
             }
+
             className="
               fixed
               inset-0
@@ -3240,7 +4137,6 @@ function Home() {
                 <h2
                   className="
                     font-semibold
-                    text-white
                   "
                 >
                   History
@@ -3253,7 +4149,7 @@ function Home() {
                     text-gray-500
                   "
                 >
-                  Your previous conversations
+                  Previous conversations
                 </p>
 
               </div>
@@ -3261,8 +4157,11 @@ function Home() {
 
               <button
                 onClick={() =>
-                  setShowHistory(false)
+                  setShowHistory(
+                    false
+                  )
                 }
+
                 className="
                   flex
                   h-9
@@ -3272,7 +4171,6 @@ function Home() {
                   rounded-lg
                   text-gray-400
                   hover:bg-white/5
-                  hover:text-white
                 "
               >
 
@@ -3295,7 +4193,9 @@ function Home() {
             >
 
               <div
-                className="relative"
+                className="
+                  relative
+                "
               >
 
                 <FiSearch
@@ -3314,12 +4214,15 @@ function Home() {
                   value={
                     historySearch
                   }
+
                   onChange={e =>
                     setHistorySearch(
                       e.target.value
                     )
                   }
+
                   placeholder="Search history..."
+
                   className="
                     h-10
                     w-full
@@ -3344,13 +4247,15 @@ function Home() {
 
             <div
               className="
+                history-scroll
                 flex-1
                 overflow-y-auto
                 p-3
               "
             >
 
-              {filteredHistory.length > 0 ? (
+              {filteredHistory.length >
+              0 ? (
 
                 filteredHistory.map(
                   item => (
@@ -3360,6 +4265,7 @@ function Home() {
                         item._id ||
                         `${item.command}-${item.createdAt}`
                       }
+
                       className="
                         group
                         mb-2
@@ -3370,7 +4276,6 @@ function Home() {
                         p-3
                         transition
                         hover:border-cyan-400/20
-                        hover:bg-white/4
                       "
                     >
 
@@ -3380,6 +4285,7 @@ function Home() {
                             item
                           )
                         }
+
                         className="
                           w-full
                           text-left
@@ -3404,12 +4310,13 @@ function Home() {
                               py-1
                               text-[10px]
                               uppercase
-                              tracking-wide
                               text-cyan-300
                             "
                           >
-                            {item.type ||
-                              "text"}
+                            {
+                              item.type ||
+                              "text"
+                            }
                           </span>
 
 
@@ -3428,10 +4335,16 @@ function Home() {
                               size={10}
                             />
 
-                            <span className="truncate">
-                              {formatDate(
-                                item.createdAt
-                              )}
+                            <span
+                              className="
+                                truncate
+                              "
+                            >
+                              {
+                                formatDate(
+                                  item.createdAt
+                                )
+                              }
                             </span>
 
                           </span>
@@ -3439,16 +4352,17 @@ function Home() {
                         </div>
 
 
-                        {/* IMAGE THUMBNAIL IN HISTORY */}
-
-                        {item?.type === "image" &&
+                        {item?.type ===
+                          "image" &&
                           item?.image && (
 
                             <img
                               src={
                                 item.image
                               }
+
                               alt="Previous question"
+
                               className="
                                 mb-3
                                 h-28
@@ -3471,7 +4385,9 @@ function Home() {
                             text-gray-300
                           "
                         >
-                          {item.command}
+                          {
+                            item.command
+                          }
                         </p>
 
 
@@ -3487,8 +4403,11 @@ function Home() {
                               text-gray-600
                             "
                           >
-                            {item.answer}
+                            {
+                              item.answer
+                            }
                           </p>
+
                         )}
 
                       </button>
@@ -3507,6 +4426,7 @@ function Home() {
                                 item._id
                               )
                             }
+
                             className="
                               mt-2
                               flex
@@ -3514,7 +4434,6 @@ function Home() {
                               gap-1
                               text-xs
                               text-gray-600
-                              transition
                               hover:text-red-400
                             "
                           >
@@ -3526,10 +4445,13 @@ function Home() {
                             Delete
 
                           </button>
+
                         )}
 
                     </div>
+
                   )
+
                 )
 
               ) : (
@@ -3541,29 +4463,9 @@ function Home() {
                     flex-col
                     items-center
                     justify-center
-                    px-5
                     text-center
                   "
                 >
-
-                  <div
-                    className="
-                      mb-3
-                      flex
-                      h-12
-                      w-12
-                      items-center
-                      justify-center
-                      rounded-full
-                      border
-                      border-white/10
-                      bg-white/5
-                      text-gray-600
-                    "
-                  >
-                    ✦
-                  </div>
-
 
                   <p
                     className="
@@ -3587,13 +4489,15 @@ function Home() {
 
       {/* =================================================
           MAIN
-      ================================================= */}
+          ================================================= */}
 
       <main
         className="
           flex
-          h-[calc(100vh-4rem)]
-          w-full
+          min-h-0
+          flex-1
+          justify-center
+          overflow-hidden
         "
       >
 
@@ -3601,6 +4505,8 @@ function Home() {
           className="
             flex
             min-w-0
+            w-full
+            max-w-5xl
             flex-1
             flex-col
             overflow-hidden
@@ -3611,18 +4517,11 @@ function Home() {
           "
         >
 
-          {/* =================================================
-              CONVERSATION AREA
-          ================================================= */}
-
           <div
             className="
-              flex
-              w-full
-              max-w-4xl
+              answer-scroll
               min-h-0
               flex-1
-              flex-col
               overflow-y-auto
               overscroll-contain
               px-1
@@ -3636,20 +4535,20 @@ function Home() {
                 w-full
                 flex-col
                 items-center
-                pt-4
-                sm:pt-8
               "
             >
 
-              {/* ASSISTANT IMAGE */}
+              {/* ASSISTANT */}
 
               <div
                 className={`
-                  mb-5
+                  mt-2
+                  mb-4
                   rounded-full
                   p-1
                   transition
-                  sm:mb-6
+                  sm:mt-4
+                  sm:mb-5
                   ${
                     isAIActive
                       ? "ring-4 ring-cyan-400/30"
@@ -3663,18 +4562,19 @@ function Home() {
                     userData?.assistantImage ||
                     aiImg
                   }
+
                   alt="Assistant"
+
                   className="
                     h-24
                     w-24
                     rounded-full
                     object-cover
                     shadow-2xl
-                    shadow-cyan-950/30
-                    sm:h-32
-                    sm:w-32
-                    md:h-40
-                    md:w-40
+                    sm:h-28
+                    sm:w-28
+                    md:h-32
+                    md:w-32
                   "
                 />
 
@@ -3685,18 +4585,20 @@ function Home() {
 
               <h1
                 className="
-                  max-w-full
+                  w-full
+                  max-w-3xl
                   wrap-break-word
                   text-center
                   text-xl
                   font-semibold
-                  text-white
                   sm:text-2xl
                   md:text-3xl
                 "
               >
-                {userData?.assistantName ||
-                  "Assistant"}
+                {
+                  userData?.assistantName ||
+                  "Assistant"
+                }
               </h1>
 
 
@@ -3713,27 +4615,144 @@ function Home() {
               >
 
                 {isListening
+
                   ? "Listening..."
-                  : isImageAnalyzing
-                  ? "Analyzing image..."
-                  : speakingRef.current
-                  ? "Speaking..."
-                  : "How can I help you?"}
+
+                  : isPdfAnalyzing
+
+                    ? "Analyzing PDF..."
+
+                    : isImageAnalyzing
+
+                      ? "Analyzing image..."
+
+                      : speakingRef.current
+
+                        ? "Speaking..."
+
+                        : activePdf
+
+                          ? `PDF active: ${activePdf.name}`
+
+                          : "How can I help you?"}
 
               </p>
 
 
-              {/* =================================================
-                  RESTORED HISTORICAL IMAGE
+              {/* PDF SESSION */}
 
-                  This is the main new feature.
-              ================================================= */}
+              {activePdf && (
+
+                <div
+                  className="
+                    mt-5
+                    flex
+                    w-full
+                    max-w-2xl
+                    items-center
+                    gap-3
+                    rounded-2xl
+                    border
+                    border-cyan-400/20
+                    bg-cyan-400/5
+                    p-3
+                  "
+                >
+
+                  <div
+                    className="
+                      flex
+                      h-11
+                      w-11
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-xl
+                      bg-cyan-400/10
+                      text-cyan-300
+                    "
+                  >
+
+                    <FiFileText
+                      size={21}
+                    />
+
+                  </div>
+
+
+                  <div
+                    className="
+                      min-w-0
+                      flex-1
+                    "
+                  >
+
+                    <p
+                      className="
+                        truncate
+                        text-sm
+                        font-medium
+                        text-white
+                      "
+                    >
+                      {
+                        activePdf.name
+                      }
+                    </p>
+
+
+                    <p
+                      className="
+                        text-xs
+                        text-cyan-300/70
+                      "
+                    >
+                      PDF analysis active
+                    </p>
+
+                  </div>
+
+
+                  <button
+                    type="button"
+
+                    onClick={() =>
+                      setActivePdf(
+                        null
+                      )
+                    }
+
+                    className="
+                      flex
+                      h-8
+                      w-8
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-lg
+                      text-gray-500
+                      hover:bg-white/5
+                      hover:text-red-400
+                    "
+                  >
+
+                    <FiX
+                      size={17}
+                    />
+
+                  </button>
+
+                </div>
+              )}
+
+
+              {/* OLD IMAGE */}
 
               {historyImage && (
 
                 <div
                   className="
-                    mt-6
+                    mt-5
                     w-full
                     max-w-2xl
                     overflow-hidden
@@ -3742,31 +4761,23 @@ function Home() {
                     border-cyan-400/10
                     bg-black/20
                     p-2
-                    sm:mt-8
                   "
                 >
 
                   <img
-                    src={historyImage}
-                    alt="Previous image question"
+                    src={
+                      historyImage
+                    }
+
+                    alt="Previous image"
+
                     className="
-                      max-h-112
+                      max-h-105
                       w-full
                       rounded-xl
                       object-contain
                     "
                   />
-
-                  <p
-                    className="
-                      mt-2
-                      text-center
-                      text-[10px]
-                      text-gray-600
-                    "
-                  >
-                    Previous image from history
-                  </p>
 
                 </div>
               )}
@@ -3778,9 +4789,9 @@ function Home() {
 
                 <div
                   className="
-                    mt-6
+                    mt-5
                     w-full
-                    max-w-2xl
+                    max-w-3xl
                     wrap-break-word
                     rounded-2xl
                     border
@@ -3792,26 +4803,35 @@ function Home() {
                     text-sm
                     leading-relaxed
                     text-gray-300
-                    sm:mt-8
                     sm:px-5
                   "
                 >
-                  {userText}
+                  {
+                    userText
+                  }
                 </div>
               )}
 
 
-              {/* AI ANSWER */}
+              {/* ANSWER */}
 
               {showAIText &&
                 aiText && (
 
                   <div
+                    ref={
+                      answerRef
+                    }
+
                     className="
+                      answer-box
                       mt-4
                       mb-6
                       w-full
                       max-w-3xl
+                      max-h-[55vh]
+                      overflow-y-auto
+                      overscroll-contain
                       wrap-break-word
                       rounded-2xl
                       border
@@ -3829,7 +4849,9 @@ function Home() {
                       sm:text-base
                     "
                   >
-                    {aiText}
+                    {
+                      aiText
+                    }
                   </div>
                 )}
 
@@ -3838,9 +4860,7 @@ function Home() {
           </div>
 
 
-          {/* =================================================
-              CURRENT IMAGE PREVIEW
-          ================================================= */}
+          {/* IMAGE PREVIEW */}
 
           {imagePreview && (
 
@@ -3868,16 +4888,18 @@ function Home() {
               >
 
                 <img
-                  src={imagePreview}
+                  src={
+                    imagePreview
+                  }
+
                   alt="Selected"
+
                   className="
                     h-14
                     w-14
                     shrink-0
                     rounded-xl
                     object-cover
-                    sm:h-16
-                    sm:w-16
                   "
                 />
 
@@ -3894,7 +4916,6 @@ function Home() {
                       truncate
                       text-sm
                       font-medium
-                      text-white
                     "
                   >
                     Image selected
@@ -3910,7 +4931,7 @@ function Home() {
                       sm:block
                     "
                   >
-                    Type your question below and press Send.
+                    Ask your question and press Send.
                   </p>
 
                 </div>
@@ -3918,9 +4939,11 @@ function Home() {
 
                 <button
                   type="button"
+
                   onClick={
                     removeImage
                   }
+
                   className="
                     flex
                     h-8
@@ -3930,7 +4953,6 @@ function Home() {
                     justify-center
                     rounded-lg
                     text-gray-500
-                    hover:bg-white/5
                     hover:text-red-400
                   "
                 >
@@ -3947,9 +4969,120 @@ function Home() {
           )}
 
 
-          {/* =================================================
-              INPUT
-          ================================================= */}
+          {/* PDF PREVIEW */}
+
+          {pdfPreview && (
+
+            <div
+              className="
+                mb-3
+                w-full
+                max-w-3xl
+                self-center
+                rounded-2xl
+                border
+                border-cyan-400/20
+                bg-[#0A1020]
+                p-3
+              "
+            >
+
+              <div
+                className="
+                  flex
+                  min-w-0
+                  items-center
+                  gap-3
+                "
+              >
+
+                <div
+                  className="
+                    flex
+                    h-14
+                    w-14
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-xl
+                    bg-red-400/10
+                    text-red-300
+                  "
+                >
+
+                  <FiFileText
+                    size={24}
+                  />
+
+                </div>
+
+
+                <div
+                  className="
+                    min-w-0
+                    flex-1
+                  "
+                >
+
+                  <p
+                    className="
+                      truncate
+                      text-sm
+                      font-medium
+                    "
+                  >
+                    {
+                      pdfName
+                    }
+                  </p>
+
+
+                  <p
+                    className="
+                      mt-1
+                      text-xs
+                      text-gray-500
+                    "
+                  >
+                    Ask a question about this PDF.
+                  </p>
+
+                </div>
+
+
+                <button
+                  type="button"
+
+                  onClick={
+                    removePdf
+                  }
+
+                  className="
+                    flex
+                    h-8
+                    w-8
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-lg
+                    text-gray-500
+                    hover:text-red-400
+                  "
+                >
+
+                  <FiX
+                    size={18}
+                  />
+
+                </button>
+
+              </div>
+
+            </div>
+          )}
+
+
+          {/* INPUT */}
 
           <div
             className="
@@ -3960,7 +5093,10 @@ function Home() {
           >
 
             <form
-              onSubmit={handleSend}
+              onSubmit={
+                handleSend
+              }
+
               className="
                 flex
                 min-w-0
@@ -3981,9 +5117,11 @@ function Home() {
 
               <button
                 type="button"
+
                 onClick={() =>
                   imageInputRef.current?.click()
                 }
+
                 className="
                   flex
                   h-10
@@ -3993,12 +5131,10 @@ function Home() {
                   justify-center
                   rounded-xl
                   text-gray-400
-                  transition
                   hover:bg-white/5
                   hover:text-cyan-300
-                  sm:h-11
-                  sm:w-11
                 "
+
                 title="Analyze image"
               >
 
@@ -4010,12 +5146,67 @@ function Home() {
 
 
               <input
-                ref={imageInputRef}
+                ref={
+                  imageInputRef
+                }
+
                 type="file"
+
                 accept="image/*"
+
                 onChange={
                   handleImageSelect
                 }
+
+                className="hidden"
+              />
+
+
+              {/* PDF */}
+
+              <button
+                type="button"
+
+                onClick={() =>
+                  pdfInputRef.current?.click()
+                }
+
+                className="
+                  flex
+                  h-10
+                  w-10
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-xl
+                  text-gray-400
+                  hover:bg-white/5
+                  hover:text-cyan-300
+                "
+
+                title="Upload PDF"
+              >
+
+                <FiFileText
+                  size={19}
+                />
+
+              </button>
+
+
+              <input
+                ref={
+                  pdfInputRef
+                }
+
+                type="file"
+
+                accept="application/pdf,.pdf"
+
+                onChange={
+                  handlePdfSelect
+                }
+
                 className="hidden"
               />
 
@@ -4023,18 +5214,37 @@ function Home() {
               {/* TEXT */}
 
               <input
-                value={typedText}
+                value={
+                  typedText
+                }
+
                 onChange={e =>
                   setTypedText(
                     e.target.value
                   )
                 }
-                onPaste={handlePaste}
-                placeholder={
-                  imagePreview
-                    ? "Ask about the image..."
-                    : "Ask me anything..."
+
+                onPaste={
+                  handlePaste
                 }
+
+                placeholder={
+
+                  selectedImage
+
+                    ? "Ask about the image..."
+
+                    : selectedPdf
+
+                      ? "Ask about the PDF..."
+
+                      : activePdf
+
+                        ? "Ask another question about the PDF..."
+
+                        : "Ask me anything..."
+                }
+
                 className="
                   min-w-0
                   flex-1
@@ -4049,15 +5259,17 @@ function Home() {
               />
 
 
-              {/* MICROPHONE */}
+              {/* MIC */}
 
               <button
                 type="button"
+
                 onClick={
                   isListening
                     ? stopListening
                     : startListening
                 }
+
                 className={`
                   flex
                   h-10
@@ -4075,11 +5287,6 @@ function Home() {
                       : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
                   }
                 `}
-                title={
-                  isListening
-                    ? "Stop microphone"
-                    : "Start microphone"
-                }
               >
 
                 {isListening ? (
@@ -4093,6 +5300,7 @@ function Home() {
                   <FiMic
                     size={19}
                   />
+
                 )}
 
               </button>
@@ -4102,13 +5310,24 @@ function Home() {
 
               <button
                 type="submit"
+
                 disabled={
-                  imagePreview
-                    ? isImageAnalyzing ||
-                      !selectedImage
-                    : isSending ||
-                      !typedText.trim()
+
+                  isImageAnalyzing ||
+
+                  isPdfAnalyzing ||
+
+                  isSending ||
+
+                  (
+                    !selectedImage &&
+                    !selectedPdf &&
+                    !activePdf &&
+                    !typedText.trim()
+                  )
+
                 }
+
                 className="
                   flex
                   h-10
@@ -4126,11 +5345,6 @@ function Home() {
                   sm:h-11
                   sm:w-11
                 "
-                title={
-                  imagePreview
-                    ? "Analyze image"
-                    : "Send"
-                }
               >
 
                 <FiSend
@@ -4152,7 +5366,7 @@ function Home() {
                 sm:text-[11px]
               "
             >
-              Text • Voice • Image Analysis
+              Text • Voice • Image • PDF Analysis
             </p>
 
           </div>
@@ -4160,6 +5374,53 @@ function Home() {
         </section>
 
       </main>
+
+
+      {/* =================================================
+          CUSTOM SCROLLBAR
+          ================================================= */}
+
+      <style>
+        {`
+          .answer-scroll,
+          .answer-box,
+          .history-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(103, 232, 249, 0.25) transparent;
+          }
+
+          .answer-scroll::-webkit-scrollbar,
+          .answer-box::-webkit-scrollbar,
+          .history-scroll::-webkit-scrollbar {
+            width: 5px;
+          }
+
+          .answer-scroll::-webkit-scrollbar-track,
+          .answer-box::-webkit-scrollbar-track,
+          .history-scroll::-webkit-scrollbar-track {
+            background: transparent;
+          }
+
+          .answer-scroll::-webkit-scrollbar-thumb,
+          .answer-box::-webkit-scrollbar-thumb,
+          .history-scroll::-webkit-scrollbar-thumb {
+            background: rgba(103, 232, 249, 0.22);
+            border-radius: 999px;
+          }
+
+          .answer-scroll::-webkit-scrollbar-thumb:hover,
+          .answer-box::-webkit-scrollbar-thumb:hover,
+          .history-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(103, 232, 249, 0.45);
+          }
+
+          @media (max-width: 640px) {
+            .answer-box {
+              max-height: 48vh;
+            }
+          }
+        `}
+      </style>
 
     </div>
   );
