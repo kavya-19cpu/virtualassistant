@@ -1,4 +1,231 @@
+
 import axios from "axios";
+
+/*
+=====================================================
+INDIAN DATE / TIME HELPERS
+=====================================================
+*/
+
+const getIndianDateTime = () => {
+    const now = new Date();
+
+    const dateTime = new Intl.DateTimeFormat("en-IN", {
+        timeZone: "Asia/Kolkata",
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true
+    }).formatToParts(now);
+
+    const parts = {};
+
+    dateTime.forEach((part) => {
+        if (part.type !== "literal") {
+            parts[part.type] = part.value;
+        }
+    });
+
+    return parts;
+};
+
+
+/*
+=====================================================
+DETECT REAL DATE / TIME COMMANDS
+=====================================================
+*/
+
+const getDateTimeResponse = (command) => {
+    const text = command
+        .toLowerCase()
+        .trim()
+        .replace(/[?!.]/g, "");
+
+    const parts = getIndianDateTime();
+
+    const time = `${parts.hour}:${parts.minute}:${parts.second} ${parts.dayPeriod}`;
+
+    const date = `${parts.weekday}, ${parts.day} ${parts.month} ${parts.year}`;
+
+    const day = parts.weekday;
+
+    const month = parts.month;
+
+    const year = parts.year;
+
+
+    /*
+    =================================================
+    TIME
+    =================================================
+    */
+
+    const isTimeCommand =
+        text === "time" ||
+        text.includes("what time is it") ||
+        text.includes("what is the time") ||
+        text.includes("current time") ||
+        text.includes("tell me the time") ||
+        text.includes("tell me current time") ||
+        text.includes("time right now") ||
+        text.includes("what's the time") ||
+        text.includes("whats the time");
+
+
+    if (isTimeCommand) {
+        return {
+            type: "get_time",
+            userInput: command,
+            response: `The current time is ${time}.`,
+            query: ""
+        };
+    }
+
+
+    /*
+    =================================================
+    DATE
+    =================================================
+    */
+
+    const isDateCommand =
+        text === "date" ||
+        text.includes("what date is it") ||
+        text.includes("what is the date") ||
+        text.includes("what's the date") ||
+        text.includes("whats the date") ||
+        text.includes("today's date") ||
+        text.includes("todays date") ||
+        text.includes("current date") ||
+        text.includes("today date") ||
+        text.includes("tell me today's date") ||
+        text.includes("tell me todays date");
+
+
+    if (isDateCommand) {
+        return {
+            type: "get_date",
+            userInput: command,
+            response: `Today is ${date}.`,
+            query: ""
+        };
+    }
+
+
+    /*
+    =================================================
+    DAY
+    =================================================
+    */
+
+    const isDayCommand =
+        text === "day" ||
+        text.includes("what day is it") ||
+        text.includes("what is the day") ||
+        text.includes("what day today") ||
+        text.includes("which day is today") ||
+        text.includes("what day is today") ||
+        text.includes("today's day") ||
+        text.includes("todays day") ||
+        text.includes("current day") ||
+        text.includes("tell me the day");
+
+
+    if (isDayCommand) {
+        return {
+            type: "get_day",
+            userInput: command,
+            response: `Today is ${day}.`,
+            query: ""
+        };
+    }
+
+
+    /*
+    =================================================
+    MONTH
+    =================================================
+    */
+
+    const isMonthCommand =
+        text === "month" ||
+        text.includes("what month is it") ||
+        text.includes("what is the month") ||
+        text.includes("which month is it") ||
+        text.includes("current month") ||
+        text.includes("what month are we in") ||
+        text.includes("which month are we in") ||
+        text.includes("tell me the month");
+
+
+    if (isMonthCommand) {
+        return {
+            type: "get_month",
+            userInput: command,
+            response: `The current month is ${month}.`,
+            query: ""
+        };
+    }
+
+
+    /*
+    =================================================
+    YEAR
+    =================================================
+    */
+
+    const isYearCommand =
+        text === "year" ||
+        text.includes("what year is it") ||
+        text.includes("what is the year") ||
+        text.includes("which year is it") ||
+        text.includes("current year") ||
+        text.includes("what year are we in") ||
+        text.includes("which year are we in") ||
+        text.includes("tell me the year");
+
+
+    if (isYearCommand) {
+        return {
+            type: "get_date",
+            userInput: command,
+            response: `The current year is ${year}.`,
+            query: ""
+        };
+    }
+
+
+    /*
+    =================================================
+    FULL DATE + TIME
+    =================================================
+    */
+
+    const isDateTimeCommand =
+        text.includes("date and time") ||
+        text.includes("date & time") ||
+        text.includes("date plus time") ||
+        text.includes("current date and time") ||
+        text.includes("today and time");
+
+
+    if (isDateTimeCommand) {
+        return {
+            type: "get_date",
+            userInput: command,
+            response: `Today is ${date}, and the current time is ${time}.`,
+            query: ""
+        };
+    }
+
+
+    return null;
+};
 
 
 /*
@@ -15,6 +242,34 @@ const geminiResponse = async (
 
     try {
 
+        /*
+        =================================================
+        FIRST:
+        HANDLE DATE/TIME LOCALLY
+        DO NOT ASK GEMINI
+        =================================================
+        */
+
+        const dateTimeResponse =
+            getDateTimeResponse(command);
+
+        if (dateTimeResponse) {
+
+            console.log(
+                "REAL DATE/TIME RESPONSE:",
+                dateTimeResponse
+            );
+
+            return dateTimeResponse;
+        }
+
+
+        /*
+        =================================================
+        GEMINI API KEY
+        =================================================
+        */
+
         const apiKey =
             process.env.GEMINI_API_KEY;
 
@@ -23,8 +278,14 @@ const geminiResponse = async (
             throw new Error(
                 "GEMINI_API_KEY is missing in .env"
             );
-
         }
+
+
+        /*
+        =================================================
+        GEMINI PROMPT
+        =================================================
+        */
 
         const prompt = `
 You are a virtual assistant named ${assistantName}, created by ${userName}.
@@ -73,19 +334,34 @@ Rules:
 11. userInput must contain the original command.
 12. Return ONLY JSON.
 13. Do not use Markdown code fences.
+14. Do not guess the current date, time, month, day, or year.
+15. Date/time commands are handled by the server and should normally never reach you.
+16. For normal questions, provide a complete useful answer rather than only naming the topic.
 
 USER COMMAND:
 ${command}
 `;
 
+
+        /*
+        =================================================
+        GEMINI API URL
+        =================================================
+        */
+
         const apiUrl =
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 
+
+        /*
+        =================================================
+        GEMINI REQUEST
+        =================================================
+        */
+
         const result =
             await axios.post(
-
                 apiUrl,
-
                 {
                     contents: [
                         {
@@ -98,30 +374,28 @@ ${command}
                     ],
 
                     generationConfig: {
-
                         temperature: 0.2,
-
                         responseMimeType:
                             "application/json"
-
                     }
                 },
 
                 {
-
                     headers: {
-
                         "Content-Type":
                             "application/json"
-
                     },
 
-                    timeout:
-                        30000
-
+                    timeout: 30000
                 }
-
             );
+
+
+        /*
+        =================================================
+        GET GEMINI RESPONSE
+        =================================================
+        */
 
         const text =
             result.data
@@ -129,17 +403,27 @@ ${command}
                 ?.content?.parts?.[0]
                 ?.text;
 
+
         if (!text) {
 
             throw new Error(
                 "Gemini response text not found"
             );
-
         }
+
+
+        /*
+        =================================================
+        PARSE JSON
+        =================================================
+        */
 
         try {
 
-            return JSON.parse(text);
+            const parsed =
+                JSON.parse(text);
+
+            return parsed;
 
         } catch {
 
@@ -156,10 +440,9 @@ ${command}
 
                 query:
                     ""
-
             };
-
         }
+
 
     } catch (error) {
 
@@ -170,9 +453,7 @@ ${command}
         );
 
         throw error;
-
     }
-
 };
 
 
@@ -201,7 +482,6 @@ export const geminiImageResponse =
                 throw new Error(
                     "GEMINI_API_KEY is missing in .env"
                 );
-
             }
 
             if (!imageBuffer) {
@@ -209,13 +489,14 @@ export const geminiImageResponse =
                 throw new Error(
                     "Image is required"
                 );
-
             }
+
 
             const imageBase64 =
                 imageBuffer.toString(
                     "base64"
                 );
+
 
             const prompt = `
 You are ${assistantName}, a helpful AI virtual assistant.
@@ -257,8 +538,10 @@ Rules:
 9. Give a complete answer rather than only naming the topic.
 `;
 
+
             const apiUrl =
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
+
 
             const result =
                 await axios.post(
@@ -266,11 +549,8 @@ Rules:
                     apiUrl,
 
                     {
-
                         contents: [
-
                             {
-
                                 parts: [
 
                                     {
@@ -279,7 +559,6 @@ Rules:
                                     },
 
                                     {
-
                                         inline_data: {
 
                                             mime_type:
@@ -287,41 +566,31 @@ Rules:
 
                                             data:
                                                 imageBase64
-
                                         }
-
                                     }
 
                                 ]
-
                             }
-
                         ],
 
                         generationConfig: {
-
                             temperature:
                                 0.2
-
                         }
-
                     },
 
                     {
-
                         headers: {
 
                             "Content-Type":
                                 "application/json"
-
                         },
 
                         timeout:
                             60000
-
                     }
-
                 );
+
 
             const text =
                 result.data
@@ -334,15 +603,17 @@ Rules:
                     .join("")
                     .trim();
 
+
             if (!text) {
 
                 throw new Error(
                     "Gemini image response not found"
                 );
-
             }
 
+
             return text;
+
 
         } catch (error) {
 
@@ -353,9 +624,7 @@ Rules:
             );
 
             throw error;
-
         }
-
     };
 
 
@@ -383,7 +652,6 @@ export const geminiPdfResponse =
                 throw new Error(
                     "GEMINI_API_KEY is missing in .env"
                 );
-
             }
 
             if (!pdfBuffer) {
@@ -391,13 +659,14 @@ export const geminiPdfResponse =
                 throw new Error(
                     "PDF is required"
                 );
-
             }
+
 
             const pdfBase64 =
                 pdfBuffer.toString(
                     "base64"
                 );
+
 
             const prompt = `
 You are ${assistantName}, an advanced AI virtual assistant.
@@ -478,8 +747,10 @@ RULES:
 Answer the user's question directly.
 `;
 
+
             const apiUrl =
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
+
 
             const result =
                 await axios.post(
@@ -487,11 +758,8 @@ Answer the user's question directly.
                     apiUrl,
 
                     {
-
                         contents: [
-
                             {
-
                                 parts: [
 
                                     {
@@ -500,7 +768,6 @@ Answer the user's question directly.
                                     },
 
                                     {
-
                                         inline_data: {
 
                                             mime_type:
@@ -508,41 +775,31 @@ Answer the user's question directly.
 
                                             data:
                                                 pdfBase64
-
                                         }
-
                                     }
 
                                 ]
-
                             }
-
                         ],
 
                         generationConfig: {
-
                             temperature:
                                 0.2
-
                         }
-
                     },
 
                     {
-
                         headers: {
 
                             "Content-Type":
                                 "application/json"
-
                         },
 
                         timeout:
                             120000
-
                     }
-
                 );
+
 
             const text =
                 result.data
@@ -555,15 +812,17 @@ Answer the user's question directly.
                     .join("")
                     .trim();
 
+
             if (!text) {
 
                 throw new Error(
                     "Gemini PDF response not found"
                 );
-
             }
 
+
             return text;
+
 
         } catch (error) {
 
@@ -574,9 +833,7 @@ Answer the user's question directly.
             );
 
             throw error;
-
         }
-
     };
 
 
