@@ -4878,18 +4878,18 @@ function Home() {
               CHAT
           ================================================= */}
 
-          <div
-            className="
-              flex
-              min-h-0
-              w-full
-              flex-1
-              justify-center
-              overflow-y-auto
-              px-1
-              pb-5
-            "
-          >
+         <div
+  className="
+    flex
+    min-h-0
+    w-full
+    flex-1
+    justify-center
+    overflow-y-auto
+    px-1
+    pb-8
+  "
+>
 
             <div
               className="
@@ -5122,27 +5122,27 @@ function Home() {
                 aiText && (
 
                   <div
-                    className="
-                      mt-4
-                      mb-5
-                      w-full
-                      max-w-3xl
-                      wrap-break-word
-                      rounded-2xl
-                      border
-                      border-white/10
-                      bg-white/3
-                      px-4
-                      py-4
-                      text-sm
-                      leading-7
-                      whitespace-pre-wrap
-                      text-gray-200
-                      sm:px-6
-                      sm:py-5
-                      sm:text-base
-                    "
-                  >
+  className="
+    mt-4
+    mb-6
+    w-full
+    max-w-3xl
+    wrap-break-word
+    rounded-2xl
+    border
+    border-white/10
+    bg-white/3
+    px-4
+    py-4
+    text-sm
+    leading-7
+    whitespace-pre-wrap
+    text-gray-200
+    sm:px-6
+    sm:py-5
+    sm:text-base
+  "
+>
 
                     {aiText}
 
