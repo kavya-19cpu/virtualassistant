@@ -31,6 +31,7 @@ import {
   FiEdit3
 } from "react-icons/fi";
 
+
 function Home() {
   const {
     userData,
@@ -40,6 +41,7 @@ function Home() {
   } = useContext(userDataContext);
 
   const navigate = useNavigate();
+
 
   // =====================================================
   // STATE
@@ -60,11 +62,9 @@ function Home() {
   const [showAIText, setShowAIText] =
     useState(false);
 
-  // History drawer
   const [showHistory, setShowHistory] =
     useState(false);
 
-  // Profile/settings menu
   const [showProfileMenu, setShowProfileMenu] =
     useState(false);
 
@@ -88,6 +88,7 @@ function Home() {
 
   const [isImageAnalyzing, setIsImageAnalyzing] =
     useState(false);
+
 
   // =====================================================
   // REFS
@@ -117,6 +118,7 @@ function Home() {
   const assistantNameRef =
     useRef("");
 
+
   // =====================================================
   // ASSISTANT NAME
   // =====================================================
@@ -126,6 +128,7 @@ function Home() {
       userData?.assistantName ||
       "Assistant";
   }, [userData?.assistantName]);
+
 
   // =====================================================
   // LOAD HISTORY
@@ -139,6 +142,396 @@ function Home() {
     );
   }, [userData?.history]);
 
+
+  // =====================================================
+  // CLEAN GEMINI RESPONSE
+  //
+  // This makes Gemini responses look clean and natural.
+  //
+  // Removes:
+  // **
+  // $$
+  // LaTeX formatting
+  // Markdown headings
+  // Markdown bullets
+  // Markdown links
+  // code fences
+  // unnecessary braces
+  // excessive blank lines
+  // =====================================================
+
+  const cleanAIResponse = text => {
+    if (!text) {
+      return "";
+    }
+
+    let cleaned = String(text);
+
+
+    // ---------------------------------------------------
+    // Remove code fences
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /```(?:json|javascript|js|python|java|cpp|html|css|jsx|tsx|text)?/gi,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /```/g,
+      ""
+    );
+
+
+    // ---------------------------------------------------
+    // Convert Markdown links
+    //
+    // [Google](https://google.com)
+    // becomes
+    // Google
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+      "$1"
+    );
+
+
+    // ---------------------------------------------------
+    // Remove Markdown bold / italic
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /\*\*\*/g,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /\*\*/g,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /__/g,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /(?<!\*)\*(?!\*)/g,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /(?<!_)_(?!_)/g,
+      ""
+    );
+
+
+    // ---------------------------------------------------
+    // Remove LaTeX delimiters
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /\$\$/g,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /\$/g,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /\\\(/g,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /\\\)/g,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /\\\[/g,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /\\\]/g,
+      ""
+    );
+
+
+    // ---------------------------------------------------
+    // Convert common LaTeX fractions
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /\\(?:dfrac|tfrac|frac)\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g,
+      "$1/$2"
+    );
+
+
+    // ---------------------------------------------------
+    // Convert common LaTeX symbols
+    // ---------------------------------------------------
+
+    const latexSymbols = {
+      "\\pi": "π",
+      "\\theta": "θ",
+      "\\alpha": "α",
+      "\\beta": "β",
+      "\\gamma": "γ",
+      "\\delta": "δ",
+      "\\lambda": "λ",
+      "\\mu": "μ",
+      "\\sigma": "σ",
+      "\\omega": "ω",
+      "\\infty": "∞",
+      "\\pm": "±",
+      "\\times": "×",
+      "\\div": "÷",
+      "\\leq": "≤",
+      "\\geq": "≥",
+      "\\neq": "≠",
+      "\\approx": "≈",
+      "\\cdot": "·",
+      "\\rightarrow": "→",
+      "\\to": "→",
+      "\\degree": "°"
+    };
+
+    Object.entries(latexSymbols).forEach(
+      ([latex, symbol]) => {
+        cleaned = cleaned.replace(
+          new RegExp(
+            latex.replace(
+              /[.*+?^${}()|[\]\\]/g,
+              "\\$&"
+            ),
+            "g"
+          ),
+          symbol
+        );
+      }
+    );
+
+
+    // ---------------------------------------------------
+    // Convert common LaTeX functions
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /\\sin\b/g,
+      "sin"
+    );
+
+    cleaned = cleaned.replace(
+      /\\cos\b/g,
+      "cos"
+    );
+
+    cleaned = cleaned.replace(
+      /\\tan\b/g,
+      "tan"
+    );
+
+    cleaned = cleaned.replace(
+      /\\cot\b/g,
+      "cot"
+    );
+
+    cleaned = cleaned.replace(
+      /\\sec\b/g,
+      "sec"
+    );
+
+    cleaned = cleaned.replace(
+      /\\csc\b/g,
+      "csc"
+    );
+
+    cleaned = cleaned.replace(
+      /\\log\b/g,
+      "log"
+    );
+
+    cleaned = cleaned.replace(
+      /\\ln\b/g,
+      "ln"
+    );
+
+    cleaned = cleaned.replace(
+      /\\sqrt\s*\{([^{}]*)\}/g,
+      "√($1)"
+    );
+
+
+    // ---------------------------------------------------
+    // Remove LaTeX positioning commands
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /\\left/g,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /\\right/g,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /\\text\s*\{([^{}]*)\}/g,
+      "$1"
+    );
+
+    cleaned = cleaned.replace(
+      /\\mathrm\s*\{([^{}]*)\}/g,
+      "$1"
+    );
+
+    cleaned = cleaned.replace(
+      /\\mathbf\s*\{([^{}]*)\}/g,
+      "$1"
+    );
+
+
+    // ---------------------------------------------------
+    // Convert simple superscripts
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /\^\{([^{}]+)\}/g,
+      "^$1"
+    );
+
+
+    // ---------------------------------------------------
+    // Remove remaining LaTeX commands
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /\\[a-zA-Z]+/g,
+      ""
+    );
+
+
+    // ---------------------------------------------------
+    // Remove LaTeX braces
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /[{}]/g,
+      ""
+    );
+
+
+    // ---------------------------------------------------
+    // Remove Markdown headings
+    //
+    // ### Answer
+    // becomes
+    // Answer
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /^\s*#{1,6}\s*/gm,
+      ""
+    );
+
+
+    // ---------------------------------------------------
+    // Convert Markdown bullet points into clean lines
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /^\s*[-*+]\s+/gm,
+      ""
+    );
+
+
+    // ---------------------------------------------------
+    // Remove blockquote marker
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /^\s*>\s?/gm,
+      ""
+    );
+
+
+    // ---------------------------------------------------
+    // Remove Markdown horizontal lines
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /^\s*([-*_]){3,}\s*$/gm,
+      ""
+    );
+
+
+    // ---------------------------------------------------
+    // Remove unnecessary square brackets
+    //
+    // Used mainly by Gemini for formatting.
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /^\s*\[\s*/gm,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /\s*\]\s*$/gm,
+      ""
+    );
+
+
+    // ---------------------------------------------------
+    // Remove unnecessary escaped characters
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /\\([()[\]])/g,
+      "$1"
+    );
+
+
+    // ---------------------------------------------------
+    // Clean spaces before punctuation
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /\s+([,.!?;:])/g,
+      "$1"
+    );
+
+
+    // ---------------------------------------------------
+    // Clean excessive spaces
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /[ \t]+/g,
+      " "
+    );
+
+
+    // ---------------------------------------------------
+    // Clean excessive blank lines
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /\n{3,}/g,
+      "\n\n"
+    );
+
+
+    return cleaned.trim();
+  };
+
+
   // =====================================================
   // SAVE HISTORY
   // =====================================================
@@ -148,6 +541,7 @@ function Home() {
     answer,
     type = "text"
   ) => {
+
     const temporaryItem = {
       _id: `temp-${Date.now()}`,
       command,
@@ -177,6 +571,7 @@ function Home() {
         );
 
       if (response.data?.history) {
+
         setHistoryItems(
           response.data.history
         );
@@ -187,7 +582,9 @@ function Home() {
             response.data.history
         }));
       }
+
     } catch (error) {
+
       console.error(
         "HISTORY SAVE ERROR:",
         error.response?.data ||
@@ -196,16 +593,19 @@ function Home() {
     }
   };
 
+
   // =====================================================
   // DELETE ONE HISTORY ITEM
   // =====================================================
 
   const deleteHistory = async historyId => {
+
     if (!historyId) {
       return;
     }
 
     try {
+
       const response =
         await axios.delete(
           `${serverUrl}/api/user/history/${historyId}`,
@@ -225,7 +625,9 @@ function Home() {
         ...previous,
         history: updatedHistory
       }));
+
     } catch (error) {
+
       console.error(
         "DELETE HISTORY ERROR:",
         error.response?.data ||
@@ -234,11 +636,13 @@ function Home() {
     }
   };
 
+
   // =====================================================
   // CLEAR ALL HISTORY
   // =====================================================
 
   const clearHistory = async () => {
+
     if (historyItems.length === 0) {
       return;
     }
@@ -253,6 +657,7 @@ function Home() {
     }
 
     try {
+
       await axios.delete(
         `${serverUrl}/api/user/history`,
         {
@@ -266,7 +671,9 @@ function Home() {
         ...previous,
         history: []
       }));
+
     } catch (error) {
+
       console.error(
         "CLEAR HISTORY ERROR:",
         error.response?.data ||
@@ -275,16 +682,13 @@ function Home() {
     }
   };
 
+
   // =====================================================
   // SPEECH
-  //
-  // IMPORTANT:
-  // Long Gemini answers are divided into smaller chunks.
-  // This prevents Chrome SpeechSynthesis from stopping
-  // halfway through a long answer.
   // =====================================================
 
   const speak = text => {
+
     if (!text) {
       return;
     }
@@ -296,16 +700,15 @@ function Home() {
       return;
     }
 
-    // Stop previous speech
     window.speechSynthesis.cancel();
 
     clearTimeout(
       speechTimeoutRef.current
     );
 
-    // ---------------------------------------------------
-    // Split response into sentences
-    // ---------------------------------------------------
+
+    // Split long answers into smaller
+    // sentences so Chrome doesn't stop early.
 
     const sentences =
       speechText.match(
@@ -316,7 +719,9 @@ function Home() {
 
     let currentChunk = "";
 
+
     sentences.forEach(sentence => {
+
       const cleanSentence =
         sentence.trim();
 
@@ -328,8 +733,8 @@ function Home() {
         `${currentChunk} ${cleanSentence}`
           .trim();
 
-      // Keep each utterance reasonably small.
       if (combined.length > 180) {
+
         if (currentChunk.trim()) {
           chunks.push(
             currentChunk.trim()
@@ -338,21 +743,27 @@ function Home() {
 
         currentChunk =
           cleanSentence;
+
       } else {
+
         currentChunk =
           combined;
       }
     });
 
+
     if (currentChunk.trim()) {
+
       chunks.push(
         currentChunk.trim()
       );
     }
 
+
     if (chunks.length === 0) {
       chunks.push(speechText);
     }
+
 
     let currentIndex = 0;
 
@@ -360,25 +771,26 @@ function Home() {
 
     setIsAIActive(true);
 
-    // ---------------------------------------------------
-    // Speak each chunk one after another
-    // ---------------------------------------------------
 
     const speakNextChunk = () => {
+
       if (
         currentIndex >=
         chunks.length
       ) {
+
         speakingRef.current =
           false;
 
         setIsAIActive(false);
+
 
         if (
           listeningRef.current &&
           !processingRef.current &&
           recognitionRef.current
         ) {
+
           try {
             recognitionRef.current.start();
           } catch {}
@@ -387,27 +799,30 @@ function Home() {
         return;
       }
 
-      const currentText =
-        chunks[currentIndex];
 
       const utterance =
         new SpeechSynthesisUtterance(
-          currentText
+          chunks[currentIndex]
         );
+
 
       utterance.rate = 1;
       utterance.pitch = 1;
       utterance.volume = 1;
       utterance.lang = "en-US";
 
+
       utterance.onstart = () => {
+
         speakingRef.current =
           true;
 
         setIsAIActive(true);
       };
 
+
       utterance.onend = () => {
+
         currentIndex++;
 
         speechTimeoutRef.current =
@@ -416,7 +831,9 @@ function Home() {
           }, 80);
       };
 
+
       utterance.onerror = error => {
+
         console.error(
           "SPEECH SYNTHESIS ERROR:",
           error
@@ -430,19 +847,23 @@ function Home() {
           }, 80);
       };
 
+
       window.speechSynthesis.speak(
         utterance
       );
     };
 
+
     speakNextChunk();
   };
+
 
   // =====================================================
   // OPEN URL
   // =====================================================
 
   const openUrl = url => {
+
     if (!url) {
       return;
     }
@@ -454,11 +875,13 @@ function Home() {
     );
   };
 
+
   // =====================================================
   // GOOGLE SEARCH
   // =====================================================
 
   const googleSearch = query => {
+
     if (!query?.trim()) {
       return;
     }
@@ -470,11 +893,13 @@ function Home() {
     );
   };
 
+
   // =====================================================
   // YOUTUBE SEARCH
   // =====================================================
 
   const youtubeSearch = query => {
+
     if (!query?.trim()) {
       return;
     }
@@ -486,11 +911,13 @@ function Home() {
     );
   };
 
+
   // =====================================================
   // DIRECT WEBSITES
   // =====================================================
 
   const websites = {
+
     google:
       "https://www.google.com",
 
@@ -552,6 +979,7 @@ function Home() {
       "https://web.telegram.org"
   };
 
+
   // =====================================================
   // WEBSITE SEARCH URL
   // =====================================================
@@ -560,12 +988,14 @@ function Home() {
     site,
     query
   ) => {
+
     const encodedQuery =
       encodeURIComponent(
         query.trim()
       );
 
     switch (site) {
+
       case "google":
         return `https://www.google.com/search?q=${encodedQuery}`;
 
@@ -608,26 +1038,14 @@ function Home() {
     }
   };
 
+
   // =====================================================
   // EXTRACT SEARCH COMMAND
-  //
-  // Examples:
-  //
-  // search photosynthesis on Google
-  // -> site: google
-  // -> query: photosynthesis
-  //
-  // search Sun Savaria on YouTube
-  // -> site: youtube
-  // -> query: Sun Savaria
-  //
-  // open YouTube and search Sun Savaria
-  // -> site: youtube
-  // -> query: Sun Savaria
   // =====================================================
 
   const extractSearchCommand =
     command => {
+
       if (!command) {
         return null;
       }
@@ -639,8 +1057,9 @@ function Home() {
 
       let match;
 
+
       // -------------------------------------------------
-      // SEARCH QUERY ON SITE
+      // search photosynthesis on Google
       // -------------------------------------------------
 
       match = text.match(
@@ -648,18 +1067,21 @@ function Home() {
       );
 
       if (match) {
+
         return {
-          site: match[2]
-            .trim()
-            .toLowerCase(),
+          site:
+            match[2]
+              .trim()
+              .toLowerCase(),
 
           query:
             match[1].trim()
         };
       }
 
+
       // -------------------------------------------------
-      // SEARCH SITE FOR QUERY
+      // search Google for photosynthesis
       // -------------------------------------------------
 
       match = text.match(
@@ -667,18 +1089,21 @@ function Home() {
       );
 
       if (match) {
+
         return {
-          site: match[1]
-            .trim()
-            .toLowerCase(),
+          site:
+            match[1]
+              .trim()
+              .toLowerCase(),
 
           query:
             match[2].trim()
         };
       }
 
+
       // -------------------------------------------------
-      // OPEN SITE AND SEARCH QUERY
+      // open YouTube and search Sun Savaria
       // -------------------------------------------------
 
       match = text.match(
@@ -686,18 +1111,22 @@ function Home() {
       );
 
       if (match) {
+
         return {
-          site: match[1]
-            .trim()
-            .toLowerCase(),
+          site:
+            match[1]
+              .trim()
+              .toLowerCase(),
 
           query:
             match[2].trim()
         };
       }
 
+
       return null;
     };
+
 
   // =====================================================
   // YOUTUBE QUERY
@@ -705,6 +1134,7 @@ function Home() {
 
   const getYouTubeQuery =
     command => {
+
       const result =
         extractSearchCommand(
           command
@@ -720,6 +1150,7 @@ function Home() {
       return "";
     };
 
+
   // =====================================================
   // PROCESS COMMAND
   // =====================================================
@@ -730,12 +1161,14 @@ function Home() {
       type = "text",
       shouldSpeak = false
     ) => {
+
       const cleanedCommand =
         command.trim();
 
       if (!cleanedCommand) {
         return;
       }
+
 
       setUserText(
         cleanedCommand
@@ -752,21 +1185,26 @@ function Home() {
       processingRef.current =
         true;
 
+
       try {
-        // ===============================================
-        // 1. EXPLICIT SEARCH COMMAND
-        // ===============================================
+
+        // =================================================
+        // 1. EXPLICIT SEARCH
+        // =================================================
 
         const searchCommand =
           extractSearchCommand(
             cleanedCommand
           );
 
+
         if (searchCommand) {
+
           const {
             site,
             query
           } = searchCommand;
+
 
           const siteName =
             site === "x"
@@ -776,18 +1214,22 @@ function Home() {
                   .toUpperCase() +
                 site.slice(1);
 
+
           const answer =
             `Searching ${siteName} for ${query}.`;
+
 
           setAiText(answer);
 
           setShowAIText(true);
+
 
           await addHistory(
             cleanedCommand,
             answer,
             type
           );
+
 
           const searchUrl =
             getWebsiteSearchUrl(
@@ -795,20 +1237,25 @@ function Home() {
               query
             );
 
+
           if (searchUrl) {
+
             openUrl(searchUrl);
+
           } else if (
             site === "youtube"
           ) {
+
             youtubeSearch(query);
+
           } else if (
             site === "google"
           ) {
+
             googleSearch(query);
           }
 
-          // Voice -> speak
-          // Typed -> don't speak
+
           if (shouldSpeak) {
             speak(answer);
           }
@@ -816,28 +1263,31 @@ function Home() {
           return;
         }
 
-        // ===============================================
+
+        // =================================================
         // 2. SIMPLE GOOGLE SEARCH
-        //
-        // search photosynthesis
-        // google photosynthesis
-        // ===============================================
+        // =================================================
 
         const googleSearchMatch =
           cleanedCommand.match(
             /^(?:search|google)\s+(.+)$/i
           );
 
+
         if (googleSearchMatch) {
+
           const query =
             googleSearchMatch[1].trim();
+
 
           const answer =
             `Searching Google for ${query}.`;
 
+
           setAiText(answer);
 
           setShowAIText(true);
+
 
           await addHistory(
             cleanedCommand,
@@ -845,7 +1295,9 @@ function Home() {
             type
           );
 
+
           googleSearch(query);
+
 
           if (shouldSpeak) {
             speak(answer);
@@ -854,25 +1306,27 @@ function Home() {
           return;
         }
 
-        // ===============================================
+
+        // =================================================
         // 3. SIMPLE YOUTUBE SEARCH
-        //
-        // youtube mitochondria
-        // play mitochondria on youtube
-        // ===============================================
+        // =================================================
 
         const youtubeQuery =
           getYouTubeQuery(
             cleanedCommand
           );
 
+
         if (youtubeQuery) {
+
           const answer =
             `Searching YouTube for ${youtubeQuery}.`;
+
 
           setAiText(answer);
 
           setShowAIText(true);
+
 
           await addHistory(
             cleanedCommand,
@@ -880,9 +1334,11 @@ function Home() {
             type
           );
 
+
           youtubeSearch(
             youtubeQuery
           );
+
 
           if (shouldSpeak) {
             speak(answer);
@@ -891,16 +1347,19 @@ function Home() {
           return;
         }
 
-        // ===============================================
+
+        // =================================================
         // 4. DIRECT WEBSITE OPEN
-        // ===============================================
+        // =================================================
 
         const directMatch =
           cleanedCommand.match(
             /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
           );
 
+
         if (directMatch) {
+
           const site =
             directMatch[1]
               .trim()
@@ -910,13 +1369,17 @@ function Home() {
                 ""
               );
 
+
           if (websites[site]) {
+
             const answer =
               `Opening ${site}.`;
+
 
             setAiText(answer);
 
             setShowAIText(true);
+
 
             await addHistory(
               cleanedCommand,
@@ -924,9 +1387,11 @@ function Home() {
               type
             );
 
+
             openUrl(
               websites[site]
             );
+
 
             if (shouldSpeak) {
               speak(answer);
@@ -936,26 +1401,30 @@ function Home() {
           }
         }
 
-        // ===============================================
+
+        // =================================================
         // 5. GEMINI
-        // ===============================================
+        // =================================================
 
         const result =
           await getGeminiResponse(
             cleanedCommand
           );
 
+
         let parsedResult =
           result;
 
-        // -----------------------------------------------
+
+        // -------------------------------------------------
         // Parse Gemini JSON
-        // -----------------------------------------------
+        // -------------------------------------------------
 
         if (
           typeof result ===
           "string"
         ) {
+
           const cleanResult =
             result
               .replace(
@@ -968,12 +1437,16 @@ function Home() {
               )
               .trim();
 
+
           try {
+
             parsedResult =
               JSON.parse(
                 cleanResult
               );
+
           } catch {
+
             parsedResult = {
               type: "general",
               response:
@@ -982,50 +1455,59 @@ function Home() {
           }
         }
 
-        // ===============================================
-        // IMPORTANT:
-        // Get the COMPLETE Gemini response.
-        // ===============================================
 
-        const response =
+        // =================================================
+        // GET COMPLETE GEMINI RESPONSE
+        // =================================================
+
+        const rawResponse =
           parsedResult?.response ||
           parsedResult?.answer ||
           parsedResult?.text ||
           "Sorry, I could not understand that.";
 
-        // ===============================================
+
+        // =================================================
+        // CLEAN RESPONSE
+        //
+        // THIS IS THE MAIN FIX
+        // =================================================
+
+        const response =
+          cleanAIResponse(
+            rawResponse
+          );
+
+
+        // =================================================
         // GEMINI GOOGLE OPEN
-        // ===============================================
+        // =================================================
 
         if (
           parsedResult?.type ===
           "google_open"
         ) {
+
           openUrl(
             "https://www.google.com"
           );
         }
 
-        // ===============================================
+
+        // =================================================
         // GEMINI GOOGLE SEARCH
-        // ===============================================
+        // =================================================
 
         else if (
           parsedResult?.type ===
           "google_search"
         ) {
-          /*
-            First try to extract the actual query
-            from the user's command.
-
-            This prevents the entire command from
-            being sent to Google.
-          */
 
           const extractedSearch =
             extractSearchCommand(
               cleanedCommand
             );
+
 
           const query =
             extractedSearch?.site ===
@@ -1033,27 +1515,31 @@ function Home() {
               ? extractedSearch.query
               : parsedResult?.query;
 
+
           if (query?.trim()) {
             googleSearch(query);
           }
         }
 
-        // ===============================================
+
+        // =================================================
         // GEMINI YOUTUBE OPEN
-        // ===============================================
+        // =================================================
 
         else if (
           parsedResult?.type ===
           "youtube_open"
         ) {
+
           openUrl(
             "https://www.youtube.com"
           );
         }
 
-        // ===============================================
+
+        // =================================================
         // GEMINI YOUTUBE SEARCH / PLAY
-        // ===============================================
+        // =================================================
 
         else if (
           parsedResult?.type ===
@@ -1061,81 +1547,78 @@ function Home() {
           parsedResult?.type ===
             "youtube_play"
         ) {
-          /*
-            IMPORTANT:
-            Never use the complete command as a
-            fallback search query.
-
-            Example:
-
-            User:
-            open YouTube and search Sun Savaria
-
-            Search query:
-            Sun Savaria
-
-            NOT:
-            open YouTube and search Sun Savaria
-          */
 
           const extractedQuery =
             getYouTubeQuery(
               cleanedCommand
             );
 
+
           const query =
             extractedQuery ||
             parsedResult?.query;
 
+
           if (query?.trim()) {
+
             youtubeSearch(
               query
             );
           }
         }
 
-        // ===============================================
+
+        // =================================================
         // CALCULATOR
-        // ===============================================
+        // =================================================
 
         else if (
           parsedResult?.type ===
           "calculator_open"
         ) {
+
           openUrl(
             "https://www.google.com/search?q=calculator"
           );
         }
 
-        // ===============================================
-        // SHOW COMPLETE ANSWER
-        // ===============================================
+
+        // =================================================
+        // SHOW CLEAN COMPLETE ANSWER
+        // =================================================
 
         setAiText(response);
 
         setShowAIText(true);
 
+
+        // Save CLEAN response to history
         await addHistory(
           cleanedCommand,
           response,
           type
         );
 
-        // ===============================================
+
+        // =================================================
         // ONLY VOICE INPUT SPEAKS
-        // ===============================================
+        // =================================================
 
         if (shouldSpeak) {
           speak(response);
         }
+
       } catch (error) {
+
         console.error(
           "COMMAND ERROR:",
           error
         );
 
+
         const errorMessage =
           "Sorry, I could not complete that request right now.";
+
 
         setAiText(
           errorMessage
@@ -1143,21 +1626,21 @@ function Home() {
 
         setShowAIText(true);
 
+
         if (shouldSpeak) {
+
           speak(
             errorMessage
           );
         }
+
       } finally {
+
         processingRef.current =
           false;
 
         setIsSending(false);
 
-        /*
-          Do not cancel speech here.
-          Speech is handled independently by speak().
-        */
 
         if (
           !speakingRef.current
@@ -1167,23 +1650,25 @@ function Home() {
       }
     };
 
+
   // =====================================================
   // SEND TYPED MESSAGE
-  //
-  // IMPORTANT:
-  // shouldSpeak = false
-  //
-  // Therefore typed questions are NEVER spoken.
   // =====================================================
 
   const handleSend = async e => {
+
     e?.preventDefault();
 
+
     // Image mode
+
     if (selectedImage) {
+
       await analyzeImage();
+
       return;
     }
+
 
     if (
       !typedText.trim() ||
@@ -1192,14 +1677,15 @@ function Home() {
       return;
     }
 
+
     const command =
       typedText.trim();
 
+
     setTypedText("");
 
-    // ===============================================
-    // TYPED INPUT = SILENT
-    // ===============================================
+
+    // Typed question = NEVER SPEAK
 
     await processCommand(
       command,
@@ -1208,23 +1694,28 @@ function Home() {
     );
   };
 
+
   // =====================================================
   // IMAGE SELECT
   // =====================================================
 
   const handleImageSelect = e => {
+
     const file =
       e.target.files?.[0];
+
 
     if (!file) {
       return;
     }
+
 
     if (
       !file.type.startsWith(
         "image/"
       )
     ) {
+
       alert(
         "Please select an image file."
       );
@@ -1232,10 +1723,12 @@ function Home() {
       return;
     }
 
+
     if (
       file.size >
       10 * 1024 * 1024
     ) {
+
       alert(
         "Image must be smaller than 10 MB."
       );
@@ -1243,11 +1736,14 @@ function Home() {
       return;
     }
 
+
     if (imagePreview) {
+
       URL.revokeObjectURL(
         imagePreview
       );
     }
+
 
     setSelectedImage(file);
 
@@ -1256,32 +1752,40 @@ function Home() {
     );
   };
 
+
   // =====================================================
   // REMOVE IMAGE
   // =====================================================
 
   const removeImage = () => {
+
     if (imagePreview) {
+
       URL.revokeObjectURL(
         imagePreview
       );
     }
 
+
     setSelectedImage(null);
 
     setImagePreview("");
 
+
     if (imageInputRef.current) {
+
       imageInputRef.current.value =
         "";
     }
   };
+
 
   // =====================================================
   // IMAGE ANALYSIS
   // =====================================================
 
   const analyzeImage = async () => {
+
     if (
       !selectedImage ||
       isImageAnalyzing
@@ -1289,9 +1793,11 @@ function Home() {
       return;
     }
 
+
     const question =
       typedText.trim() ||
       "Analyze this image and explain what you see.";
+
 
     setIsImageAnalyzing(true);
 
@@ -1303,19 +1809,24 @@ function Home() {
 
     setIsAIActive(true);
 
+
     try {
+
       const formData =
         new FormData();
+
 
       formData.append(
         "image",
         selectedImage
       );
 
+
       formData.append(
         "command",
         question
       );
+
 
       const response =
         await axios.post(
@@ -1326,14 +1837,25 @@ function Home() {
           }
         );
 
-      const answer =
+
+      const rawAnswer =
         response.data?.response ||
         response.data?.answer ||
         "I could not analyze the image.";
 
+
+      // Clean image analysis too
+
+      const answer =
+        cleanAIResponse(
+          rawAnswer
+        );
+
+
       setAiText(answer);
 
       setShowAIText(true);
+
 
       await addHistory(
         question,
@@ -1341,51 +1863,63 @@ function Home() {
         "image"
       );
 
-      /*
-        Image questions typed into the text box
-        should remain silent.
-      */
+
+      // Image typed question = silent
 
       removeImage();
 
       setTypedText("");
+
     } catch (error) {
+
       console.error(
         "IMAGE ANALYSIS ERROR:",
         error.response?.data ||
           error.message
       );
 
+
       const errorMessage =
         error.response?.data?.message ||
         "Unable to analyze the image.";
 
+
       setAiText(
-        errorMessage
+        cleanAIResponse(
+          errorMessage
+        )
       );
 
       setShowAIText(true);
+
     } finally {
+
       setIsImageAnalyzing(false);
+
 
       if (
         !speakingRef.current
       ) {
+
         setIsAIActive(false);
       }
     }
   };
+
 
   // =====================================================
   // SPEECH RECOGNITION
   // =====================================================
 
   useEffect(() => {
+
     const SpeechRecognition =
       window.SpeechRecognition ||
       window.webkitSpeechRecognition;
 
+
     if (!SpeechRecognition) {
+
       console.warn(
         "Speech recognition is not supported."
       );
@@ -1393,8 +1927,10 @@ function Home() {
       return;
     }
 
+
     const recognition =
       new SpeechRecognition();
+
 
     recognition.continuous = true;
 
@@ -1407,56 +1943,63 @@ function Home() {
     recognition.maxAlternatives =
       1;
 
+
     recognitionRef.current =
       recognition;
 
-    // ===============================================
+
+    // ===================================================
     // START
-    // ===============================================
+    // ===================================================
 
     recognition.onstart = () => {
+
       listeningRef.current =
         true;
 
       setIsListening(true);
     };
 
-    // ===============================================
+
+    // ===================================================
     // RESULT
-    // ===============================================
+    // ===================================================
 
     recognition.onresult =
       async event => {
+
         if (
           processingRef.current
         ) {
           return;
         }
 
+
         const lastResult =
           event.results[
             event.results.length - 1
           ];
 
+
         if (!lastResult) {
           return;
         }
+
 
         const transcript =
           lastResult[0]
             ?.transcript
             ?.trim();
 
+
         if (!transcript) {
           return;
         }
 
+
         const lowerTranscript =
           transcript.toLowerCase();
 
-        // =============================================
-        // STOP COMMANDS
-        // =============================================
 
         const stopCommands = [
           "thank you",
@@ -1468,27 +2011,25 @@ function Home() {
           "cancel"
         ];
 
+
         if (
           stopCommands.includes(
             lowerTranscript
           )
         ) {
+
           stopListening();
 
           return;
         }
 
+
         setUserText(
           transcript
         );
 
-        /*
-          IMPORTANT:
-          Voice input = true
 
-          Therefore the complete answer will
-          be spoken by speak().
-        */
+        // Voice question = speak complete answer
 
         await processCommand(
           transcript,
@@ -1497,43 +2038,54 @@ function Home() {
         );
       };
 
-    // ===============================================
+
+    // ===================================================
     // END
-    // ===============================================
+    // ===================================================
 
     recognition.onend = () => {
+
       if (
         listeningRef.current &&
         !speakingRef.current &&
         !processingRef.current
       ) {
+
         clearTimeout(
           restartTimeoutRef.current
         );
 
+
         restartTimeoutRef.current =
           setTimeout(() => {
+
             try {
               recognition.start();
             } catch {}
+
           }, 400);
+
       } else if (
         !listeningRef.current
       ) {
+
         setIsListening(false);
       }
     };
 
-    // ===============================================
+
+    // ===================================================
     // ERROR
-    // ===============================================
+    // ===================================================
 
     recognition.onerror =
       event => {
+
         console.error(
           "Speech recognition error:",
           event.error
         );
+
 
         if (
           event.error ===
@@ -1541,6 +2093,7 @@ function Home() {
           event.error ===
             "audio-capture"
         ) {
+
           listeningRef.current =
             false;
 
@@ -1548,40 +2101,50 @@ function Home() {
         }
       };
 
+
     return () => {
+
       listeningRef.current =
         false;
 
       processingRef.current =
         false;
 
+
       clearTimeout(
         restartTimeoutRef.current
       );
+
 
       clearTimeout(
         speechTimeoutRef.current
       );
 
+
       try {
         recognition.stop();
       } catch {}
+
 
       window.speechSynthesis.cancel();
 
       recognitionRef.current =
         null;
     };
+
   }, [getGeminiResponse]);
+
 
   // =====================================================
   // START LISTENING
   // =====================================================
 
   const startListening = () => {
+
     if (
       !recognitionRef.current
     ) {
+
       alert(
         "Speech recognition is not supported in this browser."
       );
@@ -1589,7 +2152,9 @@ function Home() {
       return;
     }
 
+
     try {
+
       window.speechSynthesis.cancel();
 
       speakingRef.current =
@@ -1601,35 +2166,43 @@ function Home() {
       setIsListening(true);
 
       recognitionRef.current.start();
+
     } catch {
+
       console.log(
         "Microphone already running."
       );
     }
   };
 
+
   // =====================================================
   // STOP LISTENING
   // =====================================================
 
   const stopListening = () => {
+
     listeningRef.current =
       false;
 
     setIsListening(false);
 
+
     clearTimeout(
       restartTimeoutRef.current
     );
 
+
     if (
       recognitionRef.current
     ) {
+
       try {
         recognitionRef.current.stop();
       } catch {}
     }
   };
+
 
   // =====================================================
   // LOGOUT
@@ -1637,7 +2210,9 @@ function Home() {
 
   const handleLogout =
     async () => {
+
       try {
+
         await axios.post(
           `${serverUrl}/api/auth/logout`,
           {},
@@ -1645,17 +2220,21 @@ function Home() {
             withCredentials: true
           }
         );
+
       } catch (error) {
+
         console.error(
           "LOGOUT ERROR:",
           error
         );
       }
 
+
       setUserData(null);
 
       navigate("/signin");
     };
+
 
   // =====================================================
   // FILTER HISTORY
@@ -1663,6 +2242,7 @@ function Home() {
 
   const filteredHistory =
     historyItems.filter(item => {
+
       const command =
         item?.command ||
         item?.text ||
@@ -1672,14 +2252,17 @@ function Home() {
       const answer =
         item?.answer || "";
 
+
       const search =
         historySearch
           .toLowerCase()
           .trim();
 
+
       if (!search) {
         return true;
       }
+
 
       return (
         command
@@ -1691,34 +2274,42 @@ function Home() {
       );
     });
 
+
   // =====================================================
   // OPEN HISTORY
   // =====================================================
 
   const openHistory = item => {
+
     const command =
       item?.command || "";
 
     const answer =
       item?.answer || "";
 
+
     setUserText(command);
 
-    setAiText(answer);
+    setAiText(
+      cleanAIResponse(answer)
+    );
 
     setShowAIText(true);
 
     setShowHistory(false);
   };
 
+
   // =====================================================
   // FORMAT DATE
   // =====================================================
 
   const formatDate = date => {
+
     if (!date) {
       return "";
     }
+
 
     return new Date(
       date
@@ -1734,11 +2325,13 @@ function Home() {
     );
   };
 
+
   // =====================================================
   // UI
   // =====================================================
 
   return (
+
     <div
       className="
         relative
@@ -1749,6 +2342,7 @@ function Home() {
         text-white
       "
     >
+
       {/* =================================================
           HEADER
       ================================================= */}
@@ -1770,6 +2364,7 @@ function Home() {
           md:px-6
         "
       >
+
         {/* LEFT SIDE */}
 
         <div
@@ -1781,10 +2376,12 @@ function Home() {
             sm:gap-3
           "
         >
+
           {/* HAMBURGER */}
 
           <button
             onClick={() => {
+
               setShowHistory(
                 previous =>
                   !previous
@@ -1816,12 +2413,15 @@ function Home() {
                 : "Open history"
             }
           >
+
             {showHistory ? (
               <IoMdClose size={22} />
             ) : (
               <IoMdMenu size={22} />
             )}
+
           </button>
+
 
           {/* ASSISTANT IMAGE */}
 
@@ -1844,9 +2444,11 @@ function Home() {
             "
           />
 
+
           {/* ASSISTANT NAME */}
 
           <div className="min-w-0">
+
             <p
               className="
                 truncate
@@ -1859,6 +2461,7 @@ function Home() {
                 "Assistant"}
             </p>
 
+
             <p
               className="
                 hidden
@@ -1869,8 +2472,11 @@ function Home() {
             >
               Virtual Assistant
             </p>
+
           </div>
+
         </div>
+
 
         {/* RIGHT SIDE */}
 
@@ -1882,6 +2488,7 @@ function Home() {
             gap-2
           "
         >
+
           {/* DESKTOP CUSTOMIZE */}
 
           <button
@@ -1907,10 +2514,12 @@ function Home() {
             Customize
           </button>
 
+
           {/* PROFILE BUTTON */}
 
           <button
             onClick={() => {
+
               setShowProfileMenu(
                 previous =>
                   !previous
@@ -1939,7 +2548,9 @@ function Home() {
             "
             title="Account and settings"
           >
+
             {userData?.assistantImage ? (
+
               <img
                 src={
                   userData.assistantImage
@@ -1951,14 +2562,20 @@ function Home() {
                   object-cover
                 "
               />
+
             ) : (
+
               <FiSettings size={19} />
+
             )}
+
           </button>
+
 
           {/* PROFILE MENU */}
 
           {showProfileMenu && (
+
             <div
               className="
                 absolute
@@ -1977,6 +2594,7 @@ function Home() {
                 shadow-black/50
               "
             >
+
               {/* USER INFO */}
 
               <div
@@ -1988,6 +2606,7 @@ function Home() {
                   py-3
                 "
               >
+
                 <p
                   className="
                     truncate
@@ -2000,6 +2619,7 @@ function Home() {
                     "User"}
                 </p>
 
+
                 <p
                   className="
                     truncate
@@ -2010,12 +2630,15 @@ function Home() {
                   {userData?.email ||
                     "Account"}
                 </p>
+
               </div>
+
 
               {/* CUSTOMIZE */}
 
               <button
                 onClick={() => {
+
                   navigate(
                     "/customize2"
                   );
@@ -2040,6 +2663,7 @@ function Home() {
                   hover:text-white
                 "
               >
+
                 <FiEdit3
                   size={17}
                   className="text-cyan-400"
@@ -2048,12 +2672,15 @@ function Home() {
                 <span>
                   Customize Assistant
                 </span>
+
               </button>
+
 
               {/* CLEAR HISTORY */}
 
               <button
                 onClick={async () => {
+
                   await clearHistory();
 
                   setShowProfileMenu(
@@ -2082,6 +2709,7 @@ function Home() {
                   disabled:opacity-40
                 "
               >
+
                 <FiTrash2
                   size={17}
                 />
@@ -2089,12 +2717,15 @@ function Home() {
                 <span>
                   Clear All History
                 </span>
+
               </button>
+
 
               {/* CHANGE PASSWORD */}
 
               <button
                 onClick={() => {
+
                   navigate(
                     "/change-password"
                   );
@@ -2119,6 +2750,7 @@ function Home() {
                   hover:text-white
                 "
               >
+
                 <FiLock
                   size={17}
                   className="text-cyan-400"
@@ -2127,7 +2759,9 @@ function Home() {
                 <span>
                   Change Password
                 </span>
+
               </button>
+
 
               {/* LOGOUT */}
 
@@ -2138,6 +2772,7 @@ function Home() {
                   border-white/10
                 "
               />
+
 
               <button
                 onClick={
@@ -2158,23 +2793,31 @@ function Home() {
                   hover:bg-red-400/10
                 "
               >
+
                 <FiLogOut size={17} />
 
                 <span>
                   Logout
                 </span>
+
               </button>
+
             </div>
           )}
+
         </div>
+
       </header>
+
 
       {/* =================================================
           HISTORY DRAWER
       ================================================= */}
 
       {showHistory && (
+
         <>
+
           {/* OVERLAY */}
 
           <div
@@ -2189,6 +2832,7 @@ function Home() {
               backdrop-blur-sm
             "
           />
+
 
           {/* DRAWER */}
 
@@ -2209,6 +2853,7 @@ function Home() {
               shadow-2xl
             "
           >
+
             {/* HEADER */}
 
             <div
@@ -2223,7 +2868,9 @@ function Home() {
                 px-4
               "
             >
+
               <div>
+
                 <h2
                   className="
                     font-semibold
@@ -2233,6 +2880,7 @@ function Home() {
                   History
                 </h2>
 
+
                 <p
                   className="
                     text-xs
@@ -2241,7 +2889,9 @@ function Home() {
                 >
                   Your previous conversations
                 </p>
+
               </div>
+
 
               <button
                 onClick={() =>
@@ -2263,7 +2913,9 @@ function Home() {
                   size={21}
                 />
               </button>
+
             </div>
+
 
             {/* SEARCH */}
 
@@ -2275,7 +2927,9 @@ function Home() {
                 p-4
               "
             >
+
               <div className="relative">
+
                 <FiSearch
                   className="
                     absolute
@@ -2286,6 +2940,7 @@ function Home() {
                   "
                   size={16}
                 />
+
 
                 <input
                   value={
@@ -2313,8 +2968,11 @@ function Home() {
                     focus:border-cyan-400/30
                   "
                 />
+
               </div>
+
             </div>
+
 
             {/* HISTORY LIST */}
 
@@ -2325,10 +2983,12 @@ function Home() {
                 p-3
               "
             >
-              {filteredHistory.length >
-              0 ? (
+
+              {filteredHistory.length > 0 ? (
+
                 filteredHistory.map(
                   item => (
+
                     <div
                       key={
                         item._id ||
@@ -2347,6 +3007,7 @@ function Home() {
                         hover:bg-white/4
                       "
                     >
+
                       <button
                         onClick={() =>
                           openHistory(
@@ -2358,6 +3019,7 @@ function Home() {
                           text-left
                         "
                       >
+
                         <div
                           className="
                             mb-2
@@ -2367,6 +3029,7 @@ function Home() {
                             gap-2
                           "
                         >
+
                           <span
                             className="
                               rounded-full
@@ -2383,6 +3046,7 @@ function Home() {
                               "text"}
                           </span>
 
+
                           <span
                             className="
                               flex
@@ -2393,6 +3057,7 @@ function Home() {
                               text-gray-600
                             "
                           >
+
                             <FiClock
                               size={10}
                             />
@@ -2402,8 +3067,11 @@ function Home() {
                                 item.createdAt
                               )}
                             </span>
+
                           </span>
+
                         </div>
+
 
                         <p
                           className="
@@ -2416,7 +3084,9 @@ function Home() {
                           {item.command}
                         </p>
 
+
                         {item.answer && (
+
                           <p
                             className="
                               mt-2
@@ -2429,8 +3099,11 @@ function Home() {
                           >
                             {item.answer}
                           </p>
+
                         )}
+
                       </button>
+
 
                       {/* DELETE ONE */}
 
@@ -2440,6 +3113,7 @@ function Home() {
                         ).startsWith(
                           "temp-"
                         ) && (
+
                           <button
                             onClick={() =>
                               deleteHistory(
@@ -2457,17 +3131,24 @@ function Home() {
                               hover:text-red-400
                             "
                           >
+
                             <FiTrash2
                               size={12}
                             />
 
                             Delete
+
                           </button>
+
                         )}
+
                     </div>
+
                   )
                 )
+
               ) : (
+
                 <div
                   className="
                     flex
@@ -2479,6 +3160,7 @@ function Home() {
                     text-center
                   "
                 >
+
                   <div
                     className="
                       mb-3
@@ -2497,6 +3179,7 @@ function Home() {
                     ✦
                   </div>
 
+
                   <p
                     className="
                       text-sm
@@ -2505,12 +3188,18 @@ function Home() {
                   >
                     No history found
                   </p>
+
                 </div>
+
               )}
+
             </div>
+
           </aside>
+
         </>
       )}
+
 
       {/* =================================================
           MAIN
@@ -2523,6 +3212,7 @@ function Home() {
           w-full
         "
       >
+
         <section
           className="
             flex
@@ -2538,6 +3228,7 @@ function Home() {
             sm:py-6
           "
         >
+
           {/* =================================================
               ASSISTANT CONTENT
           ================================================= */}
@@ -2556,6 +3247,7 @@ function Home() {
               px-1
             "
           >
+
             {/* ASSISTANT IMAGE */}
 
             <div
@@ -2572,6 +3264,7 @@ function Home() {
                 }
               `}
             >
+
               <img
                 src={
                   userData?.assistantImage ||
@@ -2591,7 +3284,9 @@ function Home() {
                   md:w-40
                 "
               />
+
             </div>
+
 
             {/* NAME */}
 
@@ -2610,6 +3305,7 @@ function Home() {
               {userData?.assistantName ||
                 "Assistant"}
             </h1>
+
 
             {/* STATUS */}
 
@@ -2631,9 +3327,11 @@ function Home() {
                 : "How can I help you?"}
             </p>
 
+
             {/* USER QUESTION */}
 
             {userText && (
+
               <div
                 className="
                   mt-6
@@ -2655,12 +3353,15 @@ function Home() {
               >
                 {userText}
               </div>
+
             )}
+
 
             {/* AI ANSWER */}
 
             {showAIText &&
               aiText && (
+
                 <div
                   className="
                     mt-4
@@ -2673,9 +3374,9 @@ function Home() {
                     bg-white/3
                     px-4
                     py-4
-                    text-center
+                    text-left
                     text-sm
-                    leading-relaxed
+                    leading-7
                     whitespace-pre-wrap
                     text-gray-300
                     sm:px-5
@@ -2683,14 +3384,18 @@ function Home() {
                 >
                   {aiText}
                 </div>
+
               )}
+
           </div>
+
 
           {/* =================================================
               IMAGE PREVIEW
           ================================================= */}
 
           {imagePreview && (
+
             <div
               className="
                 mb-3
@@ -2703,6 +3408,7 @@ function Home() {
                 p-3
               "
             >
+
               <div
                 className="
                   flex
@@ -2711,6 +3417,7 @@ function Home() {
                   gap-3
                 "
               >
+
                 <img
                   src={imagePreview}
                   alt="Selected"
@@ -2725,12 +3432,14 @@ function Home() {
                   "
                 />
 
+
                 <div
                   className="
                     min-w-0
                     flex-1
                   "
                 >
+
                   <p
                     className="
                       truncate
@@ -2741,6 +3450,7 @@ function Home() {
                   >
                     Image selected
                   </p>
+
 
                   <p
                     className="
@@ -2753,7 +3463,9 @@ function Home() {
                   >
                     Type your question below and press Send.
                   </p>
+
                 </div>
+
 
                 <button
                   type="button"
@@ -2775,9 +3487,13 @@ function Home() {
                 >
                   <FiX size={18} />
                 </button>
+
               </div>
+
             </div>
+
           )}
+
 
           {/* =================================================
               INPUT
@@ -2789,6 +3505,7 @@ function Home() {
               max-w-3xl
             "
           >
+
             <form
               onSubmit={handleSend}
               className="
@@ -2806,6 +3523,7 @@ function Home() {
                 sm:p-2
               "
             >
+
               {/* IMAGE */}
 
               <button
@@ -2833,6 +3551,7 @@ function Home() {
                 <FiImage size={19} />
               </button>
 
+
               <input
                 ref={imageInputRef}
                 type="file"
@@ -2842,6 +3561,7 @@ function Home() {
                 }
                 className="hidden"
               />
+
 
               {/* TEXT INPUT */}
 
@@ -2869,6 +3589,7 @@ function Home() {
                   sm:px-2
                 "
               />
+
 
               {/* MICROPHONE */}
 
@@ -2902,12 +3623,15 @@ function Home() {
                     : "Start microphone"
                 }
               >
+
                 {isListening ? (
                   <FiMicOff size={19} />
                 ) : (
                   <FiMic size={19} />
                 )}
+
               </button>
+
 
               {/* SEND */}
 
@@ -2945,7 +3669,9 @@ function Home() {
               >
                 <FiSend size={18} />
               </button>
+
             </form>
+
 
             <p
               className="
@@ -2959,11 +3685,16 @@ function Home() {
             >
               Text • Voice • Image Analysis
             </p>
+
           </div>
+
         </section>
+
       </main>
+
     </div>
   );
 }
+
 
 export default Home;
