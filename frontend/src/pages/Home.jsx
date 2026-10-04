@@ -24,12 +24,14 @@ import {
   FiTrash2,
   FiSearch,
   FiX,
-  FiClock
+  FiClock,
+  FiSettings,
+  FiLogOut,
+  FiLock,
+  FiEdit3
 } from "react-icons/fi";
 
-
 function Home() {
-
   const {
     userData,
     serverUrl,
@@ -39,106 +41,78 @@ function Home() {
 
   const navigate = useNavigate();
 
-
   // =====================================================
   // STATE
   // =====================================================
 
-  const [isListening, setIsListening] =
-    useState(false);
+  const [isListening, setIsListening] = useState(false);
 
-  const [isAIActive, setIsAIActive] =
-    useState(false);
+  const [isAIActive, setIsAIActive] = useState(false);
 
-  const [userText, setUserText] =
-    useState("");
+  const [userText, setUserText] = useState("");
 
-  const [aiText, setAiText] =
-    useState("");
+  const [aiText, setAiText] = useState("");
 
-  const [showAIText, setShowAIText] =
-    useState(false);
+  const [showAIText, setShowAIText] = useState(false);
 
-  // IMPORTANT:
-  // This now controls the HISTORY drawer.
-  const [showMenu, setShowMenu] =
-    useState(false);
+  // HISTORY DRAWER
+  const [showHistory, setShowHistory] = useState(false);
 
-  const [historyItems, setHistoryItems] =
-    useState([]);
+  // PROFILE / SETTINGS MENU
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
-  const [typedText, setTypedText] =
-    useState("");
+  const [historyItems, setHistoryItems] = useState([]);
 
-  const [isSending, setIsSending] =
-    useState(false);
+  const [typedText, setTypedText] = useState("");
 
-  const [historySearch, setHistorySearch] =
-    useState("");
+  const [isSending, setIsSending] = useState(false);
 
-  const [selectedImage, setSelectedImage] =
-    useState(null);
+  const [historySearch, setHistorySearch] = useState("");
 
-  const [imagePreview, setImagePreview] =
-    useState("");
+  const [selectedImage, setSelectedImage] = useState(null);
 
-  const [isImageAnalyzing, setIsImageAnalyzing] =
-    useState(false);
+  const [imagePreview, setImagePreview] = useState("");
 
+  const [isImageAnalyzing, setIsImageAnalyzing] = useState(false);
 
   // =====================================================
   // REFS
   // =====================================================
 
-  const imageInputRef =
-    useRef(null);
+  const imageInputRef = useRef(null);
 
-  const recognitionRef =
-    useRef(null);
+  const recognitionRef = useRef(null);
 
-  const listeningRef =
-    useRef(false);
+  const listeningRef = useRef(false);
 
-  const speakingRef =
-    useRef(false);
+  const speakingRef = useRef(false);
 
-  const processingRef =
-    useRef(false);
+  const processingRef = useRef(false);
 
-  const restartTimeoutRef =
-    useRef(null);
+  const restartTimeoutRef = useRef(null);
 
-  const assistantNameRef =
-    useRef("");
-
+  const assistantNameRef = useRef("");
 
   // =====================================================
   // ASSISTANT NAME
   // =====================================================
 
   useEffect(() => {
-
     assistantNameRef.current =
-      userData?.assistantName ||
-      "Assistant";
-
+      userData?.assistantName || "Assistant";
   }, [userData?.assistantName]);
-
 
   // =====================================================
   // LOAD HISTORY
   // =====================================================
 
   useEffect(() => {
-
     setHistoryItems(
       Array.isArray(userData?.history)
         ? userData.history
         : []
     );
-
   }, [userData?.history]);
-
 
   // =====================================================
   // SAVE HISTORY
@@ -149,7 +123,6 @@ function Home() {
     answer,
     type = "text"
   ) => {
-
     const temporaryItem = {
       _id: `temp-${Date.now()}`,
       command,
@@ -164,7 +137,6 @@ function Home() {
     ]);
 
     try {
-
       const response = await axios.post(
         `${serverUrl}/api/user/savehistory`,
         {
@@ -178,46 +150,35 @@ function Home() {
       );
 
       if (response.data?.history) {
-
-        setHistoryItems(
-          response.data.history
-        );
+        setHistoryItems(response.data.history);
 
         setUserData(previous => ({
           ...previous,
-          history:
-            response.data.history
+          history: response.data.history
         }));
       }
-
     } catch (error) {
-
       console.error(
         "HISTORY SAVE ERROR:",
-        error.response?.data ||
-        error.message
+        error.response?.data || error.message
       );
     }
   };
 
-
   // =====================================================
-  // DELETE HISTORY
+  // DELETE ONE HISTORY ITEM
   // =====================================================
 
   const deleteHistory = async historyId => {
-
     if (!historyId) return;
 
     try {
-
-      const response =
-        await axios.delete(
-          `${serverUrl}/api/user/history/${historyId}`,
-          {
-            withCredentials: true
-          }
-        );
+      const response = await axios.delete(
+        `${serverUrl}/api/user/history/${historyId}`,
+        {
+          withCredentials: true
+        }
+      );
 
       setHistoryItems(
         response.data.history || []
@@ -225,42 +186,34 @@ function Home() {
 
       setUserData(previous => ({
         ...previous,
-        history:
-          response.data.history || []
+        history: response.data.history || []
       }));
-
     } catch (error) {
-
       console.error(
         "DELETE HISTORY ERROR:",
-        error.response?.data ||
-        error.message
+        error.response?.data || error.message
       );
     }
   };
 
-
   // =====================================================
-  // CLEAR HISTORY
+  // CLEAR ALL HISTORY
   // =====================================================
 
   const clearHistory = async () => {
-
     if (historyItems.length === 0) {
       return;
     }
 
-    const confirmed =
-      window.confirm(
-        "Clear all history?"
-      );
+    const confirmed = window.confirm(
+      "Clear all history?"
+    );
 
     if (!confirmed) {
       return;
     }
 
     try {
-
       await axios.delete(
         `${serverUrl}/api/user/history`,
         {
@@ -274,24 +227,19 @@ function Home() {
         ...previous,
         history: []
       }));
-
     } catch (error) {
-
       console.error(
         "CLEAR HISTORY ERROR:",
-        error.response?.data ||
-        error.message
+        error.response?.data || error.message
       );
     }
   };
-
 
   // =====================================================
   // SPEAK
   // =====================================================
 
   const speak = text => {
-
     if (!text) return;
 
     window.speechSynthesis.cancel();
@@ -307,13 +255,11 @@ function Home() {
     utterance.lang = "en-US";
 
     utterance.onstart = () => {
-
       speakingRef.current = true;
       setIsAIActive(true);
     };
 
     utterance.onend = () => {
-
       speakingRef.current = false;
       setIsAIActive(false);
 
@@ -322,15 +268,13 @@ function Home() {
         !processingRef.current &&
         recognitionRef.current
       ) {
-
         try {
           recognitionRef.current.start();
-        } catch {}
+        } catch { }
       }
     };
 
     utterance.onerror = () => {
-
       speakingRef.current = false;
       setIsAIActive(false);
     };
@@ -340,13 +284,11 @@ function Home() {
     );
   };
 
-
   // =====================================================
   // OPEN URL
   // =====================================================
 
   const openUrl = url => {
-
     if (!url) return;
 
     window.open(
@@ -356,53 +298,256 @@ function Home() {
     );
   };
 
+  // =====================================================
+  // SEARCH URL HELPERS
+  // =====================================================
+
+  const googleSearch = query => {
+    if (!query?.trim()) return;
+
+    openUrl(
+      `https://www.google.com/search?q=${encodeURIComponent(
+        query.trim()
+      )}`
+    );
+  };
+
+  const youtubeSearch = query => {
+    if (!query?.trim()) return;
+
+    openUrl(
+      `https://www.youtube.com/results?search_query=${encodeURIComponent(
+        query.trim()
+      )}`
+    );
+  };
 
   // =====================================================
-  // EXTRACT YOUTUBE SEARCH QUERY
+  // WEBSITE URLS
+  // =====================================================
+
+  const websites = {
+    google: "https://www.google.com",
+
+    youtube: "https://www.youtube.com",
+
+    instagram: "https://www.instagram.com",
+
+    facebook: "https://www.facebook.com",
+
+    github: "https://github.com",
+
+    linkedin: "https://www.linkedin.com",
+
+    whatsapp: "https://web.whatsapp.com",
+
+    gmail: "https://mail.google.com",
+
+    amazon: "https://www.amazon.in",
+
+    flipkart: "https://www.flipkart.com",
+
+    spotify: "https://open.spotify.com",
+
+    netflix: "https://www.netflix.com",
+
+    wikipedia: "https://www.wikipedia.org",
+
+    reddit: "https://www.reddit.com",
+
+    discord: "https://discord.com",
+
+    canva: "https://www.canva.com",
+
+    pinterest: "https://www.pinterest.com",
+
+    twitter: "https://x.com",
+
+    x: "https://x.com",
+
+    telegram: "https://web.telegram.org"
+  };
+
+  // =====================================================
+  // WEBSITE SEARCH URLS
+  // =====================================================
+
+  const getWebsiteSearchUrl = (
+    site,
+    query
+  ) => {
+    const encodedQuery =
+      encodeURIComponent(
+        query.trim()
+      );
+
+    switch (site) {
+      case "google":
+        return `https://www.google.com/search?q=${encodedQuery}`;
+
+      case "youtube":
+        return `https://www.youtube.com/results?search_query=${encodedQuery}`;
+
+      case "amazon":
+        return `https://www.amazon.in/s?k=${encodedQuery}`;
+
+      case "flipkart":
+        return `https://www.flipkart.com/search?q=${encodedQuery}`;
+
+      case "wikipedia":
+        return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
+
+      case "reddit":
+        return `https://www.reddit.com/search/?q=${encodedQuery}`;
+
+      case "github":
+        return `https://github.com/search?q=${encodedQuery}`;
+
+      case "linkedin":
+        return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
+
+      case "spotify":
+        return `https://open.spotify.com/search/${encodedQuery}`;
+
+      case "pinterest":
+        return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
+
+      case "facebook":
+        return `https://www.facebook.com/search/top?q=${encodedQuery}`;
+
+      case "x":
+      case "twitter":
+        return `https://x.com/search?q=${encodedQuery}`;
+
+      default:
+        return null;
+    }
+  };
+
+  // =====================================================
+  // CLEAN SEARCH QUERY
+  //
+  // Examples:
+  //
+  // search photosynthesis on Google
+  //       -> photosynthesis
+  //
+  // search Sun Savaria on YouTube
+  //       -> Sun Savaria
+  //
+  // open YouTube and search Sun Savaria
+  //       -> Sun Savaria
+  //
+  // open Google and search photosynthesis
+  //       -> photosynthesis
+  // =====================================================
+
+  const extractSearchCommand = command => {
+    if (!command) {
+      return null;
+    }
+
+    const text = command
+      .trim()
+      .replace(/\s+/g, " ");
+
+    // ---------------------------------------------------
+    // SEARCH <QUERY> ON/IN <SITE>
+    // ---------------------------------------------------
+
+    let match = text.match(
+      /^(?:search|find|look up)\s+(.+?)\s+(?:on|in)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s*$/i
+    );
+
+    if (match) {
+      return {
+        site: match[2]
+          .trim()
+          .toLowerCase(),
+
+        query: match[1].trim()
+      };
+    }
+
+    // ---------------------------------------------------
+    // SEARCH <SITE> FOR <QUERY>
+    //
+    // Example:
+    // search YouTube for Sun Savaria
+    // ---------------------------------------------------
+
+    match = text.match(
+      /^(?:search|find|look up)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s+(?:for)\s+(.+)$/i
+    );
+
+    if (match) {
+      return {
+        site: match[1]
+          .trim()
+          .toLowerCase(),
+
+        query: match[2].trim()
+      };
+    }
+
+    // ---------------------------------------------------
+    // OPEN <SITE> AND SEARCH <QUERY>
+    //
+    // Example:
+    // open YouTube and search Sun Savaria
+    // ---------------------------------------------------
+
+    match = text.match(
+      /^(?:open|launch|visit|go to|take me to)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)(?:\s+website|\s+site)?\s+(?:and\s+)?(?:search|find|look up)\s+(.+)$/i
+    );
+
+    if (match) {
+      return {
+        site: match[1]
+          .trim()
+          .toLowerCase(),
+
+        query: match[2].trim()
+      };
+    }
+
+    // ---------------------------------------------------
+    // SEARCH <QUERY> ON <SITE> WITH EXTRA WORDING
+    // ---------------------------------------------------
+
+    match = text.match(
+      /^(?:search|find|look up)\s+(.+?)\s+(?:on|in)\s+(google|youtube)\s*$/i
+    );
+
+    if (match) {
+      return {
+        site: match[2]
+          .trim()
+          .toLowerCase(),
+
+        query: match[1].trim()
+      };
+    }
+
+    return null;
+  };
+
+  // =====================================================
+  // YOUTUBE QUERY
   // =====================================================
 
   const getYouTubeQuery = command => {
+    const result =
+      extractSearchCommand(command);
 
-    if (!command) {
-      return "";
-    }
-
-    const text =
-      command.trim();
-
-    // Search mitochondria on YouTube
-    let match =
-      text.match(
-        /^(?:search|find|look up|play)\s+(.+?)\s+(?:on|in)\s+youtube$/i
-      );
-
-    if (match) {
-      return match[1].trim();
-    }
-
-    // Search YouTube for mitochondria
-    match =
-      text.match(
-        /^(?:search|find|look up|play)\s+(?:youtube\s+for)\s+(.+)$/i
-      );
-
-    if (match) {
-      return match[1].trim();
-    }
-
-    // YouTube mitochondria
-    match =
-      text.match(
-        /^youtube\s+(.+)$/i
-      );
-
-    if (match) {
-      return match[1].trim();
+    if (
+      result?.site === "youtube"
+    ) {
+      return result.query;
     }
 
     return "";
   };
-
 
   // =====================================================
   // PROCESS COMMAND
@@ -413,7 +558,6 @@ function Home() {
     type = "text",
     shouldSpeak = true
   ) => {
-
     const cleanedCommand =
       command.trim();
 
@@ -430,23 +574,29 @@ function Home() {
     processingRef.current = true;
 
     try {
-
       // =================================================
-      // GOOGLE SEARCH
+      // 1. CHECK EXPLICIT SEARCH COMMAND FIRST
       // =================================================
 
-      const googleMatch =
-        cleanedCommand.match(
-          /^(?:search|find|look up)\s+(.+?)(?:\s+on|\s+in|\s+at)?\s+google$/i
+      const searchCommand =
+        extractSearchCommand(
+          cleanedCommand
         );
 
-      if (googleMatch) {
+      if (searchCommand) {
+        const {
+          site,
+          query
+        } = searchCommand;
 
-        const query =
-          googleMatch[1].trim();
+        const siteName =
+          site === "x"
+            ? "X"
+            : site.charAt(0).toUpperCase() +
+            site.slice(1);
 
         const answer =
-          `Searching Google for ${query}.`;
+          `Searching ${siteName} for ${query}.`;
 
         setAiText(answer);
         setShowAIText(true);
@@ -457,11 +607,34 @@ function Home() {
           type
         );
 
-        openUrl(
-          `https://www.google.com/search?q=${encodeURIComponent(
+        // ------------------------------------------------
+        // IMPORTANT:
+        // ONLY QUERY IS SENT TO THE SEARCH ENGINE.
+        //
+        // NOT:
+        // "open YouTube and search Sun Savaria"
+        //
+        // ONLY:
+        // "Sun Savaria"
+        // ------------------------------------------------
+
+        const searchUrl =
+          getWebsiteSearchUrl(
+            site,
             query
-          )}`
-        );
+          );
+
+        if (searchUrl) {
+          openUrl(searchUrl);
+        } else if (
+          site === "youtube"
+        ) {
+          youtubeSearch(query);
+        } else if (
+          site === "google"
+        ) {
+          googleSearch(query);
+        }
 
         if (shouldSpeak) {
           speak(answer);
@@ -470,20 +643,21 @@ function Home() {
         return;
       }
 
-
       // =================================================
-      // DIRECT GOOGLE SEARCH
+      // 2. SIMPLE GOOGLE SEARCH
+      //
+      // search photosynthesis
+      // google photosynthesis
       // =================================================
 
-      const googleSearch =
+      let googleSearchMatch =
         cleanedCommand.match(
           /^(?:search|google)\s+(.+)$/i
         );
 
-      if (googleSearch) {
-
+      if (googleSearchMatch) {
         const query =
-          googleSearch[1].trim();
+          googleSearchMatch[1].trim();
 
         const answer =
           `Searching Google for ${query}.`;
@@ -497,11 +671,7 @@ function Home() {
           type
         );
 
-        openUrl(
-          `https://www.google.com/search?q=${encodeURIComponent(
-            query
-          )}`
-        );
+        googleSearch(query);
 
         if (shouldSpeak) {
           speak(answer);
@@ -510,9 +680,11 @@ function Home() {
         return;
       }
 
-
       // =================================================
-      // YOUTUBE SEARCH
+      // 3. SIMPLE YOUTUBE SEARCH
+      //
+      // youtube mitochondria
+      // play mitochondria on youtube
       // =================================================
 
       const youtubeQuery =
@@ -521,7 +693,6 @@ function Home() {
         );
 
       if (youtubeQuery) {
-
         const answer =
           `Searching YouTube for ${youtubeQuery}.`;
 
@@ -534,12 +705,8 @@ function Home() {
           type
         );
 
-        // IMPORTANT:
-        // Only the extracted query goes to YouTube.
-        openUrl(
-          `https://www.youtube.com/results?search_query=${encodeURIComponent(
-            youtubeQuery
-          )}`
+        youtubeSearch(
+          youtubeQuery
         );
 
         if (shouldSpeak) {
@@ -549,74 +716,13 @@ function Home() {
         return;
       }
 
-
       // =================================================
-      // DIRECT WEBSITE
+      // 4. DIRECT WEBSITE OPEN
+      //
+      // open YouTube
+      // open Google
+      // open Instagram
       // =================================================
-
-      const websites = {
-
-        google:
-          "https://www.google.com",
-
-        youtube:
-          "https://www.youtube.com",
-
-        instagram:
-          "https://www.instagram.com",
-
-        facebook:
-          "https://www.facebook.com",
-
-        github:
-          "https://github.com",
-
-        linkedin:
-          "https://www.linkedin.com",
-
-        whatsapp:
-          "https://web.whatsapp.com",
-
-        gmail:
-          "https://mail.google.com",
-
-        amazon:
-          "https://www.amazon.in",
-
-        flipkart:
-          "https://www.flipkart.com",
-
-        spotify:
-          "https://open.spotify.com",
-
-        netflix:
-          "https://www.netflix.com",
-
-        wikipedia:
-          "https://www.wikipedia.org",
-
-        reddit:
-          "https://www.reddit.com",
-
-        discord:
-          "https://discord.com",
-
-        canva:
-          "https://www.canva.com",
-
-        pinterest:
-          "https://www.pinterest.com",
-
-        twitter:
-          "https://x.com",
-
-        x:
-          "https://x.com",
-
-        telegram:
-          "https://web.telegram.org"
-      };
-
 
       const directMatch =
         cleanedCommand.match(
@@ -624,7 +730,6 @@ function Home() {
         );
 
       if (directMatch) {
-
         const site =
           directMatch[1]
             .trim()
@@ -635,7 +740,6 @@ function Home() {
             );
 
         if (websites[site]) {
-
           const answer =
             `Opening ${site}.`;
 
@@ -660,9 +764,8 @@ function Home() {
         }
       }
 
-
       // =================================================
-      // GEMINI
+      // 5. GEMINI
       // =================================================
 
       const result =
@@ -673,10 +776,8 @@ function Home() {
       let parsedResult = result;
 
       if (
-        typeof result ===
-        "string"
+        typeof result === "string"
       ) {
-
         const cleanResult =
           result
             .replace(
@@ -690,77 +791,74 @@ function Home() {
             .trim();
 
         try {
-
           parsedResult =
             JSON.parse(
               cleanResult
             );
-
         } catch {
-
           parsedResult = {
             type: "general",
-            response:
-              cleanResult
+            response: cleanResult
           };
         }
       }
-
 
       const response =
         parsedResult?.response ||
         parsedResult?.answer ||
         "Sorry, I could not understand that.";
 
-
       // =================================================
-      // GEMINI COMMAND TYPES
+      // 6. GEMINI COMMAND TYPES
       // =================================================
 
       if (
         parsedResult.type ===
         "google_open"
       ) {
-
         openUrl(
           "https://www.google.com"
         );
+      }
 
-      } else if (
+      // -------------------------------------------------
+      // GOOGLE SEARCH
+      // -------------------------------------------------
+
+      else if (
         parsedResult.type ===
         "google_search"
       ) {
-
         const query =
           parsedResult.query ||
           cleanedCommand;
 
-        openUrl(
-          `https://www.google.com/search?q=${encodeURIComponent(
-            query
-          )}`
-        );
+        googleSearch(query);
+      }
 
-      } else if (
+      // -------------------------------------------------
+      // YOUTUBE OPEN
+      // -------------------------------------------------
+
+      else if (
         parsedResult.type ===
         "youtube_open"
       ) {
-
         openUrl(
           "https://www.youtube.com"
         );
+      }
 
-      } else if (
+      // -------------------------------------------------
+      // YOUTUBE SEARCH / PLAY
+      // -------------------------------------------------
+
+      else if (
         parsedResult.type ===
-          "youtube_search" ||
+        "youtube_search" ||
         parsedResult.type ===
-          "youtube_play"
+        "youtube_play"
       ) {
-
-        // IMPORTANT:
-        // Never use cleanedCommand directly
-        // if we can extract the actual query.
-
         const extractedQuery =
           getYouTubeQuery(
             cleanedCommand
@@ -778,24 +876,31 @@ function Home() {
               /\s+(?:on|in)\s+youtube$/i,
               ""
             )
+            .replace(
+              /^(?:open|launch|visit|go to)\s+youtube\s+(?:and\s+)?(?:search|find|look up)\s+/i,
+              ""
+            )
             .trim();
 
-        openUrl(
-          `https://www.youtube.com/results?search_query=${encodeURIComponent(
-            query
-          )}`
-        );
+        youtubeSearch(query);
+      }
 
-      } else if (
+      // -------------------------------------------------
+      // CALCULATOR
+      // -------------------------------------------------
+
+      else if (
         parsedResult.type ===
         "calculator_open"
       ) {
-
         openUrl(
           "https://www.google.com/search?q=calculator"
         );
       }
 
+      // =================================================
+      // SHOW RESPONSE
+      // =================================================
 
       setAiText(response);
       setShowAIText(true);
@@ -809,9 +914,7 @@ function Home() {
       if (shouldSpeak) {
         speak(response);
       }
-
     } catch (error) {
-
       console.error(
         "COMMAND ERROR:",
         error
@@ -820,40 +923,29 @@ function Home() {
       const errorMessage =
         "Sorry, I could not complete that request right now.";
 
-      setAiText(
-        errorMessage
-      );
-
+      setAiText(errorMessage);
       setShowAIText(true);
 
       if (shouldSpeak) {
         speak(errorMessage);
       }
-
     } finally {
-
-      processingRef.current =
-        false;
-
+      processingRef.current = false;
       setIsSending(false);
       setIsAIActive(false);
     }
   };
-
 
   // =====================================================
   // SEND TEXT / IMAGE
   // =====================================================
 
   const handleSend = async e => {
-
     e?.preventDefault();
 
     // IMAGE MODE
     if (selectedImage) {
-
       await analyzeImage();
-
       return;
     }
 
@@ -877,74 +969,56 @@ function Home() {
     );
   };
 
-
   // =====================================================
   // IMAGE SELECT
   // =====================================================
 
   const handleImageSelect = e => {
-
     const file =
       e.target.files?.[0];
 
     if (!file) return;
-
 
     if (
       !file.type.startsWith(
         "image/"
       )
     ) {
-
       alert(
         "Please select an image file."
       );
-
       return;
     }
-
 
     if (
       file.size >
       10 * 1024 * 1024
     ) {
-
       alert(
         "Image must be smaller than 10 MB."
       );
-
       return;
     }
 
-
-    // Clean previous preview URL
     if (imagePreview) {
       URL.revokeObjectURL(
         imagePreview
       );
     }
 
-
     setSelectedImage(file);
 
     setImagePreview(
       URL.createObjectURL(file)
     );
-
-    // Do NOT clear typedText.
-    // The user can type the question
-    // in the main input below.
   };
-
 
   // =====================================================
   // REMOVE IMAGE
   // =====================================================
 
   const removeImage = () => {
-
     if (imagePreview) {
-
       URL.revokeObjectURL(
         imagePreview
       );
@@ -956,19 +1030,16 @@ function Home() {
     if (
       imageInputRef.current
     ) {
-
       imageInputRef.current.value =
         "";
     }
   };
-
 
   // =====================================================
   // ANALYZE IMAGE
   // =====================================================
 
   const analyzeImage = async () => {
-
     if (
       !selectedImage ||
       isImageAnalyzing
@@ -976,13 +1047,9 @@ function Home() {
       return;
     }
 
-
-    // IMPORTANT:
-    // Use the MAIN input text.
     const question =
       typedText.trim() ||
       "Analyze this image and explain what you see.";
-
 
     setIsImageAnalyzing(true);
 
@@ -994,9 +1061,7 @@ function Home() {
 
     setIsAIActive(true);
 
-
     try {
-
       const formData =
         new FormData();
 
@@ -1010,7 +1075,6 @@ function Home() {
         question
       );
 
-
       const response =
         await axios.post(
           `${serverUrl}/api/user/analyze-image`,
@@ -1020,15 +1084,13 @@ function Home() {
           }
         );
 
-
       const answer =
         response.data?.response ||
         "I could not analyze the image.";
 
-
       setAiText(answer);
-      setShowAIText(true);
 
+      setShowAIText(true);
 
       await addHistory(
         question,
@@ -1036,72 +1098,49 @@ function Home() {
         "image"
       );
 
-
       speak(answer);
 
-
-      // Clear the input after successful analysis
       setTypedText("");
 
       removeImage();
-
-
     } catch (error) {
-
       console.error(
         "IMAGE ANALYSIS ERROR:",
         error.response?.data ||
         error.message
       );
 
-
       const errorMessage =
         error.response?.data?.message ||
         "Unable to analyze the image.";
 
-
-      setAiText(
-        errorMessage
-      );
+      setAiText(errorMessage);
 
       setShowAIText(true);
 
-      speak(
-        errorMessage
-      );
-
+      speak(errorMessage);
     } finally {
+      setIsImageAnalyzing(false);
 
-      setIsImageAnalyzing(
-        false
-      );
-
-      setIsAIActive(
-        false
-      );
+      setIsAIActive(false);
     }
   };
-
 
   // =====================================================
   // SPEECH RECOGNITION
   // =====================================================
 
   useEffect(() => {
-
     const SpeechRecognition =
       window.SpeechRecognition ||
       window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-
       console.warn(
         "Speech recognition is not supported."
       );
-
       return;
     }
-
 
     const recognition =
       new SpeechRecognition();
@@ -1110,47 +1149,35 @@ function Home() {
 
     recognition.lang = "en-US";
 
-    recognition.interimResults =
-      false;
+    recognition.interimResults = false;
 
-    recognition.maxAlternatives =
-      1;
-
+    recognition.maxAlternatives = 1;
 
     recognitionRef.current =
       recognition;
 
-
     recognition.onstart = () => {
+      listeningRef.current = true;
 
-      listeningRef.current =
-        true;
-
-      setIsListening(
-        true
-      );
+      setIsListening(true);
     };
-
 
     recognition.onresult =
       async event => {
-
         if (
           processingRef.current
         ) {
           return;
         }
 
-
         const lastResult =
           event.results[
-            event.results.length - 1
+          event.results.length - 1
           ];
 
         if (!lastResult) {
           return;
         }
-
 
         const transcript =
           lastResult[0]
@@ -1161,10 +1188,8 @@ function Home() {
           return;
         }
 
-
         const lowerTranscript =
           transcript.toLowerCase();
-
 
         const stopCommands = [
           "thank you",
@@ -1176,13 +1201,11 @@ function Home() {
           "cancel"
         ];
 
-
         if (
           stopCommands.includes(
             lowerTranscript
           )
         ) {
-
           stopListening();
 
           speak(
@@ -1192,11 +1215,9 @@ function Home() {
           return;
         }
 
-
         setUserText(
           transcript
         );
-
 
         await processCommand(
           transcript,
@@ -1205,271 +1226,204 @@ function Home() {
         );
       };
 
-
     recognition.onend = () => {
-
       if (
         listeningRef.current &&
         !speakingRef.current &&
         !processingRef.current
       ) {
-
         clearTimeout(
           restartTimeoutRef.current
         );
 
-
         restartTimeoutRef.current =
           setTimeout(() => {
-
             try {
               recognition.start();
-            } catch {}
-
+            } catch { }
           }, 400);
-
       } else if (
         !listeningRef.current
       ) {
-
-        setIsListening(
-          false
-        );
+        setIsListening(false);
       }
     };
 
-
     recognition.onerror =
       event => {
-
         console.error(
           "Speech recognition error:",
           event.error
         );
 
-
         if (
           event.error ===
-            "not-allowed" ||
+          "not-allowed" ||
           event.error ===
-            "audio-capture"
+          "audio-capture"
         ) {
-
           listeningRef.current =
             false;
 
-          setIsListening(
-            false
-          );
+          setIsListening(false);
         }
       };
 
-
     return () => {
+      listeningRef.current = false;
 
-      listeningRef.current =
-        false;
-
-      processingRef.current =
-        false;
+      processingRef.current = false;
 
       clearTimeout(
         restartTimeoutRef.current
       );
 
-
       try {
         recognition.stop();
-      } catch {}
-
+      } catch { }
 
       window.speechSynthesis.cancel();
 
       recognitionRef.current =
         null;
     };
-
   }, [getGeminiResponse]);
-
 
   // =====================================================
   // START LISTENING
   // =====================================================
 
   const startListening = () => {
-
     if (
       !recognitionRef.current
     ) {
-
       alert(
         "Speech recognition is not supported in this browser."
       );
-
       return;
     }
 
-
     try {
-
       window.speechSynthesis.cancel();
 
-      listeningRef.current =
-        true;
+      listeningRef.current = true;
 
-      setIsListening(
-        true
-      );
+      setIsListening(true);
 
       recognitionRef.current.start();
-
     } catch {
-
       console.log(
         "Microphone already running."
       );
     }
   };
 
-
   // =====================================================
   // STOP LISTENING
   // =====================================================
 
   const stopListening = () => {
+    listeningRef.current = false;
 
-    listeningRef.current =
-      false;
-
-    setIsListening(
-      false
-    );
+    setIsListening(false);
 
     clearTimeout(
       restartTimeoutRef.current
     );
 
-
     if (
       recognitionRef.current
     ) {
-
       try {
         recognitionRef.current.stop();
-      } catch {}
+      } catch { }
     }
   };
-
 
   // =====================================================
   // LOGOUT
   // =====================================================
 
-  const handleLogout =
-    async () => {
-
-      try {
-
-        await axios.post(
-          `${serverUrl}/api/auth/logout`,
-          {},
-          {
-            withCredentials: true
-          }
-        );
-
-      } catch (error) {
-
-        console.error(
-          "LOGOUT ERROR:",
-          error
-        );
-      }
-
-
-      setUserData(null);
-
-      navigate(
-        "/signin"
+  const handleLogout = async () => {
+    try {
+      await axios.post(
+        `${serverUrl}/api/auth/logout`,
+        {},
+        {
+          withCredentials: true
+        }
       );
-    };
+    } catch (error) {
+      console.error(
+        "LOGOUT ERROR:",
+        error
+      );
+    }
 
+    setUserData(null);
+
+    navigate("/signin");
+  };
 
   // =====================================================
   // FILTER HISTORY
   // =====================================================
 
   const filteredHistory =
-    historyItems.filter(
-      item => {
+    historyItems.filter(item => {
+      const command =
+        item?.command ||
+        item?.text ||
+        item?.query ||
+        "";
 
-        const command =
-          item?.command ||
-          item?.text ||
-          item?.query ||
-          "";
+      const answer =
+        item?.answer || "";
 
-        const answer =
-          item?.answer ||
-          "";
+      const search =
+        historySearch
+          .toLowerCase()
+          .trim();
 
-        const search =
-          historySearch
-            .toLowerCase()
-            .trim();
-
-        if (!search) {
-          return true;
-        }
-
-        return (
-          command
-            .toLowerCase()
-            .includes(search) ||
-          answer
-            .toLowerCase()
-            .includes(search)
-        );
+      if (!search) {
+        return true;
       }
-    );
 
+      return (
+        command
+          .toLowerCase()
+          .includes(search) ||
+        answer
+          .toLowerCase()
+          .includes(search)
+      );
+    });
 
   // =====================================================
   // HISTORY CLICK
   // =====================================================
 
   const openHistory = item => {
-
     const command =
       item?.command || "";
 
     const answer =
       item?.answer || "";
 
+    setUserText(command);
 
-    setUserText(
-      command
-    );
+    setAiText(answer);
 
-    setAiText(
-      answer
-    );
+    setShowAIText(true);
 
-    setShowAIText(
-      true
-    );
-
-    // Close history after selecting an item
-    setShowMenu(false);
+    setShowHistory(false);
   };
-
 
   // =====================================================
   // FORMAT DATE
   // =====================================================
 
   const formatDate = date => {
-
     if (!date) {
       return "";
     }
@@ -1488,13 +1442,20 @@ function Home() {
     );
   };
 
+  // =====================================================
+  // CLOSE ALL MENUS
+  // =====================================================
+
+  const closeMenus = () => {
+    setShowHistory(false);
+    setShowProfileMenu(false);
+  };
 
   // =====================================================
   // UI
   // =====================================================
 
   return (
-
     <div
       className="
         relative
@@ -1505,7 +1466,6 @@ function Home() {
         text-white
       "
     >
-
       {/* =================================================
           HEADER
       ================================================= */}
@@ -1521,19 +1481,66 @@ function Home() {
           border-b
           border-white/10
           bg-[#0A1020]/95
-          px-4
+          px-3
           backdrop-blur
-          sm:px-6
+          sm:px-5
+          md:px-6
         "
       >
+        {/* =================================================
+            LEFT SIDE
+            HAMBURGER + ASSISTANT
+        ================================================= */}
 
         <div
           className="
             flex
+            min-w-0
             items-center
-            gap-3
+            gap-2
+            sm:gap-3
           "
         >
+          {/* HAMBURGER */}
+
+          <button
+            onClick={() => {
+              setShowHistory(
+                previous => !previous
+              );
+
+              setShowProfileMenu(false);
+            }}
+            className="
+              flex
+              h-10
+              w-10
+              shrink-0
+              items-center
+              justify-center
+              rounded-full
+              border
+              border-white/10
+              text-gray-300
+              transition
+              hover:bg-white/5
+              hover:text-cyan-300
+              active:scale-95
+            "
+            title={
+              showHistory
+                ? "Close history"
+                : "Open history"
+            }
+          >
+            {showHistory ? (
+              <IoMdClose size={22} />
+            ) : (
+              <IoMdMenu size={22} />
+            )}
+          </button>
+
+          {/* ASSISTANT */}
 
           <img
             src={
@@ -1542,19 +1549,22 @@ function Home() {
             }
             alt="Assistant"
             className="
-              h-10
-              w-10
+              h-9
+              w-9
+              shrink-0
               rounded-full
               border
               border-cyan-400/30
               object-cover
+              sm:h-10
+              sm:w-10
             "
           />
 
-          <div>
-
+          <div className="min-w-0">
             <p
               className="
+                truncate
                 text-sm
                 font-semibold
                 text-white
@@ -1566,31 +1576,36 @@ function Home() {
 
             <p
               className="
+                hidden
                 text-xs
                 text-gray-500
+                xs:block
+                sm:block
               "
             >
               Virtual Assistant
             </p>
-
           </div>
-
         </div>
 
+        {/* =================================================
+            RIGHT SIDE
+            PROFILE / SETTINGS
+        ================================================= */}
 
         <div
           className="
+            relative
             flex
             items-center
             gap-2
           "
         >
+          {/* DESKTOP CUSTOMIZE */}
 
           <button
             onClick={() =>
-              navigate(
-                "/customize2"
-              )
+              navigate("/customize2")
             }
             className="
               hidden
@@ -1609,68 +1624,277 @@ function Home() {
             Customize
           </button>
 
-
-          {/* HISTORY HAMBURGER */}
+          {/* PROFILE BUTTON */}
 
           <button
-            onClick={() =>
-              setShowMenu(
-                previous =>
-                  !previous
-              )
-            }
+            onClick={() => {
+              setShowProfileMenu(
+                previous => !previous
+              );
+
+              setShowHistory(false);
+            }}
             className="
               flex
               h-10
               w-10
+              shrink-0
               items-center
               justify-center
+              overflow-hidden
               rounded-full
               border
               border-white/10
+              bg-white/5
               text-gray-300
               transition
-              hover:bg-white/5
+              hover:border-cyan-400/30
+              hover:bg-cyan-400/10
               hover:text-cyan-300
+              active:scale-95
             "
-            title={
-              showMenu
-                ? "Close history"
-                : "Open history"
-            }
+            title="Assistant settings"
           >
-
-            {showMenu
-              ? (
-                <IoMdClose
-                  size={22}
-                />
-              )
-              : (
-                <IoMdMenu
-                  size={22}
-                />
-              )}
-
+            {userData?.assistantImage ? (
+              <img
+                src={
+                  userData.assistantImage
+                }
+                alt="Profile"
+                className="
+                  h-full
+                  w-full
+                  object-cover
+                "
+              />
+            ) : (
+              <FiSettings size={19} />
+            )}
           </button>
 
+          {/* PROFILE MENU */}
+
+          {showProfileMenu && (
+            <div
+              className="
+                absolute
+                right-0
+                top-12
+                z-70
+                w-[calc(100vw-1.5rem)]
+                max-w-xs
+                overflow-hidden
+                rounded-2xl
+                border
+                border-white/10
+                bg-[#0B1222]
+                p-2
+                shadow-2xl
+                shadow-black/50
+              "
+            >
+              {/* PROFILE HEADER */}
+
+              <div
+                className="
+                  mb-1
+                  border-b
+                  border-white/10
+                  px-3
+                  py-3
+                "
+              >
+                <p
+                  className="
+                    truncate
+                    text-sm
+                    font-semibold
+                    text-white
+                  "
+                >
+                  {userData?.name ||
+                    "User"}
+                </p>
+
+                <p
+                  className="
+                    truncate
+                    text-xs
+                    text-gray-500
+                  "
+                >
+                  {userData?.email ||
+                    "Account"}
+                </p>
+              </div>
+
+              {/* CUSTOMIZE */}
+
+              <button
+                onClick={() => {
+                  navigate(
+                    "/customize2"
+                  );
+
+                  setShowProfileMenu(
+                    false
+                  );
+                }}
+                className="
+                  flex
+                  w-full
+                  items-center
+                  gap-3
+                  rounded-xl
+                  px-3
+                  py-3
+                  text-left
+                  text-sm
+                  text-gray-300
+                  transition
+                  hover:bg-white/5
+                  hover:text-white
+                "
+              >
+                <FiEdit3
+                  size={17}
+                  className="text-cyan-400"
+                />
+
+                <span>
+                  Customize Assistant
+                </span>
+              </button>
+
+              {/* CLEAR HISTORY */}
+
+              <button
+                onClick={async () => {
+                  await clearHistory();
+
+                  setShowProfileMenu(
+                    false
+                  );
+                }}
+                disabled={
+                  historyItems.length ===
+                  0
+                }
+                className="
+                  flex
+                  w-full
+                  items-center
+                  gap-3
+                  rounded-xl
+                  px-3
+                  py-3
+                  text-left
+                  text-sm
+                  text-gray-300
+                  transition
+                  hover:bg-red-400/10
+                  hover:text-red-400
+                  disabled:cursor-not-allowed
+                  disabled:opacity-40
+                "
+              >
+                <FiTrash2 size={17} />
+
+                <span>
+                  Clear All History
+                </span>
+              </button>
+
+              {/* CHANGE PASSWORD */}
+
+              <button
+                onClick={() => {
+                  navigate(
+                    "/change-password"
+                  );
+
+                  setShowProfileMenu(
+                    false
+                  );
+                }}
+                className="
+                  flex
+                  w-full
+                  items-center
+                  gap-3
+                  rounded-xl
+                  px-3
+                  py-3
+                  text-left
+                  text-sm
+                  text-gray-300
+                  transition
+                  hover:bg-white/5
+                  hover:text-white
+                "
+              >
+                <FiLock
+                  size={17}
+                  className="text-cyan-400"
+                />
+
+                <span>
+                  Change Password
+                </span>
+              </button>
+
+              {/* LOGOUT */}
+
+              <div
+                className="
+                  my-1
+                  border-t
+                  border-white/10
+                "
+              />
+
+              <button
+                onClick={
+                  handleLogout
+                }
+                className="
+                  flex
+                  w-full
+                  items-center
+                  gap-3
+                  rounded-xl
+                  px-3
+                  py-3
+                  text-left
+                  text-sm
+                  text-red-400
+                  transition
+                  hover:bg-red-400/10
+                "
+              >
+                <FiLogOut size={17} />
+
+                <span>
+                  Logout
+                </span>
+              </button>
+            </div>
+          )}
         </div>
-
       </header>
-
 
       {/* =================================================
           HISTORY DRAWER
+          ONLY HISTORY IS HERE
       ================================================= */}
 
-      {showMenu && (
-
+      {showHistory && (
         <>
-          {/* Mobile overlay */}
+          {/* OVERLAY */}
 
           <div
             onClick={() =>
-              setShowMenu(false)
+              setShowHistory(false)
             }
             className="
               fixed
@@ -1681,8 +1905,7 @@ function Home() {
             "
           />
 
-
-          {/* Drawer */}
+          {/* DRAWER */}
 
           <aside
             className="
@@ -1692,7 +1915,7 @@ function Home() {
               z-50
               flex
               h-full
-              w-[85%]
+              w-[88%]
               max-w-sm
               flex-col
               border-r
@@ -1701,8 +1924,7 @@ function Home() {
               shadow-2xl
             "
           >
-
-            {/* Drawer header */}
+            {/* DRAWER HEADER */}
 
             <div
               className="
@@ -1716,9 +1938,7 @@ function Home() {
                 px-4
               "
             >
-
               <div>
-
                 <h2
                   className="
                     font-semibold
@@ -1736,13 +1956,11 @@ function Home() {
                 >
                   Your previous conversations
                 </p>
-
               </div>
-
 
               <button
                 onClick={() =>
-                  setShowMenu(false)
+                  setShowHistory(false)
                 }
                 className="
                   flex
@@ -1756,32 +1974,23 @@ function Home() {
                   hover:text-white
                 "
               >
-
                 <IoMdClose
                   size={21}
                 />
-
               </button>
-
             </div>
 
-
-            {/* Search */}
+            {/* SEARCH */}
 
             <div
               className="
+                shrink-0
                 border-b
                 border-white/10
                 p-4
               "
             >
-
-              <div
-                className="
-                  relative
-                "
-              >
-
+              <div className="relative">
                 <FiSearch
                   className="
                     absolute
@@ -1802,9 +2011,7 @@ function Home() {
                       e.target.value
                     )
                   }
-                  placeholder="
-                    Search history...
-                  "
+                  placeholder="Search history..."
                   className="
                     h-10
                     w-full
@@ -1821,13 +2028,10 @@ function Home() {
                     focus:border-cyan-400/30
                   "
                 />
-
               </div>
-
             </div>
 
-
-            {/* History list */}
+            {/* HISTORY LIST */}
 
             <div
               className="
@@ -1836,13 +2040,10 @@ function Home() {
                 p-3
               "
             >
-
               {filteredHistory.length >
-              0 ? (
-
+                0 ? (
                 filteredHistory.map(
                   item => (
-
                     <div
                       key={
                         item._id ||
@@ -1854,14 +2055,11 @@ function Home() {
                         rounded-xl
                         border
                         border-white/5
-                        bg-white/[0.025]
-                        p-3
+bg-white/2.5                        p-3
                         transition
                         hover:border-cyan-400/20
-                        hover:bg-white/[0.04]
-                      "
+hover:bg-white/4                      "
                     >
-
                       <button
                         onClick={() =>
                           openHistory(
@@ -1873,7 +2071,6 @@ function Home() {
                           text-left
                         "
                       >
-
                         <div
                           className="
                             mb-2
@@ -1883,7 +2080,6 @@ function Home() {
                             gap-2
                           "
                         >
-
                           <span
                             className="
                               rounded-full
@@ -1903,29 +2099,29 @@ function Home() {
                           <span
                             className="
                               flex
+                              min-w-0
                               items-center
                               gap-1
                               text-[10px]
                               text-gray-600
                             "
                           >
-
                             <FiClock
                               size={10}
                             />
 
-                            {formatDate(
-                              item.createdAt
-                            )}
-
+                            <span className="truncate">
+                              {formatDate(
+                                item.createdAt
+                              )}
+                            </span>
                           </span>
-
                         </div>
-
 
                         <p
                           className="
                             line-clamp-2
+                           wrap-break-word
                             text-sm
                             text-gray-300
                           "
@@ -1933,25 +2129,22 @@ function Home() {
                           {item.command}
                         </p>
 
-
                         {item.answer && (
-
                           <p
                             className="
                               mt-2
                               line-clamp-2
-                              text-xs
+wrap-break-word                              text-xs
                               leading-relaxed
                               text-gray-600
                             "
                           >
                             {item.answer}
                           </p>
-
                         )}
-
                       </button>
 
+                      {/* DELETE INDIVIDUAL HISTORY */}
 
                       {item._id &&
                         !String(
@@ -1959,7 +2152,6 @@ function Home() {
                         ).startsWith(
                           "temp-"
                         ) && (
-
                           <button
                             onClick={() =>
                               deleteHistory(
@@ -1977,24 +2169,17 @@ function Home() {
                               hover:text-red-400
                             "
                           >
-
                             <FiTrash2
                               size={12}
                             />
 
                             Delete
-
                           </button>
-
                         )}
-
                     </div>
-
                   )
                 )
-
               ) : (
-
                 <div
                   className="
                     flex
@@ -2002,10 +2187,10 @@ function Home() {
                     flex-col
                     items-center
                     justify-center
+                    px-5
                     text-center
                   "
                 >
-
                   <div
                     className="
                       mb-3
@@ -2032,122 +2217,12 @@ function Home() {
                   >
                     No history found
                   </p>
-
                 </div>
-
               )}
-
             </div>
-
-
-            {/* Drawer bottom */}
-
-            <div
-              className="
-                shrink-0
-                border-t
-                border-white/10
-                p-3
-              "
-            >
-
-              {historyItems.length >
-                0 && (
-
-                <button
-                  onClick={
-                    clearHistory
-                  }
-                  className="
-                    mb-2
-                    w-full
-                    rounded-lg
-                    px-3
-                    py-2
-                    text-left
-                    text-sm
-                    text-red-400
-                    transition
-                    hover:bg-red-400/10
-                  "
-                >
-                  Clear all history
-                </button>
-
-              )}
-
-
-              <button
-                onClick={() => {
-                  navigate(
-                    "/customize2"
-                  );
-                  setShowMenu(false);
-                }}
-                className="
-                  w-full
-                  rounded-lg
-                  px-3
-                  py-2
-                  text-left
-                  text-sm
-                  text-gray-400
-                  hover:bg-white/5
-                  hover:text-white
-                "
-              >
-                Customize Assistant
-              </button>
-
-
-              <button
-                onClick={() => {
-                  navigate(
-                    "/change-password"
-                  );
-                  setShowMenu(false);
-                }}
-                className="
-                  w-full
-                  rounded-lg
-                  px-3
-                  py-2
-                  text-left
-                  text-sm
-                  text-gray-400
-                  hover:bg-white/5
-                  hover:text-white
-                "
-              >
-                Change Password
-              </button>
-
-
-              <button
-                onClick={
-                  handleLogout
-                }
-                className="
-                  w-full
-                  rounded-lg
-                  px-3
-                  py-2
-                  text-left
-                  text-sm
-                  text-red-400
-                  hover:bg-red-400/10
-                "
-              >
-                Logout
-              </button>
-
-            </div>
-
           </aside>
         </>
-
       )}
-
 
       {/* =================================================
           MAIN
@@ -2160,21 +2235,21 @@ function Home() {
           w-full
         "
       >
-
         <section
           className="
             flex
+            min-w-0
             flex-1
             flex-col
             items-center
             justify-between
             overflow-hidden
-            px-4
-            py-6
+            px-3
+            py-4
             sm:px-6
+            sm:py-6
           "
         >
-
           {/* =================================================
               ASSISTANT CONTENT
           ================================================= */}
@@ -2184,30 +2259,30 @@ function Home() {
               flex
               w-full
               max-w-3xl
+              min-h-0
               flex-1
               flex-col
               items-center
               justify-center
               overflow-y-auto
+              px-1
             "
           >
-
             {/* ASSISTANT IMAGE */}
 
             <div
               className={`
-                mb-6
+                mb-5
                 rounded-full
                 p-1
                 transition
-                ${
-                  isAIActive
-                    ? "ring-4 ring-cyan-400/30"
-                    : ""
+                sm:mb-6
+                ${isAIActive
+                  ? "ring-4 ring-cyan-400/30"
+                  : ""
                 }
               `}
             >
-
               <img
                 src={
                   userData?.assistantImage ||
@@ -2215,111 +2290,113 @@ function Home() {
                 }
                 alt="Assistant"
                 className="
-                  h-32
-                  w-32
+                  h-24
+                  w-24
                   rounded-full
                   object-cover
                   shadow-2xl
                   shadow-cyan-950/30
-                  sm:h-40
-                  sm:w-40
+                  sm:h-32
+                  sm:w-32
+                  md:h-40
+                  md:w-40
                 "
               />
-
             </div>
 
+            {/* NAME */}
 
             <h1
               className="
-                text-center
-                text-2xl
+                max-w-full
+wrap-break-word                text-center
+                text-xl
                 font-semibold
                 text-white
-                sm:text-3xl
+                sm:text-2xl
+                md:text-3xl
               "
             >
               {userData?.assistantName ||
                 "Assistant"}
             </h1>
 
+            {/* STATUS */}
 
             <p
               className="
                 mt-2
                 text-center
-                text-sm
+                text-xs
                 text-gray-500
+                sm:text-sm
               "
             >
               {isListening
                 ? "Listening..."
                 : isImageAnalyzing
-                ? "Analyzing image..."
-                : "How can I help you?"}
+                  ? "Analyzing image..."
+                  : "How can I help you?"}
             </p>
-
 
             {/* USER TEXT */}
 
             {userText && (
-
               <div
                 className="
-                  mt-8
+                  mt-6
+                  w-full
                   max-w-xl
-                  rounded-2xl
+wrap-break-word                  rounded-2xl
                   border
                   border-cyan-400/10
                   bg-cyan-400/5
-                  px-5
+                  px-4
                   py-3
                   text-center
                   text-sm
                   text-gray-300
+                  sm:mt-8
+                  sm:px-5
                 "
               >
                 {userText}
               </div>
-
             )}
-
 
             {/* AI TEXT */}
 
             {showAIText &&
               aiText && (
-
                 <div
                   className="
                     mt-4
+                    w-full
                     max-w-2xl
-                    rounded-2xl
+wrap-break-word                    rounded-2xl
                     border
                     border-white/10
-                    bg-white/[0.03]
-                    px-5
+                 bg-white/3
+                    px-4
                     py-4
                     text-center
                     text-sm
                     leading-relaxed
                     whitespace-pre-wrap
                     text-gray-300
+                    sm:px-5
                   "
                 >
                   {aiText}
                 </div>
-
               )}
-
           </div>
-
 
           {/* =================================================
               IMAGE PREVIEW
           ================================================= */}
 
           {imagePreview && (
-
             <div
               className="
                 mb-3
@@ -2332,27 +2409,27 @@ function Home() {
                 p-3
               "
             >
-
               <div
                 className="
                   flex
+                  min-w-0
                   items-center
                   gap-3
                 "
               >
-
                 <img
                   src={imagePreview}
                   alt="Selected"
                   className="
-                    h-16
-                    w-16
+                    h-14
+                    w-14
                     shrink-0
                     rounded-xl
                     object-cover
+                    sm:h-16
+                    sm:w-16
                   "
                 />
-
 
                 <div
                   className="
@@ -2360,9 +2437,9 @@ function Home() {
                     flex-1
                   "
                 >
-
                   <p
                     className="
+                      truncate
                       text-sm
                       font-medium
                       text-white
@@ -2374,15 +2451,15 @@ function Home() {
                   <p
                     className="
                       mt-1
+                      hidden
                       text-xs
                       text-gray-500
+                      sm:block
                     "
                   >
                     Type your question below and press Send.
                   </p>
-
                 </div>
-
 
                 <button
                   type="button"
@@ -2402,19 +2479,11 @@ function Home() {
                     hover:text-red-400
                   "
                 >
-
-                  <FiX
-                    size={18}
-                  />
-
+                  <FiX size={18} />
                 </button>
-
               </div>
-
             </div>
-
           )}
-
 
           {/* =================================================
               INPUT AREA
@@ -2426,24 +2495,23 @@ function Home() {
               max-w-3xl
             "
           >
-
             <form
-              onSubmit={
-                handleSend
-              }
+              onSubmit={handleSend}
               className="
                 flex
+                min-w-0
                 items-center
-                gap-2
+                gap-1
                 rounded-2xl
                 border
                 border-white/10
                 bg-[#0A1020]
-                p-2
+                p-1.5
                 shadow-2xl
+                sm:gap-2
+                sm:p-2
               "
             >
-
               {/* IMAGE */}
 
               <button
@@ -2453,8 +2521,8 @@ function Home() {
                 }
                 className="
                   flex
-                  h-11
-                  w-11
+                  h-10
+                  w-10
                   shrink-0
                   items-center
                   justify-center
@@ -2463,21 +2531,16 @@ function Home() {
                   transition
                   hover:bg-white/5
                   hover:text-cyan-300
+                  sm:h-11
+                  sm:w-11
                 "
                 title="Analyze image"
               >
-
-                <FiImage
-                  size={20}
-                />
-
+                <FiImage size={19} />
               </button>
 
-
               <input
-                ref={
-                  imageInputRef
-                }
+                ref={imageInputRef}
                 type="file"
                 accept="image/*"
                 onChange={
@@ -2486,13 +2549,10 @@ function Home() {
                 className="hidden"
               />
 
-
               {/* TEXT */}
 
               <input
-                value={
-                  typedText
-                }
+                value={typedText}
                 onChange={e =>
                   setTypedText(
                     e.target.value
@@ -2507,14 +2567,14 @@ function Home() {
                   min-w-0
                   flex-1
                   bg-transparent
-                  px-2
+                  px-1
                   text-sm
                   text-white
                   outline-none
                   placeholder:text-gray-600
+                  sm:px-2
                 "
               />
-
 
               {/* MIC */}
 
@@ -2527,17 +2587,18 @@ function Home() {
                 }
                 className={`
                   flex
-                  h-11
-                  w-11
+                  h-10
+                  w-10
                   shrink-0
                   items-center
                   justify-center
                   rounded-xl
                   transition
-                  ${
-                    isListening
-                      ? "bg-red-400/10 text-red-400"
-                      : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
+                  sm:h-11
+                  sm:w-11
+                  ${isListening
+                    ? "bg-red-400/10 text-red-400"
+                    : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
                   }
                 `}
                 title={
@@ -2546,21 +2607,12 @@ function Home() {
                     : "Start microphone"
                 }
               >
-
-                {isListening
-                  ? (
-                    <FiMicOff
-                      size={19}
-                    />
-                  )
-                  : (
-                    <FiMic
-                      size={19}
-                    />
-                  )}
-
+                {isListening ? (
+                  <FiMicOff size={19} />
+                ) : (
+                  <FiMic size={19} />
+                )}
               </button>
-
 
               {/* SEND */}
 
@@ -2569,14 +2621,14 @@ function Home() {
                 disabled={
                   imagePreview
                     ? isImageAnalyzing ||
-                      !selectedImage
+                    !selectedImage
                     : isSending ||
-                      !typedText.trim()
+                    !typedText.trim()
                 }
                 className="
                   flex
-                  h-11
-                  w-11
+                  h-10
+                  w-10
                   shrink-0
                   items-center
                   justify-center
@@ -2587,6 +2639,8 @@ function Home() {
                   hover:bg-cyan-300
                   disabled:cursor-not-allowed
                   disabled:opacity-40
+                  sm:h-11
+                  sm:w-11
                 "
                 title={
                   imagePreview
@@ -2594,36 +2648,27 @@ function Home() {
                     : "Send"
                 }
               >
-
-                <FiSend
-                  size={18}
-                />
-
+                <FiSend size={18} />
               </button>
-
             </form>
-
 
             <p
               className="
-                mt-3
+                mt-2
                 text-center
-                text-[11px]
+                text-[10px]
                 text-gray-700
+                sm:mt-3
+                sm:text-[11px]
               "
             >
               Text • Voice • Image Analysis
             </p>
-
           </div>
-
         </section>
-
       </main>
-
     </div>
   );
 }
-
 
 export default Home;
