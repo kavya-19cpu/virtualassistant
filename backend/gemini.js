@@ -1,232 +1,4 @@
-
 import axios from "axios";
-
-/*
-=====================================================
-INDIAN DATE / TIME HELPERS
-=====================================================
-*/
-
-const getIndianDateTime = () => {
-    const now = new Date();
-
-    const dateTime = new Intl.DateTimeFormat("en-IN", {
-        timeZone: "Asia/Kolkata",
-        weekday: "long",
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true
-    }).formatToParts(now);
-
-    const parts = {};
-
-    dateTime.forEach((part) => {
-        if (part.type !== "literal") {
-            parts[part.type] = part.value;
-        }
-    });
-
-    return parts;
-};
-
-
-/*
-=====================================================
-DETECT REAL DATE / TIME COMMANDS
-=====================================================
-*/
-
-const getDateTimeResponse = (command) => {
-    const text = command
-        .toLowerCase()
-        .trim()
-        .replace(/[?!.]/g, "");
-
-    const parts = getIndianDateTime();
-
-    const time = `${parts.hour}:${parts.minute}:${parts.second} ${parts.dayPeriod}`;
-
-    const date = `${parts.weekday}, ${parts.day} ${parts.month} ${parts.year}`;
-
-    const day = parts.weekday;
-
-    const month = parts.month;
-
-    const year = parts.year;
-
-
-    /*
-    =================================================
-    TIME
-    =================================================
-    */
-
-    const isTimeCommand =
-        text === "time" ||
-        text.includes("what time is it") ||
-        text.includes("what is the time") ||
-        text.includes("current time") ||
-        text.includes("tell me the time") ||
-        text.includes("tell me current time") ||
-        text.includes("time right now") ||
-        text.includes("what's the time") ||
-        text.includes("whats the time");
-
-
-    if (isTimeCommand) {
-        return {
-            type: "get_time",
-            userInput: command,
-            response: `The current time is ${time}.`,
-            query: ""
-        };
-    }
-
-
-    /*
-    =================================================
-    DATE
-    =================================================
-    */
-
-    const isDateCommand =
-        text === "date" ||
-        text.includes("what date is it") ||
-        text.includes("what is the date") ||
-        text.includes("what's the date") ||
-        text.includes("whats the date") ||
-        text.includes("today's date") ||
-        text.includes("todays date") ||
-        text.includes("current date") ||
-        text.includes("today date") ||
-        text.includes("tell me today's date") ||
-        text.includes("tell me todays date");
-
-
-    if (isDateCommand) {
-        return {
-            type: "get_date",
-            userInput: command,
-            response: `Today is ${date}.`,
-            query: ""
-        };
-    }
-
-
-    /*
-    =================================================
-    DAY
-    =================================================
-    */
-
-    const isDayCommand =
-        text === "day" ||
-        text.includes("what day is it") ||
-        text.includes("what is the day") ||
-        text.includes("what day today") ||
-        text.includes("which day is today") ||
-        text.includes("what day is today") ||
-        text.includes("today's day") ||
-        text.includes("todays day") ||
-        text.includes("current day") ||
-        text.includes("tell me the day");
-
-
-    if (isDayCommand) {
-        return {
-            type: "get_day",
-            userInput: command,
-            response: `Today is ${day}.`,
-            query: ""
-        };
-    }
-
-
-    /*
-    =================================================
-    MONTH
-    =================================================
-    */
-
-    const isMonthCommand =
-        text === "month" ||
-        text.includes("what month is it") ||
-        text.includes("what is the month") ||
-        text.includes("which month is it") ||
-        text.includes("current month") ||
-        text.includes("what month are we in") ||
-        text.includes("which month are we in") ||
-        text.includes("tell me the month");
-
-
-    if (isMonthCommand) {
-        return {
-            type: "get_month",
-            userInput: command,
-            response: `The current month is ${month}.`,
-            query: ""
-        };
-    }
-
-
-    /*
-    =================================================
-    YEAR
-    =================================================
-    */
-
-    const isYearCommand =
-        text === "year" ||
-        text.includes("what year is it") ||
-        text.includes("what is the year") ||
-        text.includes("which year is it") ||
-        text.includes("current year") ||
-        text.includes("what year are we in") ||
-        text.includes("which year are we in") ||
-        text.includes("tell me the year");
-
-
-    if (isYearCommand) {
-        return {
-            type: "get_date",
-            userInput: command,
-            response: `The current year is ${year}.`,
-            query: ""
-        };
-    }
-
-
-    /*
-    =================================================
-    FULL DATE + TIME
-    =================================================
-    */
-
-    const isDateTimeCommand =
-        text.includes("date and time") ||
-        text.includes("date & time") ||
-        text.includes("date plus time") ||
-        text.includes("current date and time") ||
-        text.includes("today and time");
-
-
-    if (isDateTimeCommand) {
-        return {
-            type: "get_date",
-            userInput: command,
-            response: `Today is ${date}, and the current time is ${time}.`,
-            query: ""
-        };
-    }
-
-
-    return null;
-};
-
 
 /*
 =====================================================
@@ -239,47 +11,15 @@ const geminiResponse = async (
     assistantName,
     userName
 ) => {
-
     try {
-
-        /*
-        =================================================
-        FIRST:
-        HANDLE DATE/TIME LOCALLY
-        DO NOT ASK GEMINI
-        =================================================
-        */
-
-        const dateTimeResponse =
-            getDateTimeResponse(command);
-
-        if (dateTimeResponse) {
-
-            console.log(
-                "REAL DATE/TIME RESPONSE:",
-                dateTimeResponse
-            );
-
-            return dateTimeResponse;
-        }
-
-
-        /*
-        =================================================
-        GEMINI API KEY
-        =================================================
-        */
-
         const apiKey =
             process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
-
             throw new Error(
                 "GEMINI_API_KEY is missing in .env"
             );
         }
-
 
         /*
         =================================================
@@ -290,9 +30,9 @@ const geminiResponse = async (
         const prompt = `
 You are a virtual assistant named ${assistantName}, created by ${userName}.
 
-Understand the user's command.
+Understand the user's command and provide the best possible answer.
 
-Return ONLY valid JSON:
+Return ONLY valid JSON in this exact structure:
 
 {
   "type": "general",
@@ -309,10 +49,6 @@ google_search
 youtube_open
 youtube_search
 youtube_play
-get_time
-get_date
-get_day
-get_month
 calculator_open
 calculator_calculate
 instagram_open
@@ -321,43 +57,64 @@ weather_show
 
 Rules:
 
-1. Normal questions use "general".
-2. Give the actual answer in "response".
-3. Give complete useful answers.
-4. For calculations, provide the actual result.
-5. For Google searches, use "google_search".
-6. For YouTube searches, use "youtube_search".
-7. For YouTube playing, use "youtube_play".
-8. For opening Google, use "google_open".
-9. For opening YouTube, use "youtube_open".
-10. For opening calculator, use "calculator_open".
-11. userInput must contain the original command.
-12. Return ONLY JSON.
-13. Do not use Markdown code fences.
-14. Do not guess the current date, time, month, day, or year.
-15. Date/time commands are handled by the server and should normally never reach you.
-16. For normal questions, provide a complete useful answer rather than only naming the topic.
+1. Normal questions must use "general".
+
+2. Give the actual useful answer in "response".
+
+3. Give complete and informative answers.
+
+4. Do not return only the topic name.
+
+5. If the user asks an educational question, explain it properly.
+
+6. If the user asks a definition, provide the definition and useful explanation.
+
+7. If the user asks a calculation, provide the actual result.
+
+8. For Google searches, use "google_search".
+
+9. For YouTube searches, use "youtube_search".
+
+10. For YouTube playing requests, use "youtube_play".
+
+11. For opening Google, use "google_open".
+
+12. For opening YouTube, use "youtube_open".
+
+13. For opening a calculator, use "calculator_open".
+
+14. For Instagram requests, use "instagram_open".
+
+15. For Facebook requests, use "facebook_open".
+
+16. userInput must contain the original user command.
+
+17. query should contain the search query when a search action is required.
+
+18. Return ONLY valid JSON.
+
+19. Do not use Markdown code fences.
+
+20. Do not guess the current date, time, day, month, or year.
+
+21. Date, time, day, month, and year requests are handled by the frontend using the user's system clock.
+
+22. For normal questions, provide a complete useful answer rather than only naming the topic.
+
+23. Never respond with only a single keyword when the user asks a question requiring an explanation.
 
 USER COMMAND:
 ${command}
 `;
 
-
         /*
         =================================================
-        GEMINI API URL
+        GEMINI API
         =================================================
         */
 
         const apiUrl =
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
-
-
-        /*
-        =================================================
-        GEMINI REQUEST
-        =================================================
-        */
 
         const result =
             await axios.post(
@@ -379,7 +136,6 @@ ${command}
                             "application/json"
                     }
                 },
-
                 {
                     headers: {
                         "Content-Type":
@@ -390,10 +146,9 @@ ${command}
                 }
             );
 
-
         /*
         =================================================
-        GET GEMINI RESPONSE
+        GET GEMINI RESPONSE TEXT
         =================================================
         */
 
@@ -403,14 +158,11 @@ ${command}
                 ?.content?.parts?.[0]
                 ?.text;
 
-
         if (!text) {
-
             throw new Error(
                 "Gemini response text not found"
             );
         }
-
 
         /*
         =================================================
@@ -419,30 +171,24 @@ ${command}
         */
 
         try {
-
             const parsed =
                 JSON.parse(text);
 
             return parsed;
 
-        } catch {
+        } catch (parseError) {
+
+            console.warn(
+                "Gemini returned invalid JSON. Using fallback."
+            );
 
             return {
-
-                type:
-                    "general",
-
-                userInput:
-                    command,
-
-                response:
-                    text.trim(),
-
-                query:
-                    ""
+                type: "general",
+                userInput: command,
+                response: text.trim(),
+                query: ""
             };
         }
-
 
     } catch (error) {
 
@@ -478,25 +224,33 @@ export const geminiImageResponse =
                 process.env.GEMINI_API_KEY;
 
             if (!apiKey) {
-
                 throw new Error(
                     "GEMINI_API_KEY is missing in .env"
                 );
             }
 
             if (!imageBuffer) {
-
                 throw new Error(
                     "Image is required"
                 );
             }
 
+            /*
+            =============================================
+            CONVERT IMAGE TO BASE64
+            =============================================
+            */
 
             const imageBase64 =
                 imageBuffer.toString(
                     "base64"
                 );
 
+            /*
+            =============================================
+            IMAGE PROMPT
+            =============================================
+            */
 
             const prompt = `
 You are ${assistantName}, a helpful AI virtual assistant.
@@ -528,31 +282,42 @@ You can analyze:
 Rules:
 
 1. Answer the user's exact question.
+
 2. If there is a question, solve it completely.
+
 3. If there is a calculation, show the calculation.
+
 4. If there are MCQs, identify the correct option and explain why.
+
 5. If there is code, explain errors and corrections.
-6. If there are notes, explain important points.
+
+6. If there are notes, explain the important points.
+
 7. Do not invent information.
-8. If something is unreadable, say so.
+
+8. If something is unreadable, clearly say so.
+
 9. Give a complete answer rather than only naming the topic.
+
+10. Make the answer easy to understand.
 `;
 
+            /*
+            =============================================
+            GEMINI API
+            =============================================
+            */
 
             const apiUrl =
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 
-
             const result =
                 await axios.post(
-
                     apiUrl,
-
                     {
                         contents: [
                             {
                                 parts: [
-
                                     {
                                         text:
                                             prompt
@@ -560,37 +325,36 @@ Rules:
 
                                     {
                                         inline_data: {
-
                                             mime_type:
                                                 mimeType,
-
                                             data:
                                                 imageBase64
                                         }
                                     }
-
                                 ]
                             }
                         ],
 
                         generationConfig: {
-                            temperature:
-                                0.2
+                            temperature: 0.2
                         }
                     },
 
                     {
                         headers: {
-
                             "Content-Type":
                                 "application/json"
                         },
 
-                        timeout:
-                            60000
+                        timeout: 60000
                     }
                 );
 
+            /*
+            =============================================
+            GET IMAGE RESPONSE
+            =============================================
+            */
 
             const text =
                 result.data
@@ -603,17 +367,13 @@ Rules:
                     .join("")
                     .trim();
 
-
             if (!text) {
-
                 throw new Error(
                     "Gemini image response not found"
                 );
             }
 
-
             return text;
-
 
         } catch (error) {
 
@@ -648,25 +408,33 @@ export const geminiPdfResponse =
                 process.env.GEMINI_API_KEY;
 
             if (!apiKey) {
-
                 throw new Error(
                     "GEMINI_API_KEY is missing in .env"
                 );
             }
 
             if (!pdfBuffer) {
-
                 throw new Error(
                     "PDF is required"
                 );
             }
 
+            /*
+            =============================================
+            CONVERT PDF TO BASE64
+            =============================================
+            */
 
             const pdfBase64 =
                 pdfBuffer.toString(
                     "base64"
                 );
 
+            /*
+            =============================================
+            PDF PROMPT
+            =============================================
+            */
 
             const prompt = `
 You are ${assistantName}, an advanced AI virtual assistant.
@@ -712,7 +480,7 @@ RULES:
 
 2. If the user asks "summarize this PDF", provide a useful structured summary.
 
-3. If the user asks about a particular chapter, section or page, explain that part.
+3. If the user asks about a particular chapter, section, or page, explain that part.
 
 4. If the user asks a question contained in the PDF, solve it completely.
 
@@ -722,7 +490,7 @@ RULES:
 
 7. If the PDF contains chemistry, provide equations and explanations where appropriate.
 
-8. If the PDF contains physics, show formulas, substitutions and final answers where appropriate.
+8. If the PDF contains physics, show formulas, substitutions, and final answers where appropriate.
 
 9. If the PDF contains programming code, explain it and identify errors.
 
@@ -743,25 +511,24 @@ RULES:
 17. If the question requires explanation, provide the explanation.
 
 18. If the user asks for a direct answer, still include enough reasoning to make the answer understandable.
-
-Answer the user's question directly.
 `;
 
+            /*
+            =============================================
+            GEMINI API
+            =============================================
+            */
 
             const apiUrl =
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 
-
             const result =
                 await axios.post(
-
                     apiUrl,
-
                     {
                         contents: [
                             {
                                 parts: [
-
                                     {
                                         text:
                                             prompt
@@ -769,37 +536,36 @@ Answer the user's question directly.
 
                                     {
                                         inline_data: {
-
                                             mime_type:
                                                 "application/pdf",
-
                                             data:
                                                 pdfBase64
                                         }
                                     }
-
                                 ]
                             }
                         ],
 
                         generationConfig: {
-                            temperature:
-                                0.2
+                            temperature: 0.2
                         }
                     },
 
                     {
                         headers: {
-
                             "Content-Type":
                                 "application/json"
                         },
 
-                        timeout:
-                            120000
+                        timeout: 120000
                     }
                 );
 
+            /*
+            =============================================
+            GET PDF RESPONSE
+            =============================================
+            */
 
             const text =
                 result.data
@@ -812,17 +578,13 @@ Answer the user's question directly.
                     .join("")
                     .trim();
 
-
             if (!text) {
-
                 throw new Error(
                     "Gemini PDF response not found"
                 );
             }
 
-
             return text;
-
 
         } catch (error) {
 
@@ -836,5 +598,11 @@ Answer the user's question directly.
         }
     };
 
+
+/*
+=====================================================
+DEFAULT EXPORT
+=====================================================
+*/
 
 export default geminiResponse;
