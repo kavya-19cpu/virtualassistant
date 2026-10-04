@@ -1,3 +1,4 @@
+
 import express from "express";
 import multer from "multer";
 
@@ -9,64 +10,42 @@ import {
   deleteHistory,
   clearHistory,
   analyzeImage,
-  analyzePdf
+  analyzePdf,
+  analyzeDocument,
 } from "../controllers/user.controllers.js";
 
 import isAuth from "../middlewares/isAuth.js";
 
 const userRouter = express.Router();
 
-/*
-=====================================================
-ASSISTANT IMAGE UPLOAD
-=====================================================
-*/
+const allowedMimeTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+  "text/plain",
+  "text/csv",
+  "text/markdown",
+  "application/json",
+]);
 
-const assistantUpload = multer({
-  dest: "uploads/"
-});
-
-/*
-=====================================================
-IMAGE + PDF ANALYSIS UPLOAD
-=====================================================
-*/
-
-const documentUpload = multer({
+const upload = multer({
   storage: multer.memoryStorage(),
-
   limits: {
-    fileSize: 20 * 1024 * 1024
+    fileSize: 50 * 1024 * 1024,
+    files: 1,
   },
-
-  fileFilter: (
-    req,
-    file,
-    cb
-  ) => {
-    const isImage =
-      file.mimetype.startsWith("image/");
-
-    const isPdf =
-      file.mimetype === "application/pdf";
-
-    if (isImage || isPdf) {
-      cb(null, true);
-    } else {
-      cb(
-        new Error(
-          "Only image and PDF files are allowed"
-        )
+  fileFilter: (req, file, callback) => {
+    if (!allowedMimeTypes.has(file.mimetype)) {
+      return callback(
+        new Error("Unsupported file type.")
       );
     }
-  }
-});
 
-/*
-=====================================================
-CURRENT USER
-=====================================================
-*/
+    callback(null, true);
+  },
+});
 
 userRouter.get(
   "/current",
@@ -74,91 +53,75 @@ userRouter.get(
   getCurrentUser
 );
 
-/*
-=====================================================
-NORMAL AI QUESTION
-=====================================================
-*/
+userRouter.put(
+  "/update-assistant",
+  isAuth,
+  updateAssistant
+);
 
 userRouter.post(
-  "/asktoassistant",
+  "/ask",
   isAuth,
   askToAssistant
 );
 
-/*
-=====================================================
-IMAGE ANALYSIS
-=====================================================
-*/
-
 userRouter.post(
-  "/analyze-image",
-  isAuth,
-  documentUpload.single("image"),
-  analyzeImage
-);
-
-/*
-=====================================================
-PDF ANALYSIS
-=====================================================
-*/
-
-userRouter.post(
-  "/analyze-pdf",
-  isAuth,
-  documentUpload.single("pdf"),
-  analyzePdf
-);
-
-/*
-=====================================================
-SAVE HISTORY
-=====================================================
-*/
-
-userRouter.post(
-  "/savehistory",
+  "/save-history",
   isAuth,
   saveHistory
 );
 
-/*
-=====================================================
-DELETE ONE HISTORY ITEM
-=====================================================
-*/
-
 userRouter.delete(
-  "/history/:historyId",
+  "/delete-history/:historyId",
   isAuth,
   deleteHistory
 );
 
-/*
-=====================================================
-CLEAR ALL HISTORY
-=====================================================
-*/
-
 userRouter.delete(
-  "/history",
+  "/clear-history",
   isAuth,
   clearHistory
 );
 
-/*
-=====================================================
-UPDATE ASSISTANT
-=====================================================
-*/
-
-userRouter.put(
-  "/updateassistant",
+userRouter.post(
+  "/analyze-image",
   isAuth,
-  assistantUpload.single("assistantImage"),
-  updateAssistant
+  upload.single("file"),
+  analyzeImage
 );
+
+userRouter.post(
+  "/analyze-pdf",
+  isAuth,
+  upload.single("pdf"),
+  analyzePdf
+);
+
+userRouter.post(
+  "/analyze-document",
+  isAuth,
+  upload.single("file"),
+  analyzeDocument
+);
+
+// Handle Multer validation and size errors.
+userRouter.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({
+      message:
+        err.code === "LIMIT_FILE_SIZE"
+          ? "File must be 50 MB or smaller."
+          : err.message,
+    });
+  }
+
+  if (err) {
+    return res.status(400).json({
+      message: err.message || "Upload failed.",
+    });
+  }
+
+  next();
+});
 
 export default userRouter;

@@ -730,7 +730,6 @@ export const analyzeImage = async (
     });
   }
 };
-
 /*
 =====================================================
 PDF ANALYSIS
@@ -738,85 +737,152 @@ PDF ANALYSIS
 */
 
 export const analyzePdf = async (
-  req,
-  res
+    req,
+    res
 ) => {
-  try {
-    const {
-      command
-    } = req.body;
+    try {
 
-    if (!req.file) {
-      return res.status(400).json({
-        message:
-          "PDF is required"
-      });
+        const {
+            command
+        } = req.body;
+
+
+        /*
+        ==============================================
+        CHECK PDF
+        ==============================================
+        */
+
+        if (!req.file) {
+
+            return res.status(400).json({
+                message:
+                    "PDF is required"
+            });
+
+        }
+
+
+        /*
+        ==============================================
+        CHECK FILE TYPE
+        ==============================================
+        */
+
+        if (
+            req.file.mimetype !==
+            "application/pdf"
+        ) {
+
+            return res.status(400).json({
+                message:
+                    "Only PDF files are allowed"
+            });
+
+        }
+
+
+        /*
+        ==============================================
+        CHECK USER
+        ==============================================
+        */
+
+        const user =
+            await User.findById(
+                req.userId
+            );
+
+
+        if (!user) {
+
+            return res.status(404).json({
+                message:
+                    "User not found"
+            });
+
+        }
+
+
+        /*
+        ==============================================
+        USER / ASSISTANT NAME
+        ==============================================
+        */
+
+        const userName =
+            user.name ||
+            "User";
+
+
+        const assistantName =
+            user.assistantName ||
+            "Assistant";
+
+
+        /*
+        ==============================================
+        QUESTION
+        ==============================================
+        */
+
+        const question =
+            command?.trim() ||
+            "Please analyze this PDF and explain it completely.";
+
+
+        /*
+        ==============================================
+        GEMINI PDF RESPONSE
+        ==============================================
+        */
+
+        const response =
+            await geminiPdfResponse(
+                question,
+                req.file.buffer,
+                assistantName,
+                userName
+            );
+
+
+        /*
+        ==============================================
+        RESPONSE
+        ==============================================
+        */
+
+        return res.status(200).json({
+
+            type:
+                "pdf",
+
+            userInput:
+                question,
+
+            response
+
+        });
+
+
+    } catch (error) {
+
+        console.error(
+            "PDF ANALYSIS ERROR:",
+            error
+        );
+
+
+        return res.status(500).json({
+
+            message:
+                "Unable to analyze PDF",
+
+            error:
+                error.message
+
+        });
+
     }
-
-    if (
-      req.file.mimetype !==
-      "application/pdf"
-    ) {
-      return res.status(400).json({
-        message:
-          "Only PDF files are allowed"
-      });
-    }
-
-    const user =
-      await User.findById(
-        req.userId
-      );
-
-    if (!user) {
-      return res.status(404).json({
-        message:
-          "User not found"
-      });
-    }
-
-    const userName =
-      user.name ||
-      "User";
-
-    const assistantName =
-      user.assistantName ||
-      "Assistant";
-
-    const question =
-      command?.trim() ||
-      "Please analyze this PDF and explain what you see.";
-
-    const response =
-      await geminiPdfResponse(
-        question,
-        req.file.buffer,
-        assistantName,
-        userName
-      );
-
-    return res.status(200).json({
-      type:
-        "pdf",
-
-      userInput:
-        question,
-
-      response
-    });
-
-  } catch (error) {
-    console.error(
-      "PDF ANALYSIS ERROR:",
-      error
-    );
-
-    return res.status(500).json({
-      message:
-        "Unable to analyze PDF",
-
-      error:
-        error.message
-    });
-  }
+    
 };

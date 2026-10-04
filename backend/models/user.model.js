@@ -1,93 +1,88 @@
-import mongoose from "mongoose";
 
-/*
-=====================================================
-HISTORY SCHEMA
-=====================================================
-*/
+import mongoose from "mongoose";
 
 const historySchema = new mongoose.Schema(
   {
     command: {
       type: String,
       required: true,
-      trim: true
     },
 
     answer: {
       type: String,
       required: true,
-      trim: true
     },
 
     type: {
       type: String,
+      enum: ["text", "voice", "image", "pdf", "document"],
+      default: "text",
+    },
 
-      enum: [
-        "text",
-        "voice",
-        "image",
-        "pdf"
-      ],
+    // Public or authenticated storage URL.
+    fileUrl: {
+      type: String,
+      default: "",
+    },
 
-      default: "text"
-    }
+    fileName: {
+      type: String,
+      default: "",
+    },
+
+    fileMimeType: {
+      type: String,
+      default: "",
+    },
+
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
   {
-    timestamps: true
+    _id: true,
   }
 );
-
-/*
-=====================================================
-USER SCHEMA
-=====================================================
-*/
 
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
       required: true,
-      trim: true
     },
 
     email: {
       type: String,
       required: true,
       unique: true,
-      trim: true,
-      lowercase: true
     },
 
     password: {
       type: String,
-      required: true
+      required: true,
     },
 
     assistantName: {
       type: String,
-      trim: true
+      default: "Assistant",
     },
 
     assistantImage: {
-      type: String
+      type: String,
+      default: "",
     },
 
     history: {
       type: [historySchema],
-      default: []
-    }
+      default: [],
+    },
   },
   {
-    timestamps: true
+    timestamps: true,
   }
 );
 
-const User =
-  mongoose.model(
-    "User",
-    userSchema
-  );
+const User = mongoose.model("User", userSchema);
 
 export default User;
