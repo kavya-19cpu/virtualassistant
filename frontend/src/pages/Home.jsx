@@ -2,30 +2,25 @@ import React, {
   useContext,
   useEffect,
   useRef,
-  useState
+  useState,
 } from "react";
 
-import {
-  userDataContext
-} from "../context/UserContext";
-
-import {
-  useNavigate
-} from "react-router-dom";
-
+import { userDataContext } from "../context/UserContext";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 import aiImg from "../assets/ai.gif";
 
 import {
   IoMdMenu,
-  IoMdClose
+  IoMdClose,
 } from "react-icons/io";
 
 import {
   FiMic,
   FiMicOff,
   FiImage,
+  FiFileText,
   FiSend,
   FiTrash2,
   FiSearch,
@@ -35,810 +30,196 @@ import {
   FiLogOut,
   FiLock,
   FiEdit3,
-  FiFileText
 } from "react-icons/fi";
 
 
 function Home() {
-
   const {
     userData,
     serverUrl,
     setUserData,
     getGeminiResponse,
-    analyzePdfFile
   } = useContext(userDataContext);
 
   const navigate = useNavigate();
 
 
-  /* =====================================================
-     STATE
-     ===================================================== */
+  // =========================================================
+  // STATE
+  // =========================================================
 
-  const [isListening, setIsListening] =
-    useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isAIActive, setIsAIActive] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
-  const [isAIActive, setIsAIActive] =
-    useState(false);
+  const [userText, setUserText] = useState("");
+  const [aiText, setAiText] = useState("");
+  const [showAIText, setShowAIText] = useState(false);
 
-  const [userText, setUserText] =
-    useState("");
+  const [showHistory, setShowHistory] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
-  const [aiText, setAiText] =
-    useState("");
+  const [historyItems, setHistoryItems] = useState([]);
+  const [historySearch, setHistorySearch] = useState("");
 
-  const [showAIText, setShowAIText] =
-    useState(false);
+  const [typedText, setTypedText] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
-  const [showHistory, setShowHistory] =
-    useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [isImageAnalyzing, setIsImageAnalyzing] = useState(false);
 
-  const [showProfileMenu, setShowProfileMenu] =
-    useState(false);
+  const [selectedPdf, setSelectedPdf] = useState(null);
+  const [isPdfAnalyzing, setIsPdfAnalyzing] = useState(false);
 
-  const [historyItems, setHistoryItems] =
-    useState([]);
-
-  const [typedText, setTypedText] =
-    useState("");
-
-  const [isSending, setIsSending] =
-    useState(false);
-
-  const [historySearch, setHistorySearch] =
-    useState("");
+  const [historyImage, setHistoryImage] = useState("");
 
 
-  /* =====================================================
-     IMAGE
-     ===================================================== */
+  // =========================================================
+  // REFS
+  // =========================================================
 
-  const [selectedImage, setSelectedImage] =
-    useState(null);
+  const imageInputRef = useRef(null);
+  const pdfInputRef = useRef(null);
 
-  const [imagePreview, setImagePreview] =
-    useState("");
+  const recognitionRef = useRef(null);
 
-  const [isImageAnalyzing, setIsImageAnalyzing] =
-    useState(false);
+  const listeningRef = useRef(false);
+  const speakingRef = useRef(false);
+  const processingRef = useRef(false);
 
+  const restartTimeoutRef = useRef(null);
+  const speechTimeoutRef = useRef(null);
 
-  /* =====================================================
-     PDF
-     ===================================================== */
-
-  const [selectedPdf, setSelectedPdf] =
-    useState(null);
-
-  const [pdfPreview, setPdfPreview] =
-    useState("");
-
-  const [isPdfAnalyzing, setIsPdfAnalyzing] =
-    useState(false);
-
-  const [pdfName, setPdfName] =
-    useState("");
+  // Prevent old speech callbacks from affecting new speech
+  const speechSessionRef = useRef(0);
 
 
-  /* =====================================================
-     HISTORY IMAGE
-     ===================================================== */
-
-  const [historyImage, setHistoryImage] =
-    useState("");
-
-
-  /* =====================================================
-     CURRENT PDF SESSION
-     ===================================================== */
-
-  const [activePdf, setActivePdf] =
-    useState(null);
-
-
-  /* =====================================================
-     REFS
-     ===================================================== */
-
-  const imageInputRef =
-    useRef(null);
-
-  const pdfInputRef =
-    useRef(null);
-
-  const recognitionRef =
-    useRef(null);
-
-  const listeningRef =
-    useRef(false);
-
-  const speakingRef =
-    useRef(false);
-
-  const processingRef =
-    useRef(false);
-
-  const restartTimeoutRef =
-    useRef(null);
-
-  const speechTimeoutRef =
-    useRef(null);
-
-  const answerRef =
-    useRef(null);
-
-  const assistantNameRef =
-    useRef("");
-
-
-  /* =====================================================
-     ASSISTANT NAME
-     ===================================================== */
+  // =========================================================
+  // LOAD HISTORY
+  // =========================================================
 
   useEffect(() => {
-
-    assistantNameRef.current =
-      userData?.assistantName ||
-      "Assistant";
-
-  }, [
-    userData?.assistantName
-  ]);
+    if (userData?.history) {
+      setHistoryItems(userData.history);
+    }
+  }, [userData]);
 
 
-  /* =====================================================
-     LOAD HISTORY
-     ===================================================== */
+  // =========================================================
+  // SPEECH SYNTHESIS
+  // =========================================================
 
-  useEffect(() => {
+  const stopSpeaking = () => {
+    // Invalidate current speech session
+    speechSessionRef.current += 1;
 
-    setHistoryItems(
-      Array.isArray(userData?.history)
-        ? userData.history
-        : []
-    );
+    speakingRef.current = false;
 
-  }, [
-    userData?.history
-  ]);
-
-
-  /* =====================================================
-     CLEAN AI RESPONSE
-     ===================================================== */
-
-  const cleanAIResponse = (text) => {
-
-    if (!text) {
-      return "";
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
     }
 
-    let cleaned =
-      String(text);
+    clearTimeout(speechTimeoutRef.current);
 
-    cleaned =
-      cleaned.replace(
-        /```(?:json|javascript|js|text|markdown|md)?/gi,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /```/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\*\*/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /__/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /^\s*#{1,6}\s*/gm,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /^\s*>\s?/gm,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /^\s*[-*+]\s+/gm,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /`/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\$\$/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\$/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\\\[/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\\\]/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\\\(/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\\\)/g,
-        ""
-      );
-
-
-    let previous = "";
-
-    while (
-      previous !== cleaned
-    ) {
-
-      previous =
-        cleaned;
-
-      cleaned =
-        cleaned.replace(
-          /\\(?:frac|dfrac|tfrac)\{([^{}]+)\}\{([^{}]+)\}/g,
-          "$1/$2"
-        );
-    }
-
-
-    cleaned =
-      cleaned
-        .replace(
-          /\\pi\b/g,
-          "π"
-        )
-        .replace(
-          /\\sqrt\{([^{}]+)\}/g,
-          "√($1)"
-        )
-        .replace(
-          /\\sin\b/g,
-          "sin"
-        )
-        .replace(
-          /\\cos\b/g,
-          "cos"
-        )
-        .replace(
-          /\\tan\b/g,
-          "tan"
-        )
-        .replace(
-          /\\cot\b/g,
-          "cot"
-        )
-        .replace(
-          /\\sec\b/g,
-          "sec"
-        )
-        .replace(
-          /\\csc\b/g,
-          "csc"
-        )
-        .replace(
-          /\\log\b/g,
-          "log"
-        )
-        .replace(
-          /\\ln\b/g,
-          "ln"
-        )
-        .replace(
-          /\\infty\b/g,
-          "∞"
-        )
-        .replace(
-          /\\times\b/g,
-          "×"
-        )
-        .replace(
-          /\\cdot\b/g,
-          "·"
-        )
-        .replace(
-          /\\leq\b/g,
-          "≤"
-        )
-        .replace(
-          /\\geq\b/g,
-          "≥"
-        )
-        .replace(
-          /\\neq\b/g,
-          "≠"
-        )
-        .replace(
-          /\\pm\b/g,
-          "±"
-        );
-
-
-    cleaned =
-      cleaned.replace(
-        /\\left\b/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\\right\b/g,
-        ""
-      );
-
-
-    cleaned =
-      cleaned
-        .replace(
-          /\\text\{([^{}]*)\}/g,
-          "$1"
-        )
-        .replace(
-          /\\mathrm\{([^{}]*)\}/g,
-          "$1"
-        )
-        .replace(
-          /\\mathbf\{([^{}]*)\}/g,
-          "$1"
-        )
-        .replace(
-          /\\displaystyle/g,
-          ""
-        );
-
-
-    cleaned =
-      cleaned
-        .replace(
-          /\^\{2\}/g,
-          "²"
-        )
-        .replace(
-          /\^\{3\}/g,
-          "³"
-        )
-        .replace(
-          /\^2/g,
-          "²"
-        )
-        .replace(
-          /\^3/g,
-          "³"
-        );
-
-
-    cleaned =
-      cleaned
-        .replace(
-          /sin\^\{-1\}/g,
-          "sin⁻¹"
-        )
-        .replace(
-          /cos\^\{-1\}/g,
-          "cos⁻¹"
-        )
-        .replace(
-          /tan\^\{-1\}/g,
-          "tan⁻¹"
-        );
-
-
-    cleaned =
-      cleaned.replace(
-        /[{}]/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /[ \t]+/g,
-        " "
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\n[ \t]+/g,
-        "\n"
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\n{3,}/g,
-        "\n\n"
-      );
-
-    return cleaned.trim();
+    setIsSpeaking(false);
+    setIsAIActive(false);
   };
 
-
-  /* =====================================================
-     SAVE HISTORY
-     ===================================================== */
-
-  const addHistory = async (
-    command,
-    answer,
-    type = "text",
-    image = ""
-  ) => {
-
-    const temporaryItem = {
-
-      _id:
-        `temp-${Date.now()}`,
-
-      command,
-
-      answer,
-
-      type,
-
-      image,
-
-      createdAt:
-        new Date().toISOString()
-
-    };
-
-
-    setHistoryItems(
-      previous => [
-        temporaryItem,
-        ...previous
-      ]
-    );
-
-
-    try {
-
-      const response =
-        await axios.post(
-
-          `${serverUrl}/api/user/savehistory`,
-
-          {
-            command,
-            answer,
-            type,
-            image
-          },
-
-          {
-            withCredentials:
-              true
-          }
-
-        );
-
-
-      if (
-        response.data?.history
-      ) {
-
-        setHistoryItems(
-          response.data.history
-        );
-
-        setUserData(
-          previous => ({
-            ...previous,
-            history:
-              response.data.history
-          })
-        );
-      }
-
-    } catch (error) {
-
-      console.error(
-        "HISTORY SAVE ERROR:",
-        error.response?.data ||
-        error.message
-      );
-    }
-  };
-
-
-  /* =====================================================
-     DELETE HISTORY
-     ===================================================== */
-
-  const deleteHistory = async (
-    historyId
-  ) => {
-
-    if (!historyId) {
-      return;
-    }
-
-
-    try {
-
-      const response =
-        await axios.delete(
-
-          `${serverUrl}/api/user/history/${historyId}`,
-
-          {
-            withCredentials:
-              true
-          }
-
-        );
-
-
-      const updatedHistory =
-        response.data.history ||
-        [];
-
-
-      setHistoryItems(
-        updatedHistory
-      );
-
-
-      setUserData(
-        previous => ({
-          ...previous,
-          history:
-            updatedHistory
-        })
-      );
-
-    } catch (error) {
-
-      console.error(
-        "DELETE HISTORY ERROR:",
-        error.response?.data ||
-        error.message
-      );
-    }
-  };
-
-
-  /* =====================================================
-     CLEAR HISTORY
-     ===================================================== */
-
-  const clearHistory = async () => {
-
-    if (
-      historyItems.length === 0
-    ) {
-      return;
-    }
-
-
-    const confirmed =
-      window.confirm(
-        "Clear all history?"
-      );
-
-
-    if (!confirmed) {
-      return;
-    }
-
-
-    try {
-
-      await axios.delete(
-
-        `${serverUrl}/api/user/history`,
-
-        {
-          withCredentials:
-            true
-        }
-
-      );
-
-
-      setHistoryItems([]);
-
-      setHistoryImage("");
-
-      setUserText("");
-
-      setAiText("");
-
-      setShowAIText(false);
-
-      setActivePdf(null);
-
-      setUserData(
-        previous => ({
-          ...previous,
-          history: []
-        })
-      );
-
-    } catch (error) {
-
-      console.error(
-        "CLEAR HISTORY ERROR:",
-        error.response?.data ||
-        error.message
-      );
-    }
-  };
-
-
-  /* =====================================================
-     SPEECH
-     ===================================================== */
 
   const speak = (text) => {
-
-    if (!text) {
+    if (!text || !("speechSynthesis" in window)) {
       return;
     }
 
-
-    const speechText =
-      String(text).trim();
-
+    const speechText = String(text).trim();
 
     if (!speechText) {
       return;
     }
 
-
+    // Stop previous speech first
     window.speechSynthesis.cancel();
+    clearTimeout(speechTimeoutRef.current);
 
-    clearTimeout(
-      speechTimeoutRef.current
-    );
-
+    // Create a new speech session
+    const sessionId = ++speechSessionRef.current;
 
     const sentences =
       speechText.match(
         /[^.!?]+[.!?]+|[^.!?]+$/g
-      ) || [
-        speechText
-      ];
-
+      ) || [speechText];
 
     const chunks = [];
 
     let currentChunk = "";
 
+    sentences.forEach((sentence) => {
+      const cleanSentence = sentence.trim();
 
-    sentences.forEach(
-      sentence => {
-
-        const cleanSentence =
-          sentence.trim();
-
-
-        if (!cleanSentence) {
-          return;
-        }
-
-
-        const combined =
-          `${currentChunk} ${cleanSentence}`
-            .trim();
-
-
-        if (
-          combined.length > 180
-        ) {
-
-          if (
-            currentChunk.trim()
-          ) {
-
-            chunks.push(
-              currentChunk.trim()
-            );
-          }
-
-
-          currentChunk =
-            cleanSentence;
-
-        } else {
-
-          currentChunk =
-            combined;
-        }
+      if (!cleanSentence) {
+        return;
       }
-    );
 
+      const combined =
+        `${currentChunk} ${cleanSentence}`.trim();
 
-    if (
-      currentChunk.trim()
-    ) {
+      // Keep speech chunks reasonably sized
+      if (combined.length > 180) {
+        if (currentChunk.trim()) {
+          chunks.push(currentChunk.trim());
+        }
 
-      chunks.push(
-        currentChunk.trim()
-      );
+        currentChunk = cleanSentence;
+      } else {
+        currentChunk = combined;
+      }
+    });
+
+    if (currentChunk.trim()) {
+      chunks.push(currentChunk.trim());
     }
 
-
-    if (
-      chunks.length === 0
-    ) {
-
-      chunks.push(
-        speechText
-      );
+    if (chunks.length === 0) {
+      chunks.push(speechText);
     }
-
 
     let currentIndex = 0;
 
+    speakingRef.current = true;
 
-    speakingRef.current =
-      true;
-
+    setIsSpeaking(true);
     setIsAIActive(true);
 
 
     const speakNextChunk = () => {
-
+      // Ignore old speech session
       if (
-        currentIndex >=
-        chunks.length
+        !speakingRef.current ||
+        sessionId !== speechSessionRef.current
       ) {
+        return;
+      }
 
-        speakingRef.current =
-          false;
+      // Finished everything
+      if (currentIndex >= chunks.length) {
+        speakingRef.current = false;
 
-        setIsAIActive(
-          false
-        );
+        setIsSpeaking(false);
+        setIsAIActive(false);
 
-
+        // If microphone was intentionally kept active,
+        // restart recognition after speech.
         if (
           listeningRef.current &&
           !processingRef.current &&
           recognitionRef.current
         ) {
-
           try {
-
             recognitionRef.current.start();
-
-          } catch {}
+          } catch {
+            // Already running
+          }
         }
 
         return;
@@ -850,50 +231,62 @@ function Home() {
           chunks[currentIndex]
         );
 
-
       utterance.rate = 1;
-
       utterance.pitch = 1;
-
       utterance.volume = 1;
-
       utterance.lang = "en-US";
 
 
       utterance.onstart = () => {
+        if (
+          !speakingRef.current ||
+          sessionId !== speechSessionRef.current
+        ) {
+          window.speechSynthesis.cancel();
+          return;
+        }
 
-        speakingRef.current =
-          true;
-
+        setIsSpeaking(true);
         setIsAIActive(true);
       };
 
 
       utterance.onend = () => {
+        if (
+          !speakingRef.current ||
+          sessionId !== speechSessionRef.current
+        ) {
+          return;
+        }
 
         currentIndex++;
 
-
         speechTimeoutRef.current =
           setTimeout(
-            () => {
-              speakNextChunk();
-            },
+            speakNextChunk,
             80
           );
       };
 
 
-      utterance.onerror = () => {
+      utterance.onerror = (error) => {
+        console.error(
+          "Speech synthesis error:",
+          error
+        );
+
+        if (
+          !speakingRef.current ||
+          sessionId !== speechSessionRef.current
+        ) {
+          return;
+        }
 
         currentIndex++;
 
-
         speechTimeoutRef.current =
           setTimeout(
-            () => {
-              speakNextChunk();
-            },
+            speakNextChunk,
             80
           );
       };
@@ -909,64 +302,496 @@ function Home() {
   };
 
 
-  /* =====================================================
-     OPEN URL
-     ===================================================== */
+  // =========================================================
+  // SPEECH RECOGNITION
+  // =========================================================
 
-  const openUrl = (url) => {
+  useEffect(() => {
+    const SpeechRecognition =
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition;
 
-    if (!url) {
+    if (!SpeechRecognition) {
+      console.warn(
+        "Speech recognition is not supported in this browser."
+      );
+
       return;
     }
 
 
-    try {
+    const recognition =
+      new SpeechRecognition();
 
-      const finalUrl =
-        /^https?:\/\//i.test(url)
-          ? url
-          : `https://${url}`;
+    recognition.continuous = true;
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
 
 
-      const newWindow =
-        window.open(
-          finalUrl,
-          "_blank",
-          "noopener,noreferrer"
+    recognitionRef.current =
+      recognition;
+
+
+    recognition.onstart = () => {
+      listeningRef.current = true;
+
+      setIsListening(true);
+    };
+
+
+    recognition.onresult = async (event) => {
+      if (processingRef.current) {
+        return;
+      }
+
+
+      const lastResult =
+        event.results[
+          event.results.length - 1
+        ];
+
+
+      if (!lastResult) {
+        return;
+      }
+
+
+      const transcript =
+        lastResult[0]?.transcript?.trim();
+
+
+      if (!transcript) {
+        return;
+      }
+
+
+      const lowerTranscript =
+        transcript.toLowerCase();
+
+
+      const stopCommands = [
+        "thank you",
+        "thanks",
+        "stop listening",
+        "cancel",
+        "goodbye",
+        "bye",
+      ];
+
+
+      if (
+        stopCommands.includes(
+          lowerTranscript
+        )
+      ) {
+        stopListening();
+
+        return;
+      }
+
+
+      setUserText(transcript);
+
+      // TRUE means this came from voice,
+      // so the answer will be spoken.
+      await processCommand(
+        transcript,
+        "voice",
+        true
+      );
+    };
+
+
+    recognition.onend = () => {
+      if (
+        listeningRef.current &&
+        !speakingRef.current &&
+        !processingRef.current
+      ) {
+        clearTimeout(
+          restartTimeoutRef.current
         );
 
 
-      /*
-       * Some browsers block window.open
-       * after asynchronous operations.
-       *
-       * Use current page as fallback.
-       */
+        restartTimeoutRef.current =
+          setTimeout(() => {
+            try {
+              recognition.start();
+            } catch {
+              // Already running
+            }
+          }, 400);
+      } else if (
+        !listeningRef.current
+      ) {
+        setIsListening(false);
+      }
+    };
 
-      if (!newWindow) {
 
-        window.location.href =
-          finalUrl;
+    recognition.onerror = (event) => {
+      console.error(
+        "Speech recognition error:",
+        event.error
+      );
+
+
+      if (
+        event.error === "not-allowed" ||
+        event.error === "audio-capture"
+      ) {
+        listeningRef.current = false;
+
+        setIsListening(false);
+      }
+    };
+
+
+    return () => {
+      listeningRef.current = false;
+      processingRef.current = false;
+      speakingRef.current = false;
+
+
+      clearTimeout(
+        restartTimeoutRef.current
+      );
+
+      clearTimeout(
+        speechTimeoutRef.current
+      );
+
+
+      try {
+        recognition.stop();
+      } catch {
+        // Already stopped
       }
 
-    } catch (error) {
 
-      console.error(
-        "OPEN URL ERROR:",
-        error
+      if (
+        "speechSynthesis" in window
+      ) {
+        window.speechSynthesis.cancel();
+      }
+
+
+      recognitionRef.current = null;
+    };
+  }, [getGeminiResponse]);
+
+
+  // =========================================================
+  // START LISTENING
+  // =========================================================
+
+  const startListening = () => {
+    if (!recognitionRef.current) {
+      alert(
+        "Speech recognition is not supported in this browser. Please use Chrome or Edge."
+      );
+
+      return;
+    }
+
+
+    // If AI is speaking, stop it first.
+    stopSpeaking();
+
+
+    clearTimeout(
+      restartTimeoutRef.current
+    );
+
+
+    try {
+      listeningRef.current = true;
+
+      setIsListening(true);
+
+      recognitionRef.current.start();
+    } catch {
+      console.log(
+        "Microphone already running."
       );
     }
   };
 
 
-  /* =====================================================
-     GOOGLE SEARCH
-     ===================================================== */
+  // =========================================================
+  // STOP LISTENING
+  // =========================================================
 
-  const googleSearch = (
-    query
-  ) => {
+  const stopListening = () => {
+    listeningRef.current = false;
 
+    setIsListening(false);
+
+    clearTimeout(
+      restartTimeoutRef.current
+    );
+
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // Already stopped
+      }
+    }
+  };
+
+
+  // =========================================================
+  // CLEAN AI RESPONSE
+  // =========================================================
+
+  const cleanAIResponse = (text) => {
+    if (!text) {
+      return "";
+    }
+
+
+    let cleaned = String(text);
+
+
+    cleaned = cleaned
+      .replace(
+        /```(?:json|javascript|js|text|markdown|md)?/gi,
+        ""
+      )
+      .replace(
+        /```/g,
+        ""
+      )
+      .replace(
+        /\*\*\*/g,
+        ""
+      )
+      .replace(
+        /__/g,
+        ""
+      )
+      .replace(
+        /^\s*#{1,6}\s*/gm,
+        ""
+      )
+      .replace(
+        /^\s*>\s?/gm,
+        ""
+      )
+      .replace(
+        /^\s*[-*+]\s+/gm,
+        ""
+      )
+      .replace(
+        /`/g,
+        ""  
+      );
+
+
+    cleaned = cleaned
+      .replace(
+        /\$\$/g,
+        ""
+      )
+      .replace(
+        /\$/g,
+        ""
+      )
+      .replace(
+        /\\\[/g,
+        ""
+      )
+      .replace(
+        /\\\]/g,
+        ""
+      )
+      .replace(
+        /\\\(/g,
+        ""
+      )
+      .replace(
+        /\\\)/g,
+        ""
+      );
+
+
+    cleaned = cleaned.replace(
+      /\\(?:frac|dfrac|tfrac)\{([^{}]+)\}\{([^{}]+)\}/g,
+      "$1/$2"
+    );
+
+
+    cleaned = cleaned
+      .replace(
+        /\\pi\b/g,
+        "π"
+      )
+      .replace(
+        /\\sqrt\{([^{}]+)\}/g,
+        "√($1)"
+      )
+      .replace(
+        /\\sin\b/g,
+        "sin"
+      )
+      .replace(
+        /\\cos\b/g,
+        "cos"
+      )
+      .replace(
+        /\\tan\b/g,
+        "tan"
+      )
+      .replace(
+        /\\cot\b/g,
+        "cot"
+      )
+      .replace(
+        /\\sec\b/g,
+        "sec"
+      )
+      .replace(
+        /\\csc\b/g,
+        "csc"
+      )
+      .replace(
+        /\\log\b/g,
+        "log"
+      )
+      .replace(
+        /\\ln\b/g,
+        "ln"
+      )
+      .replace(
+        /\\lim\b/g,
+        "lim"
+      )
+      .replace(
+        /\\infty\b/g,
+        "∞"
+      )
+      .replace(
+        /\\times\b/g,
+        "×"
+      )
+      .replace(
+        /\\cdot\b/g,
+        "·"
+      )
+      .replace(
+        /\\leq\b/g,
+        "≤"
+      )
+      .replace(
+        /\\geq\b/g,
+        "≥"
+      )
+      .replace(
+        /\\neq\b/g,
+        "≠"
+      )
+      .replace(
+        /\\pm\b/g,
+        "±"
+      )
+      .replace(
+        /\\left/g,
+        ""
+      )
+      .replace(
+        /\\right/g,
+        ""
+      )
+      .replace(
+        /\\text\{([^{}]*)\}/g,
+        "$1"
+      )
+      .replace(
+        /\\mathrm\{([^{}]*)\}/g,
+        "$1"
+      )
+      .replace(
+        /\\mathbf\{([^{}]*)\}/g,
+        "$1"
+      )
+      .replace(
+        /\\displaystyle/g,
+        ""
+      )
+      .replace(
+        /\^\{2\}/g,
+        "²"
+      )
+      .replace(
+        /\^\{3\}/g,
+        "³"
+      )
+      .replace(
+        /\^2/g,
+        "²"
+      )
+      .replace(
+        /\^3/g,
+        "³"
+      )
+      .replace(
+        /sin\^{-1}/g,
+        "sin⁻¹"
+      )
+      .replace(
+        /cos\^{-1}/g,
+        "cos⁻¹"
+      )
+      .replace(
+        /tan\^{-1}/g,
+        "tan⁻¹"
+      )
+      .replace(
+        /[{}]/g,
+        ""
+      );
+
+
+    cleaned = cleaned
+      .replace(
+        /[ \t]+/g,
+        " "
+      )
+      .replace(
+        /\n[ \t]+/g,
+        "\n"
+      )
+      .replace(
+        /\n{3,}/g,
+        "\n\n"
+      );
+
+
+    return cleaned.trim();
+  };
+
+
+  // =========================================================
+  // URL HELPERS
+  // =========================================================
+
+  const openUrl = (url) => {
+    if (!url) {
+      return;
+    }
+
+    window.open(
+      url,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  };
+
+
+  const googleSearch = (query) => {
     if (!query?.trim()) {
       return;
     }
@@ -980,14 +805,7 @@ function Home() {
   };
 
 
-  /* =====================================================
-     YOUTUBE SEARCH
-     ===================================================== */
-
-  const youtubeSearch = (
-    query
-  ) => {
-
+  const youtubeSearch = (query) => {
     if (!query?.trim()) {
       return;
     }
@@ -1001,668 +819,128 @@ function Home() {
   };
 
 
-  /* =====================================================
-     WEBSITES
-     ===================================================== */
-
   const websites = {
-
-    google:
-      "https://www.google.com",
-
-    yahoo:
-      "https://www.yahoo.com",
-
-    bing:
-      "https://www.bing.com",
-
-    youtube:
-      "https://www.youtube.com",
-
-    instagram:
-      "https://www.instagram.com",
-
-    facebook:
-      "https://www.facebook.com",
-
-    github:
-      "https://github.com",
-
-    linkedin:
-      "https://www.linkedin.com",
-
-    whatsapp:
-      "https://web.whatsapp.com",
-
-    gmail:
-      "https://mail.google.com",
-
-    amazon:
-      "https://www.amazon.in",
-
-    flipkart:
-      "https://www.flipkart.com",
-
-    spotify:
-      "https://open.spotify.com",
-
-    netflix:
-      "https://www.netflix.com",
-
-    wikipedia:
-      "https://www.wikipedia.org",
-
-    reddit:
-      "https://www.reddit.com",
-
-    discord:
-      "https://discord.com",
-
-    canva:
-      "https://www.canva.com",
-
-    pinterest:
-      "https://www.pinterest.com",
-
-    twitter:
-      "https://x.com",
-
-    x:
-      "https://x.com",
-
-    telegram:
-      "https://web.telegram.org"
-
+    google: "https://www.google.com",
+    youtube: "https://www.youtube.com",
+    instagram: "https://www.instagram.com",
+    facebook: "https://www.facebook.com",
+    github: "https://github.com",
+    linkedin: "https://www.linkedin.com",
+    whatsapp: "https://web.whatsapp.com",
+    gmail: "https://mail.google.com",
+    amazon: "https://www.amazon.in",
+    flipkart: "https://www.flipkart.com",
+    spotify: "https://open.spotify.com",
+    netflix: "https://www.netflix.com",
+    wikipedia: "https://www.wikipedia.org",
+    reddit: "https://www.reddit.com",
+    discord: "https://discord.com",
+    canva: "https://www.canva.com",
+    pinterest: "https://www.pinterest.com",
+    twitter: "https://x.com",
+    x: "https://x.com",
+    telegram: "https://web.telegram.org",
   };
 
-
-  /* =====================================================
-     NORMALIZE SITE
-     ===================================================== */
-
-  const normalizeSite = (
-    site
-  ) => {
-
-    const value =
-      String(site || "")
-        .trim()
-        .toLowerCase()
-        .replace(
-          /^www\./,
-          ""
-        )
-        .replace(
-          /\.(com|in|org|net|co|tv)$/i,
-          ""
-        );
-
-
-    const aliases = {
-
-      google:
-        "google",
-
-      "google search":
-        "google",
-
-      yahoo:
-        "yahoo",
-
-      "yahoo search":
-        "yahoo",
-
-      bing:
-        "bing",
-
-      "bing search":
-        "bing",
-
-      youtube:
-        "youtube",
-
-      yt:
-        "youtube",
-
-      instagram:
-        "instagram",
-
-      insta:
-        "instagram",
-
-      facebook:
-        "facebook",
-
-      fb:
-        "facebook",
-
-      wikipedia:
-        "wikipedia",
-
-      wiki:
-        "wikipedia",
-
-      reddit:
-        "reddit",
-
-      amazon:
-        "amazon",
-
-      flipkart:
-        "flipkart",
-
-      spotify:
-        "spotify",
-
-      github:
-        "github",
-
-      linkedin:
-        "linkedin",
-
-      pinterest:
-        "pinterest",
-
-      twitter:
-        "twitter",
-
-      x:
-        "x",
-
-      quora:
-        "quora",
-
-      twitch:
-        "twitch",
-
-      imdb:
-        "imdb",
-
-      soundcloud:
-        "soundcloud",
-
-      deezer:
-        "deezer",
-
-      udemy:
-        "udemy",
-
-      coursera:
-        "coursera",
-
-      canva:
-        "canva",
-
-      stackoverflow:
-        "stackoverflow"
-
-    };
-
-
-    return (
-      aliases[value] ||
-      value
-    );
-  };
-
-
-  /* =====================================================
-     WEBSITE SEARCH URL
-     ===================================================== */
 
   const getWebsiteSearchUrl = (
     site,
     query
   ) => {
-
-    const normalizedSite =
-      normalizeSite(site);
-
-
-    const cleanQuery =
-      String(query || "")
-        .trim();
-
-
-    if (!cleanQuery) {
-      return null;
-    }
-
-
     const encodedQuery =
       encodeURIComponent(
-        cleanQuery
+        query.trim()
       );
 
 
-    switch (
-      normalizedSite
-    ) {
-
+    switch (site) {
       case "google":
-
         return `https://www.google.com/search?q=${encodedQuery}`;
 
-
-      case "yahoo":
-
-        return `https://search.yahoo.com/search?p=${encodedQuery}`;
-
-
-      case "bing":
-
-        return `https://www.bing.com/search?q=${encodedQuery}`;
-
-
       case "youtube":
-
         return `https://www.youtube.com/results?search_query=${encodedQuery}`;
 
-
-      case "instagram":
-
-        return `https://www.instagram.com/explore/search/keyword/?q=${encodedQuery}`;
-
-
-      case "facebook":
-
-        return `https://www.facebook.com/search/top?q=${encodedQuery}`;
-
-
-      case "wikipedia":
-
-        return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
-
-
-      case "reddit":
-
-        return `https://www.reddit.com/search/?q=${encodedQuery}`;
-
-
       case "amazon":
-
         return `https://www.amazon.in/s?k=${encodedQuery}`;
 
-
       case "flipkart":
-
         return `https://www.flipkart.com/search?q=${encodedQuery}`;
 
+      case "wikipedia":
+        return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
 
-      case "spotify":
-
-        return `https://open.spotify.com/search/${encodedQuery}`;
-
+      case "reddit":
+        return `https://www.reddit.com/search/?q=${encodedQuery}`;
 
       case "github":
-
         return `https://github.com/search?q=${encodedQuery}`;
 
-
       case "linkedin":
-
         return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
 
+      case "spotify":
+        return `https://open.spotify.com/search/${encodedQuery}`;
 
       case "pinterest":
-
         return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
 
+      case "facebook":
+        return `https://www.facebook.com/search/top?q=${encodedQuery}`;
 
-      case "twitter":
       case "x":
-
+      case "twitter":
         return `https://x.com/search?q=${encodedQuery}`;
 
-
-      case "quora":
-
-        return `https://www.quora.com/search?q=${encodedQuery}`;
-
-
-      case "twitch":
-
-        return `https://www.twitch.tv/search?term=${encodedQuery}`;
-
-
-      case "imdb":
-
-        return `https://www.imdb.com/find/?q=${encodedQuery}`;
-
-
-      case "soundcloud":
-
-        return `https://soundcloud.com/search?q=${encodedQuery}`;
-
-
-      case "deezer":
-
-        return `https://www.deezer.com/search/${encodedQuery}`;
-
-
-      case "stackoverflow":
-
-        return `https://stackoverflow.com/search?q=${encodedQuery}`;
-
-
-      case "udemy":
-
-        return `https://www.udemy.com/courses/search/?q=${encodedQuery}`;
-
-
-      case "coursera":
-
-        return `https://www.coursera.org/search?query=${encodedQuery}`;
-
-
-      case "canva":
-
-        return `https://www.canva.com/search?q=${encodedQuery}`;
-
-
       default:
-
         return null;
     }
   };
 
 
-  /* =====================================================
-     EXTRACT SEARCH COMMAND
-     ===================================================== */
+  // =========================================================
+  // SEARCH COMMAND EXTRACTION
+  // =========================================================
 
   const extractSearchCommand = (
     command
   ) => {
-
-    if (!command) {
-      return null;
-    }
+    const lower =
+      command.toLowerCase().trim();
 
 
-    const text =
-      String(command)
-        .trim()
-        .replace(
-          /\s+/g,
-          " "
-        )
-        .replace(
-          /[?!.]+$/,
-          ""
-        );
+    const patterns = [
+      /^search google for (.+)$/i,
+      /^google (.+)$/i,
+      /^search for (.+)$/i,
+      /^search (.+)$/i,
+      /^find (.+) on google$/i,
+    ];
 
 
-    if (!text) {
-      return null;
-    }
+    for (const pattern of patterns) {
+      const match =
+        command.match(pattern);
 
-
-    let match;
-
-
-    /* =================================================
-       OPEN SITE AND SEARCH FOR QUERY
-
-       Examples:
-
-       open spotify and search for Savriabdul
-       open yahoo and search for cats
-       open google and search for photosynthesis
-       open youtube and search for arijit singh
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:open|launch|visit|go to|take me to)\s+([a-zA-Z0-9.-]+)(?:\s+(?:website|site))?\s+(?:and\s+)?(?:search|find|look for|look up)(?:\s+for|\s+about|\s+regarding)?\s+(.+)$/i
-      );
-
-
-    if (match) {
-
-      const site =
-        normalizeSite(
-          match[1]
-        );
-
-      const query =
-        match[2].trim();
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
+      if (match?.[1]) {
         return {
-          site,
-          query,
-          url
+          site: "google",
+          query: match[1].trim(),
         };
       }
     }
 
 
-    /* =================================================
-       SEARCH QUERY ON SITE
-
-       search cats on yahoo
-       search cats in yahoo
-       search cats at yahoo
-       search cats using yahoo
-       find cats on google
-       look for cats on youtube
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:search|find|look for|look up)\s+(.+?)\s+(?:on|in|at|using)\s+([a-zA-Z0-9.-]+)$/i
-      );
-
-
-    if (match) {
-
-      const query =
-        match[1].trim();
-
-      const site =
-        normalizeSite(
-          match[2]
-        );
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
-    }
-
-
-    /* =================================================
-       SEARCH SITE FOR QUERY
-
-       search yahoo for cats
-       search google for photosynthesis
-       search youtube for arijit singh
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:search|find|look for|look up)\s+([a-zA-Z0-9.-]+)\s+(?:for|about|regarding)\s+(.+)$/i
-      );
-
-
-    if (match) {
-
-      const site =
-        normalizeSite(
-          match[1]
-        );
-
-      const query =
-        match[2].trim();
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
-    }
-
-
-    /* =================================================
-       SITE SEARCH QUERY
-
-       yahoo search cats
-       google search photosynthesis
-       youtube search arijit singh
-       spotify search Savriabdul
-       ================================================= */
-
-    match =
-      text.match(
-        /^([a-zA-Z0-9.-]+)\s+search\s+(.+)$/i
-      );
-
-
-    if (match) {
-
-      const site =
-        normalizeSite(
-          match[1]
-        );
-
-      const query =
-        match[2].trim();
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
-    }
-
-
-    /* =================================================
-       SEARCH SITE QUERY
-
-       search yahoo cats
-       search google photosynthesis
-       search youtube music
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:search|find)\s+([a-zA-Z0-9.-]+)\s+(.+)$/i
-      );
-
-
-    if (match) {
-
-      const site =
-        normalizeSite(
-          match[1]
-        );
-
-      const query =
-        match[2].trim();
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
-    }
-
-
-    /* =================================================
-       SEARCH QUERY SITE
-
-       search cats yahoo
-       search photosynthesis google
-       search arijit singh youtube
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:search|find|look for|look up)\s+(.+?)\s+([a-zA-Z0-9.-]+)$/i
-      );
-
-
-    if (match) {
-
-      const query =
-        match[1].trim();
-
-      const site =
-        normalizeSite(
-          match[2]
-        );
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
+    if (
+      lower.startsWith(
+        "search google "
+      )
+    ) {
+      return {
+        site: "google",
+        query: command
+          .slice(14)
+          .trim(),
+      };
     }
 
 
@@ -1670,26 +948,25 @@ function Home() {
   };
 
 
-  /* =====================================================
-     YOUTUBE QUERY
-     ===================================================== */
-
   const getYouTubeQuery = (
     command
   ) => {
+    const patterns = [
+      /^search youtube for (.+)$/i,
+      /^youtube search (.+)$/i,
+      /^search (.+) on youtube$/i,
+      /^play (.+) on youtube$/i,
+      /^play (.+)$/i,
+    ];
 
-    const result =
-      extractSearchCommand(
-        command
-      );
 
+    for (const pattern of patterns) {
+      const match =
+        command.match(pattern);
 
-    if (
-      result?.site ===
-      "youtube"
-    ) {
-
-      return result.query;
+      if (match?.[1]) {
+        return match[1].trim();
+      }
     }
 
 
@@ -1697,22 +974,95 @@ function Home() {
   };
 
 
-  /* =====================================================
-     PROCESS COMMAND
-     ===================================================== */
+  // =========================================================
+  // SAVE HISTORY
+  // =========================================================
+
+  const addHistory = async (
+    command,
+    answer,
+    type = "text",
+    image = ""
+  ) => {
+    if (!serverUrl) {
+      return;
+    }
+
+
+    try {
+      const response =
+        await axios.post(
+          `${serverUrl}/api/user/savehistory`,
+          {
+            command,
+            response: answer,
+            type,
+            image,
+          },
+          {
+            withCredentials: true,
+          }
+        );
+
+
+      const savedHistory =
+        response.data?.history;
+
+
+      if (savedHistory) {
+        setHistoryItems(
+          (prev) => [
+            savedHistory,
+            ...prev,
+          ]
+        );
+
+
+        setUserData?.((prev) => {
+          if (!prev) {
+            return prev;
+          }
+
+
+          return {
+            ...prev,
+            history: [
+              savedHistory,
+              ...(prev.history || []),
+            ],
+          };
+        });
+      }
+    } catch (error) {
+      console.error(
+        "SAVE HISTORY ERROR:",
+        error
+      );
+    }
+  };
+
+
+  // =========================================================
+  // PROCESS COMMAND
+  // =========================================================
 
   const processCommand = async (
     command,
     type = "text",
     shouldSpeak = false
   ) => {
-
     const cleanedCommand =
-      String(command || "").trim();
+      command?.trim();
 
 
     if (!cleanedCommand) {
       return;
+    }
+
+
+    // Stop any currently running speech
+    if (shouldSpeak) {
+      stopSpeaking();
     }
 
 
@@ -1730,163 +1080,38 @@ function Home() {
 
     setIsSending(true);
 
-    processingRef.current =
-      true;
+    processingRef.current = true;
 
 
     try {
+      const lower =
+        cleanedCommand
+          .toLowerCase()
+          .trim();
 
-      /* =================================================
-         WEBSITE SEARCH
-         ================================================= */
 
-      const searchCommand =
+      // =====================================================
+      // GOOGLE SEARCH
+      // =====================================================
+
+      const extractedSearch =
         extractSearchCommand(
           cleanedCommand
         );
 
 
-      if (searchCommand) {
-
-        const {
-          site,
-          query,
-          url
-        } = searchCommand;
-
-
-        const normalizedSite =
-          normalizeSite(site);
-
-
-        const siteName =
-          normalizedSite === "x"
-            ? "X"
-            : normalizedSite
-                .charAt(0)
-                .toUpperCase() +
-              normalizedSite.slice(1);
-
-
+      if (extractedSearch) {
         const answer =
-          `Searching ${siteName} for ${query}.`;
+          `Searching Google for ${extractedSearch.query}.`;
 
 
-        setAiText(
-          answer
-        );
+        setAiText(answer);
 
-        setShowAIText(
-          true
-        );
-
-
-        await addHistory(
-          cleanedCommand,
-          answer,
-          type
-        );
-
-
-        if (url) {
-
-          openUrl(url);
-        }
-
-
-        if (shouldSpeak) {
-
-          speak(answer);
-        }
-
-
-        return;
-      }
-
-
-      /* =================================================
-         SIMPLE GOOGLE SEARCH
-         ================================================= */
-
-      const googleSearchMatch =
-        cleanedCommand.match(
-          /^(?:search|google)\s+(.+)$/i
-        );
-
-
-      if (
-        googleSearchMatch
-      ) {
-
-        const query =
-          googleSearchMatch[1]
-            .trim();
-
-
-        const answer =
-          `Searching Google for ${query}.`;
-
-
-        setAiText(
-          answer
-        );
-
-        setShowAIText(
-          true
-        );
-
-
-        await addHistory(
-          cleanedCommand,
-          answer,
-          type
-        );
+        setShowAIText(true);
 
 
         googleSearch(
-          query
-        );
-
-
-        if (shouldSpeak) {
-
-          speak(answer);
-        }
-
-
-        return;
-      }
-
-
-      /* =================================================
-         SIMPLE YOUTUBE SEARCH
-         ================================================= */
-
-      const youtubeSimpleMatch =
-        cleanedCommand.match(
-          /^(?:youtube)\s+(.+)$/i
-        );
-
-
-      if (
-        youtubeSimpleMatch
-      ) {
-
-        const query =
-          youtubeSimpleMatch[1]
-            .trim();
-
-
-        const answer =
-          `Searching YouTube for ${query}.`;
-
-
-        setAiText(
-          answer
-        );
-
-        setShowAIText(
-          true
+          extractedSearch.query
         );
 
 
@@ -1897,13 +1122,7 @@ function Home() {
         );
 
 
-        youtubeSearch(
-          query
-        );
-
-
         if (shouldSpeak) {
-
           speak(answer);
         }
 
@@ -1912,48 +1131,158 @@ function Home() {
       }
 
 
-      /* =================================================
-         DIRECT WEBSITE
-         ================================================= */
+      // =====================================================
+      // GOOGLE OPEN
+      // =====================================================
 
-      const directMatch =
-        cleanedCommand.match(
-          /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
+      if (
+        lower === "open google" ||
+        lower === "open google.com"
+      ) {
+        const answer =
+          "Opening Google.";
+
+
+        setAiText(answer);
+
+        setShowAIText(true);
+
+        openUrl(
+          websites.google
         );
 
 
-      if (directMatch) {
-
-        const site =
-          directMatch[1]
-            .trim()
-            .toLowerCase()
-            .replace(
-              /\s+(website|site)$/i,
-              ""
-            );
+        await addHistory(
+          cleanedCommand,
+          answer,
+          type
+        );
 
 
-        const normalizedSite =
-          normalizeSite(site);
+        if (shouldSpeak) {
+          speak(answer);
+        }
 
 
+        return;
+      }
+
+
+      // =====================================================
+      // YOUTUBE SEARCH
+      // =====================================================
+
+      const youtubeQuery =
+        getYouTubeQuery(
+          cleanedCommand
+        );
+
+
+      if (
+        youtubeQuery &&
+        (
+          lower.includes(
+            "youtube"
+          ) ||
+          lower.startsWith(
+            "play "
+          )
+        )
+      ) {
+        const answer =
+          `Searching YouTube for ${youtubeQuery}.`;
+
+
+        setAiText(answer);
+
+        setShowAIText(true);
+
+
+        youtubeSearch(
+          youtubeQuery
+        );
+
+
+        await addHistory(
+          cleanedCommand,
+          answer,
+          type
+        );
+
+
+        if (shouldSpeak) {
+          speak(answer);
+        }
+
+
+        return;
+      }
+
+
+      // =====================================================
+      // OPEN YOUTUBE
+      // =====================================================
+
+      if (
+        lower === "open youtube" ||
+        lower === "open youtube.com"
+      ) {
+        const answer =
+          "Opening YouTube.";
+
+
+        setAiText(answer);
+
+        setShowAIText(true);
+
+        openUrl(
+          websites.youtube
+        );
+
+
+        await addHistory(
+          cleanedCommand,
+          answer,
+          type
+        );
+
+
+        if (shouldSpeak) {
+          speak(answer);
+        }
+
+
+        return;
+      }
+
+
+      // =====================================================
+      // DIRECT WEBSITE
+      // =====================================================
+
+      const websiteNames =
+        Object.keys(websites);
+
+
+      for (
+        const site of websiteNames
+      ) {
         if (
-          websites[
-            normalizedSite
-          ]
+          lower ===
+            `open ${site}` ||
+          lower ===
+            `open ${site}.com`
         ) {
-
           const answer =
-            `Opening ${normalizedSite}.`;
+            `Opening ${site}.`;
 
 
-          setAiText(
-            answer
-          );
+          setAiText(answer);
 
-          setShowAIText(
-            true
+          setShowAIText(true);
+
+          openUrl(
+            websites[site]
           );
 
 
@@ -1964,15 +1293,7 @@ function Home() {
           );
 
 
-          openUrl(
-            websites[
-              normalizedSite
-            ]
-          );
-
-
           if (shouldSpeak) {
-
             speak(answer);
           }
 
@@ -1982,9 +1303,73 @@ function Home() {
       }
 
 
-      /* =================================================
-         NORMAL GEMINI
-         ================================================= */
+      // =====================================================
+      // WEBSITE SEARCH
+      // =====================================================
+
+      const websiteSearchMatch =
+        lower.match(
+          /^search (.+) on (google|youtube|amazon|flipkart|wikipedia|reddit|github|linkedin|spotify|pinterest|facebook|x|twitter)$/
+        );
+
+
+      if (
+        websiteSearchMatch
+      ) {
+        const query =
+          cleanedCommand.match(
+            /^search (.+) on (google|youtube|amazon|flipkart|wikipedia|reddit|github|linkedin|spotify|pinterest|facebook|x|twitter)$/i
+          );
+
+
+        const searchQuery =
+          query?.[1]?.trim();
+
+
+        const site =
+          query?.[2]?.toLowerCase();
+
+
+        const url =
+          getWebsiteSearchUrl(
+            site,
+            searchQuery
+          );
+
+
+        const answer =
+          `Searching ${site} for ${searchQuery}.`;
+
+
+        setAiText(answer);
+
+        setShowAIText(true);
+
+
+        if (url) {
+          openUrl(url);
+        }
+
+
+        await addHistory(
+          cleanedCommand,
+          answer,
+          type
+        );
+
+
+        if (shouldSpeak) {
+          speak(answer);
+        }
+
+
+        return;
+      }
+
+
+      // =====================================================
+      // GEMINI
+      // =====================================================
 
       const result =
         await getGeminiResponse(
@@ -2000,7 +1385,6 @@ function Home() {
         typeof result ===
         "string"
       ) {
-
         const cleanResult =
           result
             .replace(
@@ -2015,21 +1399,15 @@ function Home() {
 
 
         try {
-
           parsedResult =
             JSON.parse(
               cleanResult
             );
-
         } catch {
-
           parsedResult = {
-
-            type:
-              "general",
-
+            type: "general",
             response:
-              cleanResult
+              cleanResult,
           };
         }
       }
@@ -2048,76 +1426,101 @@ function Home() {
         );
 
 
-      /* =================================================
-         GEMINI ACTIONS
-         ================================================= */
+      // =====================================================
+      // GEMINI ACTIONS
+      // =====================================================
 
       if (
         parsedResult?.type ===
         "google_open"
       ) {
-
         openUrl(
-          "https://www.google.com"
+          websites.google
         );
+      }
 
-      } else if (
+
+      else if (
         parsedResult?.type ===
         "google_search"
       ) {
+        const extracted =
+          extractSearchCommand(
+            cleanedCommand
+          );
+
+
+        const query =
+          extracted?.site ===
+          "google"
+            ? extracted.query
+            : parsedResult?.query;
+
 
         if (
-          parsedResult?.query
+          query?.trim()
         ) {
-
           googleSearch(
-            parsedResult.query
+            query
           );
         }
+      }
 
-      } else if (
+
+      else if (
         parsedResult?.type ===
         "youtube_open"
       ) {
-
         openUrl(
-          "https://www.youtube.com"
+          websites.youtube
         );
+      }
 
-      } else if (
+
+      else if (
         parsedResult?.type ===
           "youtube_search" ||
         parsedResult?.type ===
           "youtube_play"
       ) {
+        const extractedQuery =
+          getYouTubeQuery(
+            cleanedCommand
+          );
+
+
+        const query =
+          extractedQuery ||
+          parsedResult?.query;
+
 
         if (
-          parsedResult?.query
+          query?.trim()
         ) {
-
           youtubeSearch(
-            parsedResult.query
+            query
           );
         }
+      }
 
-      } else if (
+
+      else if (
         parsedResult?.type ===
         "calculator_open"
       ) {
-
         openUrl(
           "https://www.google.com/search?q=calculator"
         );
       }
 
 
-      setAiText(
-        response
-      );
+      // =====================================================
+      // DISPLAY COMPLETE ANSWER
+      // =====================================================
 
-      setShowAIText(
-        true
-      );
+      setAiText(response);
+
+      setShowAIText(true);
 
 
       await addHistory(
@@ -2127,802 +1530,111 @@ function Home() {
       );
 
 
-      if (shouldSpeak) {
+      // =====================================================
+      // SPEAK ONLY VOICE QUESTIONS
+      // =====================================================
 
+      if (shouldSpeak) {
         speak(response);
       }
+    }
 
-    } catch (error) {
 
+    catch (error) {
       console.error(
-        "COMMAND ERROR:",
+        "PROCESS COMMAND ERROR:",
         error
       );
 
 
       const errorMessage =
-        "Sorry, I could not complete that request right now.";
+        "Sorry, something went wrong while processing your request.";
 
 
       setAiText(
         errorMessage
       );
 
-      setShowAIText(
-        true
-      );
+      setShowAIText(true);
 
 
       if (shouldSpeak) {
-
-        speak(
-          errorMessage
-        );
+        speak(errorMessage);
       }
+    }
 
-    } finally {
 
+    finally {
       processingRef.current =
         false;
 
-      setIsSending(
-        false
-      );
+
+      setIsSending(false);
 
 
       if (
         !speakingRef.current
       ) {
-
-        setIsAIActive(
-          false
-        );
+        setIsAIActive(false);
       }
     }
   };
 
 
-  /* =====================================================
-     SEND MESSAGE
-     ===================================================== */
-
-  const handleSend = async (
-    e
-  ) => {
-
-    e?.preventDefault();
-
-
-    if (selectedImage) {
-
-      await analyzeImage();
-
-      return;
-    }
-
-
-    if (selectedPdf) {
-
-      await analyzePdf();
-
-      return;
-    }
-
-
-    if (
-      !typedText.trim() ||
-      isSending
-    ) {
-
-      return;
-    }
-
-
-    const command =
-      typedText.trim();
-
-
-    setTypedText("");
-
-    setHistoryImage("");
-
-
-    if (activePdf) {
-
-      await analyzePdfQuestion(
-        command
-      );
-
-      return;
-    }
-
-
-    await processCommand(
-      command,
-      "text",
-      false
-    );
-  };
-
-
-  /* =====================================================
-     IMAGE SELECT
-     ===================================================== */
-
-  const handleImageSelect = (
-    e
-  ) => {
-
-    const file =
-      e.target.files?.[0];
-
-
-    if (!file) {
-      return;
-    }
-
-
-    if (
-      !file.type.startsWith(
-        "image/"
-      )
-    ) {
-
-      alert(
-        "Please select an image file."
-      );
-
-      return;
-    }
-
-
-    if (
-      file.size >
-      10 * 1024 * 1024
-    ) {
-
-      alert(
-        "Image must be smaller than 10 MB."
-      );
-
-      return;
-    }
-
-
-    if (imagePreview) {
-
-      URL.revokeObjectURL(
-        imagePreview
-      );
-    }
-
-
-    removePdf();
-
-    setHistoryImage("");
-
-    setSelectedImage(
-      file
-    );
-
-    setImagePreview(
-      URL.createObjectURL(
-        file
-      )
-    );
-  };
-
-
-  /* =====================================================
-     PDF SELECT
-     ===================================================== */
-
-  const handlePdfSelect = (
-    e
-  ) => {
-
-    const file =
-      e.target.files?.[0];
-
-
-    if (!file) {
-      return;
-    }
-
-
-    const isPdf =
-      file.type ===
-        "application/pdf" ||
-      file.name
-        .toLowerCase()
-        .endsWith(".pdf");
-
-
-    if (!isPdf) {
-
-      alert(
-        "Please select a PDF file."
-      );
-
-      return;
-    }
-
-
-    if (
-      file.size >
-      20 * 1024 * 1024
-    ) {
-
-      alert(
-        "PDF must be smaller than 20 MB."
-      );
-
-      return;
-    }
-
-
-    removeImage();
-
-    setHistoryImage("");
-
-    setActivePdf(null);
-
-    setSelectedPdf(
-      file
-    );
-
-    setPdfName(
-      file.name
-    );
-
-    setPdfPreview(
-      URL.createObjectURL(
-        file
-      )
-    );
-
-    setUserText("");
-
-    setAiText("");
-
-    setShowAIText(false);
-  };
-
-
-  /* =====================================================
-     REMOVE IMAGE
-     ===================================================== */
-
-  const removeImage = () => {
-
-    if (imagePreview) {
-
-      URL.revokeObjectURL(
-        imagePreview
-      );
-    }
-
-
-    setSelectedImage(null);
-
-    setImagePreview("");
-
-
-    if (
-      imageInputRef.current
-    ) {
-
-      imageInputRef.current.value =
-        "";
-    }
-  };
-
-
-  /* =====================================================
-     REMOVE PDF
-     ===================================================== */
-
-  const removePdf = () => {
-
-    if (pdfPreview) {
-
-      URL.revokeObjectURL(
-        pdfPreview
-      );
-    }
-
-
-    setSelectedPdf(null);
-
-    setPdfPreview("");
-
-    setPdfName("");
-
-
-    if (
-      pdfInputRef.current
-    ) {
-
-      pdfInputRef.current.value =
-        "";
-    }
-  };
-
-
-  /* =====================================================
-     PDF ANALYSIS
-     ===================================================== */
-
-  const analyzePdf = async () => {
-
-    if (
-      !selectedPdf ||
-      isPdfAnalyzing
-    ) {
-
-      return;
-    }
-
-
-    const question =
-      typedText.trim() ||
-      "Analyze this PDF and explain its important contents.";
-
-
-    setIsPdfAnalyzing(true);
-
-    setIsAIActive(true);
-
-    setUserText(
-      question
-    );
-
-    setAiText("");
-
-    setShowAIText(false);
-
-
-    try {
-
-      const result =
-        await analyzePdfFile(
-          selectedPdf,
-          question
-        );
-
-
-      const answer =
-        cleanAIResponse(
-          result?.response ||
-          result?.answer ||
-          "I could not analyze this PDF."
-        );
-
-
-      setAiText(
-        answer
-      );
-
-      setShowAIText(
-        true
-      );
-
-
-      setActivePdf(
-        selectedPdf
-      );
-
-
-      await addHistory(
-        question,
-        answer,
-        "pdf"
-      );
-
-
-      setTypedText("");
-
-      removePdf();
-
-    } catch (error) {
-
-      console.error(
-        "PDF ANALYSIS ERROR:",
-        error.response?.data ||
-        error.message
-      );
-
-
-      const errorMessage =
-        error.response?.data?.message ||
-        "Unable to analyze the PDF.";
-
-
-      setAiText(
-        errorMessage
-      );
-
-      setShowAIText(
-        true
-      );
-
-    } finally {
-
-      setIsPdfAnalyzing(
-        false
-      );
-
-
-      if (
-        !speakingRef.current
-      ) {
-
-        setIsAIActive(
-          false
-        );
-      }
-    }
-  };
-
-
-  /* =====================================================
-     ASK QUESTION ABOUT ACTIVE PDF
-     ===================================================== */
-
-  const analyzePdfQuestion = async (
-    question
-  ) => {
-
-    if (
-      !activePdf ||
-      !question.trim() ||
-      isPdfAnalyzing
-    ) {
-
-      return;
-    }
-
-
-    setIsPdfAnalyzing(
-      true
-    );
-
-    setIsAIActive(
-      true
-    );
-
-    setUserText(
-      question
-    );
-
-    setAiText("");
-
-    setShowAIText(
-      false
-    );
-
-
-    try {
-
-      const result =
-        await analyzePdfFile(
-          activePdf,
-          question
-        );
-
-
-      const answer =
-        cleanAIResponse(
-          result?.response ||
-          result?.answer ||
-          "I could not answer that question from the PDF."
-        );
-
-
-      setAiText(
-        answer
-      );
-
-      setShowAIText(
-        true
-      );
-
-
-      await addHistory(
-        question,
-        answer,
-        "pdf"
-      );
-
-    } catch (error) {
-
-      console.error(
-        "PDF QUESTION ERROR:",
-        error.response?.data ||
-        error.message
-      );
-
-
-      setAiText(
-        "Unable to answer the question from the PDF."
-      );
-
-      setShowAIText(
-        true
-      );
-
-    } finally {
-
-      setIsPdfAnalyzing(
-        false
-      );
-
-      setIsAIActive(
-        false
-      );
-    }
-  };
-
-
-  /* =====================================================
-     IMAGE ANALYSIS
-     ===================================================== */
-
-  const analyzeImage = async () => {
-
-    if (
-      !selectedImage ||
-      isImageAnalyzing
-    ) {
-
-      return;
-    }
-
-
-    const question =
-      typedText.trim() ||
-      "Analyze this image and explain what you see.";
-
-
-    setHistoryImage("");
-
-    setIsImageAnalyzing(
-      true
-    );
-
-    setUserText(
-      question
-    );
-
-    setAiText("");
-
-    setShowAIText(
-      false
-    );
-
-    setIsAIActive(
-      true
-    );
-
-
-    try {
-
-      const formData =
-        new FormData();
-
-
-      formData.append(
-        "image",
-        selectedImage
-      );
-
-
-      formData.append(
-        "command",
-        question
-      );
-
-
-      const response =
-        await axios.post(
-
-          `${serverUrl}/api/user/analyze-image`,
-
-          formData,
-
-          {
-            withCredentials:
-              true,
-
-            timeout:
-              120000
-          }
-
-        );
-
-
-      const rawAnswer =
-        response.data?.response ||
-        response.data?.answer ||
-        "I could not analyze the image.";
-
-
-      const answer =
-        cleanAIResponse(
-          rawAnswer
-        );
-
-
-      setAiText(
-        answer
-      );
-
-      setShowAIText(
-        true
-      );
-
-
-      let imageForHistory =
-        "";
-
-
-      try {
-
-        imageForHistory =
-          await imageFileToDataUrl(
-            selectedImage
-          );
-
-      } catch (
-        imageError
-      ) {
-
-        console.error(
-          "IMAGE HISTORY ERROR:",
-          imageError
-        );
-      }
-
-
-      await addHistory(
-        question,
-        answer,
-        "image",
-        imageForHistory
-      );
-
-
-      removeImage();
-
-      setTypedText("");
-
-    } catch (error) {
-
-      console.error(
-        "IMAGE ANALYSIS ERROR:",
-        error.response?.data ||
-        error.message
-      );
-
-
-      const errorMessage =
-        error.response?.data?.message ||
-        "Unable to analyze the image.";
-
-
-      setAiText(
-        cleanAIResponse(
-          errorMessage
-        )
-      );
-
-      setShowAIText(
-        true
-      );
-
-    } finally {
-
-      setIsImageAnalyzing(
-        false
-      );
-
-
-      if (
-        !speakingRef.current
-      ) {
-
-        setIsAIActive(
-          false
-        );
-      }
-    }
-  };
-
-
-  /* =====================================================
-     IMAGE TO DATA URL
-     ===================================================== */
+  // =========================================================
+  // IMAGE → DATA URL
+  // =========================================================
 
   const imageFileToDataUrl = (
     file
   ) => {
-
     return new Promise(
-      (
-        resolve,
-        reject
-      ) => {
-
-        if (!file) {
-
-          reject(
-            new Error(
-              "No image file provided"
-            )
-          );
-
-          return;
-        }
-
-
+      (resolve, reject) => {
         const reader =
           new FileReader();
 
 
         reader.onload = () => {
-
-          const img =
+          const image =
             new Image();
 
 
-          img.onload = () => {
-
+          image.onload = () => {
             const maxSize =
               1000;
 
 
             let width =
-              img.width;
+              image.width;
 
             let height =
-              img.height;
+              image.height;
 
 
             if (
-              width > maxSize ||
-              height > maxSize
+              width >
+                maxSize ||
+              height >
+                maxSize
             ) {
-
-              if (
-                width > height
-              ) {
-
-                height =
-                  Math.round(
-                    (
-                      height *
-                      maxSize
-                    ) /
-                    width
-                  );
-
-                width =
-                  maxSize;
-
-              } else {
-
-                width =
-                  Math.round(
-                    (
-                      width *
-                      maxSize
-                    ) /
+              const ratio =
+                Math.min(
+                  maxSize /
+                    width,
+                  maxSize /
                     height
-                  );
+                );
 
-                height =
-                  maxSize;
-              }
+
+              width =
+                Math.round(
+                  width * ratio
+                );
+
+              height =
+                Math.round(
+                  height * ratio
+                );
             }
 
 
@@ -2945,20 +1657,8 @@ function Home() {
               );
 
 
-            if (!ctx) {
-
-              reject(
-                new Error(
-                  "Could not create canvas"
-                )
-              );
-
-              return;
-            }
-
-
             ctx.drawImage(
-              img,
+              image,
               0,
               0,
               width,
@@ -2975,29 +1675,17 @@ function Home() {
           };
 
 
-          img.onerror = () => {
-
-            reject(
-              new Error(
-                "Could not load image"
-              )
-            );
-          };
+          image.onerror =
+            reject;
 
 
-          img.src =
+          image.src =
             reader.result;
         };
 
 
-        reader.onerror = () => {
-
-          reject(
-            new Error(
-              "Could not read image"
-            )
-          );
-        };
+        reader.onerror =
+          reject;
 
 
         reader.readAsDataURL(
@@ -3008,40 +1696,95 @@ function Home() {
   };
 
 
-  /* =====================================================
-     PASTE IMAGE
-     ===================================================== */
+  // =========================================================
+  // IMAGE SELECT
+  // =========================================================
+
+  const handleImageSelect = (
+    event
+  ) => {
+    const file =
+      event.target.files?.[0];
+
+
+    if (!file) {
+      return;
+    }
+
+
+    if (
+      !file.type.startsWith(
+        "image/"
+      )
+    ) {
+      alert(
+        "Please select an image file."
+      );
+
+      return;
+    }
+
+
+    if (
+      file.size >
+      10 * 1024 * 1024
+    ) {
+      alert(
+        "Image size must be less than 10MB."
+      );
+
+      return;
+    }
+
+
+    removePdf();
+
+
+    if (imagePreview) {
+      URL.revokeObjectURL(
+        imagePreview
+      );
+    }
+
+
+    const previewUrl =
+      URL.createObjectURL(
+        file
+      );
+
+
+    setSelectedImage(file);
+
+    setImagePreview(
+      previewUrl
+    );
+  };
+
+
+  // =========================================================
+  // PASTE IMAGE
+  // =========================================================
 
   const handlePaste = (
     event
   ) => {
-
-    const clipboardItems =
+    const items =
       event.clipboardData?.items;
 
 
-    if (!clipboardItems) {
+    if (!items) {
       return;
     }
 
 
     for (
-      let i = 0;
-      i < clipboardItems.length;
-      i++
+      const item of items
     ) {
-
-      const item =
-        clipboardItems[i];
-
-
       if (
-        item.type &&
         item.type.startsWith(
           "image/"
         )
       ) {
-
         event.preventDefault();
 
 
@@ -3058,390 +1801,551 @@ function Home() {
 
 
         if (imagePreview) {
-
           URL.revokeObjectURL(
             imagePreview
           );
         }
 
 
-        setHistoryImage("");
+        const previewUrl =
+          URL.createObjectURL(
+            file
+          );
+
 
         setSelectedImage(
           file
         );
 
         setImagePreview(
-          URL.createObjectURL(
-            file
-          )
+          previewUrl
         );
 
 
-        return;
+        break;
       }
     }
   };
 
 
-  /* =====================================================
-     SPEECH RECOGNITION
-     ===================================================== */
+  // =========================================================
+  // REMOVE IMAGE
+  // =========================================================
 
-  useEffect(() => {
-
-    const SpeechRecognition =
-      window.SpeechRecognition ||
-      window.webkitSpeechRecognition;
-
-
-    if (!SpeechRecognition) {
-
-      console.warn(
-        "Speech recognition is not supported."
+  const removeImage = () => {
+    if (imagePreview) {
+      URL.revokeObjectURL(
+        imagePreview
       );
-
-      return;
     }
 
 
-    const recognition =
-      new SpeechRecognition();
+    setSelectedImage(null);
 
+    setImagePreview("");
 
-    recognition.continuous =
-      true;
-
-    recognition.lang =
-      "en-US";
-
-    recognition.interimResults =
-      false;
-
-    recognition.maxAlternatives =
-      1;
-
-
-    recognitionRef.current =
-      recognition;
-
-
-    recognition.onstart = () => {
-
-      listeningRef.current =
-        true;
-
-      setIsListening(
-        true
-      );
-    };
-
-
-    recognition.onresult =
-      async event => {
-
-        if (
-          processingRef.current
-        ) {
-
-          return;
-        }
-
-
-        const lastResult =
-          event.results[
-            event.results.length - 1
-          ];
-
-
-        if (!lastResult) {
-          return;
-        }
-
-
-        const transcript =
-          lastResult[0]
-            ?.transcript
-            ?.trim();
-
-
-        if (!transcript) {
-          return;
-        }
-
-
-        const lowerTranscript =
-          transcript.toLowerCase();
-
-
-        const stopCommands = [
-
-          "thank you",
-
-          "thanks",
-
-          "stop",
-
-          "bye",
-
-          "goodbye",
-
-          "stop listening",
-
-          "cancel"
-
-        ];
-
-
-        if (
-          stopCommands.includes(
-            lowerTranscript
-          )
-        ) {
-
-          stopListening();
-
-          return;
-        }
-
-
-        setUserText(
-          transcript
-        );
-
-
-        /* =============================================
-           PDF VOICE QUESTION
-           ============================================= */
-
-        if (activePdf) {
-
-          await analyzePdfQuestion(
-            transcript
-          );
-
-
-          return;
-        }
-
-
-        /* =============================================
-           NORMAL VOICE QUESTION
-           ============================================= */
-
-        await processCommand(
-          transcript,
-          "voice",
-          true
-        );
-      };
-
-
-    recognition.onend = () => {
-
-      if (
-        listeningRef.current &&
-        !speakingRef.current &&
-        !processingRef.current
-      ) {
-
-        clearTimeout(
-          restartTimeoutRef.current
-        );
-
-
-        restartTimeoutRef.current =
-          setTimeout(
-            () => {
-
-              try {
-
-                recognition.start();
-
-              } catch {}
-            },
-            400
-          );
-
-      } else if (
-        !listeningRef.current
-      ) {
-
-        setIsListening(
-          false
-        );
-      }
-    };
-
-
-    recognition.onerror =
-      event => {
-
-        console.error(
-          "Speech recognition error:",
-          event.error
-        );
-
-
-        if (
-          event.error ===
-            "not-allowed" ||
-          event.error ===
-            "audio-capture"
-        ) {
-
-          listeningRef.current =
-            false;
-
-          setIsListening(
-            false
-          );
-        }
-      };
-
-
-    return () => {
-
-      listeningRef.current =
-        false;
-
-      processingRef.current =
-        false;
-
-
-      clearTimeout(
-        restartTimeoutRef.current
-      );
-
-
-      clearTimeout(
-        speechTimeoutRef.current
-      );
-
-
-      try {
-
-        recognition.stop();
-
-      } catch {}
-
-
-      window.speechSynthesis.cancel();
-
-
-      recognitionRef.current =
-        null;
-    };
-
-  }, [
-    getGeminiResponse,
-    activePdf
-  ]);
-
-
-  /* =====================================================
-     START LISTENING
-     ===================================================== */
-
-  const startListening = () => {
 
     if (
-      !recognitionRef.current
+      imageInputRef.current
     ) {
+      imageInputRef.current.value =
+        "";
+    }
+  };
 
-      alert(
-        "Speech recognition is not supported in this browser."
-      );
 
+  // =========================================================
+  // ANALYZE IMAGE
+  // =========================================================
+
+  const analyzeImage = async () => {
+    if (!selectedImage) {
       return;
     }
+
+
+    const question =
+      typedText.trim() ||
+      "Describe and analyze this image in detail.";
+
+
+    setIsImageAnalyzing(true);
+
+    setIsSending(true);
+
+    setIsAIActive(true);
 
 
     try {
-
-      window.speechSynthesis.cancel();
-
-
-      speakingRef.current =
-        false;
+      const formData =
+        new FormData();
 
 
-      listeningRef.current =
-        true;
-
-
-      setIsListening(
-        true
+      formData.append(
+        "image",
+        selectedImage
       );
 
 
-      recognitionRef.current.start();
-
-    } catch {
-
-      console.log(
-        "Microphone already running."
+      formData.append(
+        "command",
+        question
       );
+
+
+      const response =
+        await axios.post(
+          `${serverUrl}/api/user/analyze-image`,
+          formData,
+          {
+            withCredentials: true,
+            headers: {
+              "Content-Type":
+                "multipart/form-data",
+            },
+          }
+        );
+
+
+      const rawAnswer =
+        response.data?.response ||
+        response.data?.answer ||
+        response.data?.text ||
+        "I could not analyze this image.";
+
+
+      const answer =
+        cleanAIResponse(
+          rawAnswer
+        );
+
+
+      setUserText(question);
+
+      setAiText(answer);
+
+      setShowAIText(true);
+
+
+      const imageData =
+        await imageFileToDataUrl(
+          selectedImage
+        );
+
+
+      setHistoryImage(
+        imageData
+      );
+
+
+      await addHistory(
+        question,
+        answer,
+        "image",
+        imageData
+      );
+
+
+      setTypedText("");
+
+      removeImage();
+    }
+
+
+    catch (error) {
+      console.error(
+        "IMAGE ANALYSIS ERROR:",
+        error
+      );
+
+
+      setAiText(
+        "Sorry, I could not analyze the image."
+      );
+
+      setShowAIText(true);
+    }
+
+
+    finally {
+      setIsImageAnalyzing(false);
+
+      setIsSending(false);
+
+      setIsAIActive(false);
     }
   };
 
 
-  /* =====================================================
-     STOP LISTENING
-     ===================================================== */
+  // =========================================================
+  // PDF SELECT
+  // =========================================================
 
-  const stopListening = () => {
+  const handlePdfSelect = (
+    event
+  ) => {
+    const file =
+      event.target.files?.[0];
 
-    listeningRef.current =
-      false;
+
+    if (!file) {
+      return;
+    }
 
 
-    setIsListening(
+    if (
+      file.type !==
+      "application/pdf"
+    ) {
+      alert(
+        "Please select a PDF file."
+      );
+
+      return;
+    }
+
+
+    if (
+      file.size >
+      20 * 1024 * 1024
+    ) {
+      alert(
+        "PDF size must be less than 20MB."
+      );
+
+      return;
+    }
+
+
+    removeImage();
+
+
+    setSelectedPdf(file);
+  };
+
+
+  // =========================================================
+  // REMOVE PDF
+  // =========================================================
+
+  const removePdf = () => {
+    setSelectedPdf(null);
+
+
+    if (
+      pdfInputRef.current
+    ) {
+      pdfInputRef.current.value =
+        "";
+    }
+  };
+
+
+  // =========================================================
+  // ANALYZE PDF
+  // =========================================================
+
+  const analyzePdf = async () => {
+    if (!selectedPdf) {
+      return;
+    }
+
+
+    const question =
+      typedText.trim() ||
+      "Summarize and explain this PDF in detail.";
+
+
+    setIsPdfAnalyzing(true);
+
+    setIsSending(true);
+
+    setIsAIActive(true);
+
+
+    try {
+      const formData =
+        new FormData();
+
+
+      formData.append(
+        "pdf",
+        selectedPdf
+      );
+
+
+      formData.append(
+        "command",
+        question
+      );
+
+
+      const response =
+        await axios.post(
+          `${serverUrl}/api/user/analyze-pdf`,
+          formData,
+          {
+            withCredentials: true,
+            headers: {
+              "Content-Type":
+                "multipart/form-data",
+            },
+          }
+        );
+
+
+      const rawAnswer =
+        response.data?.response ||
+        response.data?.answer ||
+        response.data?.text ||
+        "I could not analyze this PDF.";
+
+
+      const answer =
+        cleanAIResponse(
+          rawAnswer
+        );
+
+
+      setUserText(question);
+
+      setAiText(answer);
+
+      setShowAIText(true);
+
+
+      await addHistory(
+        question,
+        answer,
+        "pdf"
+      );
+
+
+      setTypedText("");
+
+      removePdf();
+    }
+
+
+    catch (error) {
+      console.error(
+        "PDF ANALYSIS ERROR:",
+        error
+      );
+
+
+      setAiText(
+        "Sorry, I could not analyze the PDF."
+      );
+
+      setShowAIText(true);
+    }
+
+
+    finally {
+      setIsPdfAnalyzing(false);
+
+      setIsSending(false);
+
+      setIsAIActive(false);
+    }
+  };
+
+
+  // =========================================================
+  // SEND BUTTON
+  // =========================================================
+
+  const handleSend = async () => {
+    if (isSending) {
+      return;
+    }
+
+
+    // Image has priority
+    if (selectedImage) {
+      await analyzeImage();
+
+      return;
+    }
+
+
+    // PDF next
+    if (selectedPdf) {
+      await analyzePdf();
+
+      return;
+    }
+
+
+    // Normal typed question
+    const command =
+      typedText.trim();
+
+
+    if (!command) {
+      return;
+    }
+
+
+    setTypedText("");
+
+
+    // FALSE means typed input.
+    // Therefore it will NOT be spoken.
+    await processCommand(
+      command,
+      "text",
       false
     );
+  };
 
 
-    clearTimeout(
-      restartTimeoutRef.current
-    );
+  // =========================================================
+  // ENTER KEY
+  // =========================================================
 
-
+  const handleInputKeyDown = (
+    event
+  ) => {
     if (
-      recognitionRef.current
+      event.key === "Enter" &&
+      !event.shiftKey
     ) {
+      event.preventDefault();
 
-      try {
-
-        recognitionRef.current.stop();
-
-      } catch {}
+      handleSend();
     }
   };
 
 
-  /* =====================================================
-     LOGOUT
-     ===================================================== */
+  // =========================================================
+  // DELETE HISTORY
+  // =========================================================
 
-  const handleLogout = async () => {
+  const deleteHistory = async (
+    historyId
+  ) => {
+    if (!historyId) {
+      return;
+    }
+
 
     try {
-
-      await axios.post(
-
-        `${serverUrl}/api/auth/logout`,
-
-        {},
-
+      await axios.delete(
+        `${serverUrl}/api/user/history/${historyId}`,
         {
-          withCredentials:
-            true
+          withCredentials: true,
         }
-
       );
 
-    } catch (error) {
 
+      setHistoryItems(
+        (prev) =>
+          prev.filter(
+            (item) =>
+              item._id !==
+              historyId
+          )
+      );
+
+
+      setUserData?.((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+
+        return {
+          ...prev,
+          history:
+            (prev.history || []).filter(
+              (item) =>
+                item._id !==
+                historyId
+            ),
+        };
+      });
+    }
+
+
+    catch (error) {
+      console.error(
+        "DELETE HISTORY ERROR:",
+        error
+      );
+    }
+  };
+
+
+  // =========================================================
+  // CLEAR HISTORY
+  // =========================================================
+
+  const clearHistory = async () => {
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to clear all history?"
+      );
+
+
+    if (!confirmed) {
+      return;
+    }
+
+
+    try {
+      await axios.delete(
+        `${serverUrl}/api/user/history`,
+        {
+          withCredentials: true,
+        }
+      );
+
+
+      setHistoryItems([]);
+
+      setUserData?.((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+
+        return {
+          ...prev,
+          history: [],
+        };
+      });
+    }
+
+
+    catch (error) {
+      console.error(
+        "CLEAR HISTORY ERROR:",
+        error
+      );
+    }
+  };
+
+
+  // =========================================================
+  // LOGOUT
+  // =========================================================
+
+  const handleLogout = async () => {
+    stopSpeaking();
+
+    stopListening();
+
+
+    try {
+      await axios.get(
+        `${serverUrl}/api/auth/logout`,
+        {
+          withCredentials: true,
+        }
+      );
+    } catch (error) {
       console.error(
         "LOGOUT ERROR:",
         error
@@ -3449,32 +2353,24 @@ function Home() {
     }
 
 
-    setUserData(null);
+    setUserData?.(null);
 
-    navigate(
-      "/signin"
-    );
+    navigate("/login");
   };
 
 
-  /* =====================================================
-     FILTER HISTORY
-     ===================================================== */
+  // =========================================================
+  // FILTER HISTORY
+  // =========================================================
 
   const filteredHistory =
     historyItems.filter(
-      item => {
-
-        const command =
-          item?.command ||
-          item?.text ||
-          item?.query ||
-          "";
-
-
-        const answer =
-          item?.answer ||
-          "";
+      (item) => {
+        if (
+          !historySearch.trim()
+        ) {
+          return true;
+        }
 
 
         const search =
@@ -3483,1948 +2379,661 @@ function Home() {
             .trim();
 
 
-        if (!search) {
-          return true;
-        }
+        const command =
+          String(
+            item.command || ""
+          ).toLowerCase();
+
+
+        const response =
+          String(
+            item.response || ""
+          ).toLowerCase();
 
 
         return (
-          command
-            .toLowerCase()
-            .includes(search) ||
-          answer
-            .toLowerCase()
-            .includes(search)
+          command.includes(search) ||
+          response.includes(search)
         );
       }
     );
 
 
-  /* =====================================================
-     OPEN HISTORY
-     ===================================================== */
+  // =========================================================
+  // USER DATA
+  // =========================================================
 
-  const openHistory = (
-    item
-  ) => {
-
-    const command =
-      item?.command ||
-      "";
+  const assistantName =
+    userData?.assistantName ||
+    "Assistant";
 
 
-    const answer =
-      item?.answer ||
-      "";
+  const userName =
+    userData?.name ||
+    "User";
 
 
-    setUserText(
-      command
-    );
+  const assistantImage =
+    userData?.assistantImage ||
+    aiImg;
 
 
-    setAiText(
-      cleanAIResponse(
-        answer
-      )
-    );
-
-
-    setShowAIText(
-      true
-    );
-
-
-    if (
-      item?.type ===
-        "image" &&
-      item?.image
-    ) {
-
-      setHistoryImage(
-        item.image
-      );
-
-    } else {
-
-      setHistoryImage(
-        ""
-      );
-    }
-
-
-    setActivePdf(
-      null
-    );
-
-
-    setShowHistory(
-      false
-    );
-  };
-
-
-  /* =====================================================
-     FORMAT DATE
-     ===================================================== */
-
-  const formatDate = (
-    date
-  ) => {
-
-    if (!date) {
-      return "";
-    }
-
-
-    return new Date(
-      date
-    ).toLocaleString(
-      "en-IN",
-      {
-        day:
-          "2-digit",
-
-        month:
-          "short",
-
-        year:
-          "numeric",
-
-        hour:
-          "2-digit",
-
-        minute:
-          "2-digit"
-      }
-    );
-  };
-
-
-  /* =====================================================
-     UI
-     ===================================================== */
+  // =========================================================
+  // JSX
+  // =========================================================
 
   return (
-
     <div
-      onPaste={
-        handlePaste
-      }
-
-      className="
-        relative
-        flex
-        min-h-screen
-        w-full
-        flex-col
-        overflow-hidden
-        bg-[#070B14]
-        text-white
-      "
+      className="min-h-screen bg-[#050816] text-white"
+      onPaste={handlePaste}
     >
-
-      {/* =================================================
+      {/* ===================================================
           HEADER
-          ================================================= */}
+      =================================================== */}
 
-      <header
-        className="
-          relative
-          z-40
-          flex
-          h-16
-          shrink-0
-          items-center
-          justify-between
-          border-b
-          border-white/10
-          bg-[#0A1020]/95
-          px-3
-          backdrop-blur
-          sm:px-5
-          md:px-6
-        "
-      >
+      <header className="fixed left-0 right-0 top-0 z-70 border-b border-white/10 bg-[#050816]/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
 
-        <div
-          className="
-            flex
-            min-w-0
-            items-center
-            gap-2
-            sm:gap-3
-          "
-        >
-
-          <button
-            onClick={() => {
-
-              setShowHistory(
-                previous =>
-                  !previous
-              );
-
-              setShowProfileMenu(
-                false
-              );
-            }}
-
-            className="
-              flex
-              h-10
-              w-10
-              shrink-0
-              items-center
-              justify-center
-              rounded-full
-              border
-              border-white/10
-              text-gray-300
-              transition
-              hover:bg-white/5
-              hover:text-cyan-300
-            "
-          >
-
-            {showHistory ? (
-
-              <IoMdClose
-                size={22}
-              />
-
-            ) : (
-
-              <IoMdMenu
-                size={22}
-              />
-            )}
-
-          </button>
-
-
-          <img
-            src={
-              userData?.assistantImage ||
-              aiImg
-            }
-
-            alt="Assistant"
-
-            className="
-              h-9
-              w-9
-              shrink-0
-              rounded-full
-              border
-              border-cyan-400/30
-              object-cover
-              sm:h-10
-              sm:w-10
-            "
-          />
-
-
-          <div
-            className="
-              min-w-0
-            "
-          >
-
-            <p
-              className="
-                truncate
-                text-sm
-                font-semibold
-                text-white
-              "
-            >
-              {
-                userData?.assistantName ||
-                "Assistant"
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() =>
+                setShowHistory(
+                  !showHistory
+                )
               }
-            </p>
-
-
-            <p
-              className="
-                hidden
-                text-xs
-                text-gray-500
-                sm:block
-              "
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-gray-300 transition hover:bg-white/10 hover:text-white"
+              title="History"
             >
-              Virtual Assistant
-            </p>
+              {showHistory ? (
+                <IoMdClose
+                  size={22}
+                />
+              ) : (
+                <IoMdMenu
+                  size={22}
+                />
+              )}
+            </button>
 
+
+            <div className="flex items-center gap-2">
+              <img
+                src={assistantImage}
+                alt={assistantName}
+                className="h-9 w-9 rounded-full object-cover ring-1 ring-cyan-400/30"
+              />
+
+              <div className="hidden sm:block">
+                <p className="text-sm font-semibold">
+                  {assistantName}
+                </p>
+
+                <p className="text-xs text-gray-500">
+                  Virtual Assistant
+                </p>
+              </div>
+            </div>
           </div>
 
-        </div>
 
+          <div className="flex items-center gap-2">
 
-        <div
-          className="
-            relative
-            flex
-            items-center
-            gap-2
-          "
-        >
-
-          <button
-            onClick={() =>
-              navigate(
-                "/customize2"
-              )
-            }
-
-            className="
-              hidden
-              rounded-full
-              border
-              border-cyan-400/20
-              px-4
-              py-2
-              text-sm
-              text-cyan-300
-              transition
-              hover:bg-cyan-400/10
-              sm:block
-            "
-          >
-            Customize
-          </button>
-
-
-          <button
-            onClick={() => {
-
-              setShowProfileMenu(
-                previous =>
-                  !previous
-              );
-
-              setShowHistory(
-                false
-              );
-            }}
-
-            className="
-              flex
-              h-10
-              w-10
-              shrink-0
-              items-center
-              justify-center
-              overflow-hidden
-              rounded-full
-              border
-              border-white/10
-              bg-white/5
-              text-gray-300
-              transition
-              hover:border-cyan-400/30
-              hover:bg-cyan-400/10
-            "
-          >
-
-            {userData?.assistantImage ? (
-
-              <img
-                src={
-                  userData.assistantImage
-                }
-
-                alt="Profile"
-
-                className="
-                  h-full
-                  w-full
-                  object-cover
-                "
-              />
-
-            ) : (
-
-              <FiSettings
-                size={19}
-              />
-            )}
-
-          </button>
-
-
-          {showProfileMenu && (
-
-            <div
-              className="
-                absolute
-                right-0
-                top-12
-                z-70
-                w-[calc(100vw-1.5rem)]
-                max-w-xs
-                overflow-hidden
-                rounded-2xl
-                border
-                border-white/10
-                bg-[#0B1222]
-                p-2
-                shadow-2xl
-              "
+            <button
+              type="button"
+              onClick={() =>
+                navigate("/customize")
+              }
+              className="hidden items-center gap-2 rounded-xl px-3 py-2 text-sm text-gray-300 transition hover:bg-white/10 hover:text-white sm:flex"
             >
-
-              <div
-                className="
-                  mb-1
-                  border-b
-                  border-white/10
-                  px-3
-                  py-3
-                "
-              >
-
-                <p
-                  className="
-                    truncate
-                    text-sm
-                    font-semibold
-                  "
-                >
-                  {
-                    userData?.name ||
-                    "User"
-                  }
-                </p>
+              <FiEdit3 size={16} />
+              Customize
+            </button>
 
 
-                <p
-                  className="
-                    truncate
-                    text-xs
-                    text-gray-500
-                  "
-                >
-                  {
-                    userData?.email ||
-                    "Account"
-                  }
-                </p>
-
-              </div>
-
-
+            <div className="relative">
               <button
-                onClick={() => {
-
-                  navigate(
-                    "/customize2"
-                  );
-
-                  setShowProfileMenu(
-                    false
-                  );
-                }}
-
-                className="
-                  flex
-                  w-full
-                  items-center
-                  gap-3
-                  rounded-xl
-                  px-3
-                  py-3
-                  text-left
-                  text-sm
-                  text-gray-300
-                  hover:bg-white/5
-                "
-              >
-
-                <FiEdit3
-                  size={17}
-                  className="text-cyan-400"
-                />
-
-                Customize Assistant
-
-              </button>
-
-
-              <button
-                onClick={
-                  async () => {
-
-                    await clearHistory();
-
-                    setShowProfileMenu(
-                      false
-                    );
-                  }
-                }
-
-                disabled={
-                  historyItems.length ===
-                  0
-                }
-
-                className="
-                  flex
-                  w-full
-                  items-center
-                  gap-3
-                  rounded-xl
-                  px-3
-                  py-3
-                  text-left
-                  text-sm
-                  text-gray-300
-                  hover:bg-red-400/10
-                  hover:text-red-400
-                  disabled:opacity-40
-                "
-              >
-
-                <FiTrash2
-                  size={17}
-                />
-
-                Clear All History
-
-              </button>
-
-
-              <button
-                onClick={() => {
-
-                  navigate(
-                    "/change-password"
-                  );
-
-                  setShowProfileMenu(
-                    false
-                  );
-                }}
-
-                className="
-                  flex
-                  w-full
-                  items-center
-                  gap-3
-                  rounded-xl
-                  px-3
-                  py-3
-                  text-left
-                  text-sm
-                  text-gray-300
-                  hover:bg-white/5
-                "
-              >
-
-                <FiLock
-                  size={17}
-                  className="text-cyan-400"
-                />
-
-                Change Password
-
-              </button>
-
-
-              <div
-                className="
-                  my-1
-                  border-t
-                  border-white/10
-                "
-              />
-
-
-              <button
-                onClick={
-                  handleLogout
-                }
-
-                className="
-                  flex
-                  w-full
-                  items-center
-                  gap-3
-                  rounded-xl
-                  px-3
-                  py-3
-                  text-left
-                  text-sm
-                  text-red-400
-                  hover:bg-red-400/10
-                "
-              >
-
-                <FiLogOut
-                  size={17}
-                />
-
-                Logout
-
-              </button>
-
-            </div>
-          )}
-
-        </div>
-
-      </header>
-
-
-      {/* =================================================
-          HISTORY
-          ================================================= */}
-
-      {showHistory && (
-
-        <>
-
-          <div
-            onClick={() =>
-              setShowHistory(
-                false
-              )
-            }
-
-            className="
-              fixed
-              inset-0
-              z-40
-              bg-black/50
-              backdrop-blur-sm
-            "
-          />
-
-
-          <aside
-            className="
-              fixed
-              left-0
-              top-0
-              z-50
-              flex
-              h-full
-              w-[88%]
-              max-w-sm
-              flex-col
-              border-r
-              border-white/10
-              bg-[#090E1A]
-              shadow-2xl
-            "
-          >
-
-            <div
-              className="
-                flex
-                h-16
-                shrink-0
-                items-center
-                justify-between
-                border-b
-                border-white/10
-                px-4
-              "
-            >
-
-              <div>
-
-                <h2
-                  className="
-                    font-semibold
-                  "
-                >
-                  History
-                </h2>
-
-
-                <p
-                  className="
-                    text-xs
-                    text-gray-500
-                  "
-                >
-                  Previous conversations
-                </p>
-
-              </div>
-
-
-              <button
+                type="button"
                 onClick={() =>
-                  setShowHistory(
-                    false
+                  setShowProfileMenu(
+                    !showProfileMenu
                   )
                 }
-
-                className="
-                  flex
-                  h-9
-                  w-9
-                  items-center
-                  justify-center
-                  rounded-lg
-                  text-gray-400
-                  hover:bg-white/5
-                "
+                className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/5"
               >
-
-                <IoMdClose
-                  size={21}
-                />
-
+                {userData?.photo ? (
+                  <img
+                    src={userData.photo}
+                    alt={userName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-sm font-semibold text-cyan-300">
+                    {userName
+                      .charAt(0)
+                      .toUpperCase()}
+                  </span>
+                )}
               </button>
 
-            </div>
 
+              {showProfileMenu && (
+                <div className="absolute right-0 top-12 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#0b1020] shadow-2xl">
 
-            <div
-              className="
-                shrink-0
-                border-b
-                border-white/10
-                p-4
-              "
-            >
-
-              <div
-                className="
-                  relative
-                "
-              >
-
-                <FiSearch
-                  className="
-                    absolute
-                    left-3
-                    top-1/2
-                    -translate-y-1/2
-                    text-gray-500
-                  "
-                  size={16}
-                />
-
-
-                <input
-                  value={
-                    historySearch
-                  }
-
-                  onChange={e =>
-                    setHistorySearch(
-                      e.target.value
-                    )
-                  }
-
-                  placeholder="Search history..."
-
-                  className="
-                    h-10
-                    w-full
-                    rounded-lg
-                    border
-                    border-white/10
-                    bg-white/5
-                    pl-9
-                    pr-3
-                    text-sm
-                    text-white
-                    outline-none
-                    placeholder:text-gray-600
-                    focus:border-cyan-400/30
-                  "
-                />
-
-              </div>
-
-            </div>
-
-
-            <div
-              className="
-                history-scroll
-                flex-1
-                overflow-y-auto
-                p-3
-              "
-            >
-
-              {filteredHistory.length >
-              0 ? (
-
-                filteredHistory.map(
-                  item => (
-
-                    <div
-                      key={
-                        item._id ||
-                        `${item.command}-${item.createdAt}`
-                      }
-
-                      className="
-                        group
-                        mb-2
-                        rounded-xl
-                        border
-                        border-white/5
-                        bg-white/2.5
-                        p-3
-                        transition
-                        hover:border-cyan-400/20
-                      "
-                    >
-
-                      <button
-                        onClick={() =>
-                          openHistory(
-                            item
-                          )
-                        }
-
-                        className="
-                          w-full
-                          text-left
-                        "
-                      >
-
-                        <div
-                          className="
-                            mb-2
-                            flex
-                            items-center
-                            justify-between
-                            gap-2
-                          "
-                        >
-
-                          <span
-                            className="
-                              rounded-full
-                              bg-cyan-400/10
-                              px-2
-                              py-1
-                              text-[10px]
-                              uppercase
-                              text-cyan-300
-                            "
-                          >
-                            {
-                              item.type ||
-                              "text"
-                            }
-                          </span>
-
-
-                          <span
-                            className="
-                              flex
-                              min-w-0
-                              items-center
-                              gap-1
-                              text-[10px]
-                              text-gray-600
-                            "
-                          >
-
-                            <FiClock
-                              size={10}
-                            />
-
-                            <span
-                              className="
-                                truncate
-                              "
-                            >
-                              {
-                                formatDate(
-                                  item.createdAt
-                                )
-                              }
-                            </span>
-
-                          </span>
-
-                        </div>
-
-
-                        {item?.type ===
-                          "image" &&
-                          item?.image && (
-
-                            <img
-                              src={
-                                item.image
-                              }
-
-                              alt="Previous question"
-
-                              className="
-                                mb-3
-                                h-28
-                                w-full
-                                rounded-xl
-                                border
-                                border-white/10
-                                bg-black/20
-                                object-cover
-                              "
-                            />
-                          )}
-
-
-                        <p
-                          className="
-                            line-clamp-2
-                            wrap-break-word
-                            text-sm
-                            text-gray-300
-                          "
-                        >
-                          {
-                            item.command
-                          }
-                        </p>
-
-
-                        {item.answer && (
-
-                          <p
-                            className="
-                              mt-2
-                              line-clamp-2
-                              wrap-break-word
-                              text-xs
-                              leading-relaxed
-                              text-gray-600
-                            "
-                          >
-                            {
-                              item.answer
-                            }
-                          </p>
-
-                        )}
-
-                      </button>
-
-
-                      {item._id &&
-                        !String(
-                          item._id
-                        ).startsWith(
-                          "temp-"
-                        ) && (
-
-                          <button
-                            onClick={() =>
-                              deleteHistory(
-                                item._id
-                              )
-                            }
-
-                            className="
-                              mt-2
-                              flex
-                              items-center
-                              gap-1
-                              text-xs
-                              text-gray-600
-                              hover:text-red-400
-                            "
-                          >
-
-                            <FiTrash2
-                              size={12}
-                            />
-
-                            Delete
-
-                          </button>
-
-                        )}
-
-                    </div>
-
-                  )
-
-                )
-
-              ) : (
-
-                <div
-                  className="
-                    flex
-                    h-full
-                    flex-col
-                    items-center
-                    justify-center
-                    text-center
-                  "
-                >
-
-                  <p
-                    className="
-                      text-sm
-                      text-gray-500
-                    "
-                  >
-                    No history found
-                  </p>
-
-                </div>
-              )}
-
-            </div>
-
-          </aside>
-
-        </>
-      )}
-
-
-      {/* =================================================
-          MAIN
-          ================================================= */}
-
-      <main
-        className="
-          flex
-          min-h-0
-          flex-1
-          justify-center
-          overflow-hidden
-        "
-      >
-
-        <section
-          className="
-            flex
-            min-w-0
-            w-full
-            max-w-5xl
-            flex-1
-            flex-col
-            overflow-hidden
-            px-3
-            py-4
-            sm:px-6
-            sm:py-6
-          "
-        >
-
-          <div
-            className="
-              answer-scroll
-              min-h-0
-              flex-1
-              overflow-y-auto
-              overscroll-contain
-              px-1
-              pb-6
-            "
-          >
-
-            <div
-              className="
-                flex
-                w-full
-                flex-col
-                items-center
-              "
-            >
-
-              {/* ASSISTANT */}
-
-              <div
-                className={`
-                  mt-2
-                  mb-4
-                  rounded-full
-                  p-1
-                  transition
-                  sm:mt-4
-                  sm:mb-5
-                  ${
-                    isAIActive
-                      ? "ring-4 ring-cyan-400/30"
-                      : ""
-                  }
-                `}
-              >
-
-                <img
-                  src={
-                    userData?.assistantImage ||
-                    aiImg
-                  }
-
-                  alt="Assistant"
-
-                  className="
-                    h-24
-                    w-24
-                    rounded-full
-                    object-cover
-                    shadow-2xl
-                    sm:h-28
-                    sm:w-28
-                    md:h-32
-                    md:w-32
-                  "
-                />
-
-              </div>
-
-
-              {/* NAME */}
-
-              <h1
-                className="
-                  w-full
-                  max-w-3xl
-                  wrap-break-word
-                  text-center
-                  text-xl
-                  font-semibold
-                  sm:text-2xl
-                  md:text-3xl
-                "
-              >
-                {
-                  userData?.assistantName ||
-                  "Assistant"
-                }
-              </h1>
-
-
-              {/* STATUS */}
-
-              <p
-                className="
-                  mt-2
-                  text-center
-                  text-xs
-                  text-gray-500
-                  sm:text-sm
-                "
-              >
-
-                {isListening
-
-                  ? "Listening..."
-
-                  : isPdfAnalyzing
-
-                    ? "Analyzing PDF..."
-
-                    : isImageAnalyzing
-
-                      ? "Analyzing image..."
-
-                      : speakingRef.current
-
-                        ? "Speaking..."
-
-                        : activePdf
-
-                          ? `PDF active: ${activePdf.name}`
-
-                          : "How can I help you?"}
-
-              </p>
-
-
-              {/* PDF SESSION */}
-
-              {activePdf && (
-
-                <div
-                  className="
-                    mt-5
-                    flex
-                    w-full
-                    max-w-2xl
-                    items-center
-                    gap-3
-                    rounded-2xl
-                    border
-                    border-cyan-400/20
-                    bg-cyan-400/5
-                    p-3
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      h-11
-                      w-11
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-xl
-                      bg-cyan-400/10
-                      text-cyan-300
-                    "
-                  >
-
-                    <FiFileText
-                      size={21}
-                    />
-
-                  </div>
-
-
-                  <div
-                    className="
-                      min-w-0
-                      flex-1
-                    "
-                  >
-
-                    <p
-                      className="
-                        truncate
-                        text-sm
-                        font-medium
-                        text-white
-                      "
-                    >
-                      {
-                        activePdf.name
-                      }
+                  <div className="border-b border-white/10 px-4 py-3">
+                    <p className="truncate text-sm font-semibold">
+                      {userName}
                     </p>
 
-
-                    <p
-                      className="
-                        text-xs
-                        text-cyan-300/70
-                      "
-                    >
-                      PDF analysis active
+                    <p className="truncate text-xs text-gray-500">
+                      {userData?.email || ""}
                     </p>
-
                   </div>
 
 
                   <button
                     type="button"
-
                     onClick={() =>
-                      setActivePdf(
-                        null
-                      )
+                      navigate("/profile")
                     }
-
-                    className="
-                      flex
-                      h-8
-                      w-8
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-lg
-                      text-gray-500
-                      hover:bg-white/5
-                      hover:text-red-400
-                    "
+                    className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5"
                   >
-
-                    <FiX
-                      size={17}
+                    <FiSettings
+                      size={16}
                     />
-
+                    Profile & Settings
                   </button>
 
-                </div>
-              )}
 
-
-              {/* OLD IMAGE */}
-
-              {historyImage && (
-
-                <div
-                  className="
-                    mt-5
-                    w-full
-                    max-w-2xl
-                    overflow-hidden
-                    rounded-2xl
-                    border
-                    border-cyan-400/10
-                    bg-black/20
-                    p-2
-                  "
-                >
-
-                  <img
-                    src={
-                      historyImage
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate("/customize")
                     }
-
-                    alt="Previous image"
-
-                    className="
-                      max-h-105
-                      w-full
-                      rounded-xl
-                      object-contain
-                    "
-                  />
-
-                </div>
-              )}
-
-
-              {/* USER QUESTION */}
-
-              {userText && (
-
-                <div
-                  className="
-                    mt-5
-                    w-full
-                    max-w-3xl
-                    wrap-break-word
-                    rounded-2xl
-                    border
-                    border-cyan-400/10
-                    bg-cyan-400/5
-                    px-4
-                    py-3
-                    text-left
-                    text-sm
-                    leading-relaxed
-                    text-gray-300
-                    sm:px-5
-                  "
-                >
-                  {
-                    userText
-                  }
-                </div>
-              )}
-
-
-              {/* ANSWER */}
-
-              {showAIText &&
-                aiText && (
-
-                  <div
-                    ref={
-                      answerRef
-                    }
-
-                    className="
-                      answer-box
-                      mt-4
-                      mb-6
-                      w-full
-                      max-w-3xl
-                      max-h-[55vh]
-                      overflow-y-auto
-                      overscroll-contain
-                      wrap-break-word
-                      rounded-2xl
-                      border
-                      border-white/10
-                      bg-white/3
-                      px-4
-                      py-5
-                      text-left
-                      text-sm
-                      leading-7
-                      whitespace-pre-wrap
-                      text-gray-200
-                      sm:px-6
-                      sm:py-6
-                      sm:text-base
-                    "
+                    className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5"
                   >
-                    {
-                      aiText
-                    }
-                  </div>
-                )}
+                    <FiEdit3
+                      size={16}
+                    />
+                    Customize Assistant
+                  </button>
 
+
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-red-400/10"
+                  >
+                    <FiLogOut
+                      size={16}
+                    />
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
-
           </div>
+        </div>
+      </header>
 
 
-          {/* IMAGE PREVIEW */}
+      {/* ===================================================
+          HISTORY DRAWER
+      =================================================== */}
 
-          {imagePreview && (
+      <aside
+        className={`fixed bottom-0 left-0 top-16 z-60 w-[320px] max-w-[90vw] border-r border-white/10 bg-[#080c19] transition-transform duration-300 ${
+          showHistory
+            ? "translate-x-0"
+            : "-translate-x-full"
+        }`}
+      >
+        <div className="flex h-full flex-col">
 
-            <div
-              className="
-                mb-3
-                w-full
-                max-w-3xl
-                self-center
-                rounded-2xl
-                border
-                border-cyan-400/20
-                bg-[#0A1020]
-                p-3
-              "
-            >
+          <div className="border-b border-white/10 p-4">
 
-              <div
-                className="
-                  flex
-                  min-w-0
-                  items-center
-                  gap-3
-                "
-              >
-
-                <img
-                  src={
-                    imagePreview
-                  }
-
-                  alt="Selected"
-
-                  className="
-                    h-14
-                    w-14
-                    shrink-0
-                    rounded-xl
-                    object-cover
-                  "
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FiClock
+                  size={18}
+                  className="text-cyan-300"
                 />
 
-
-                <div
-                  className="
-                    min-w-0
-                    flex-1
-                  "
-                >
-
-                  <p
-                    className="
-                      truncate
-                      text-sm
-                      font-medium
-                    "
-                  >
-                    Image selected
-                  </p>
-
-
-                  <p
-                    className="
-                      mt-1
-                      hidden
-                      text-xs
-                      text-gray-500
-                      sm:block
-                    "
-                  >
-                    Ask your question and press Send.
-                  </p>
-
-                </div>
-
-
-                <button
-                  type="button"
-
-                  onClick={
-                    removeImage
-                  }
-
-                  className="
-                    flex
-                    h-8
-                    w-8
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-lg
-                    text-gray-500
-                    hover:text-red-400
-                  "
-                >
-
-                  <FiX
-                    size={18}
-                  />
-
-                </button>
-
+                <h2 className="font-semibold">
+                  History
+                </h2>
               </div>
 
-            </div>
-          )}
-
-
-          {/* PDF PREVIEW */}
-
-          {pdfPreview && (
-
-            <div
-              className="
-                mb-3
-                w-full
-                max-w-3xl
-                self-center
-                rounded-2xl
-                border
-                border-cyan-400/20
-                bg-[#0A1020]
-                p-3
-              "
-            >
-
-              <div
-                className="
-                  flex
-                  min-w-0
-                  items-center
-                  gap-3
-                "
-              >
-
-                <div
-                  className="
-                    flex
-                    h-14
-                    w-14
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-xl
-                    bg-red-400/10
-                    text-red-300
-                  "
-                >
-
-                  <FiFileText
-                    size={24}
-                  />
-
-                </div>
-
-
-                <div
-                  className="
-                    min-w-0
-                    flex-1
-                  "
-                >
-
-                  <p
-                    className="
-                      truncate
-                      text-sm
-                      font-medium
-                    "
-                  >
-                    {
-                      pdfName
-                    }
-                  </p>
-
-
-                  <p
-                    className="
-                      mt-1
-                      text-xs
-                      text-gray-500
-                    "
-                  >
-                    Ask a question about this PDF.
-                  </p>
-
-                </div>
-
-
-                <button
-                  type="button"
-
-                  onClick={
-                    removePdf
-                  }
-
-                  className="
-                    flex
-                    h-8
-                    w-8
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-lg
-                    text-gray-500
-                    hover:text-red-400
-                  "
-                >
-
-                  <FiX
-                    size={18}
-                  />
-
-                </button>
-
-              </div>
-
-            </div>
-          )}
-
-
-          {/* INPUT */}
-
-          <div
-            className="
-              w-full
-              max-w-3xl
-              self-center
-            "
-          >
-
-            <form
-              onSubmit={
-                handleSend
-              }
-
-              className="
-                flex
-                min-w-0
-                items-center
-                gap-1
-                rounded-2xl
-                border
-                border-white/10
-                bg-[#0A1020]
-                p-1.5
-                shadow-2xl
-                sm:gap-2
-                sm:p-2
-              "
-            >
-
-              {/* IMAGE */}
 
               <button
                 type="button"
-
-                onClick={() =>
-                  imageInputRef.current?.click()
-                }
-
-                className="
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-xl
-                  text-gray-400
-                  hover:bg-white/5
-                  hover:text-cyan-300
-                "
-
-                title="Analyze image"
+                onClick={clearHistory}
+                className="rounded-lg p-2 text-gray-500 hover:bg-red-400/10 hover:text-red-400"
+                title="Clear history"
               >
-
-                <FiImage
-                  size={19}
+                <FiTrash2
+                  size={16}
                 />
-
               </button>
+            </div>
 
 
-              <input
-                ref={
-                  imageInputRef
-                }
-
-                type="file"
-
-                accept="image/*"
-
-                onChange={
-                  handleImageSelect
-                }
-
-                className="hidden"
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3">
+              <FiSearch
+                size={16}
+                className="text-gray-500"
               />
 
-
-              {/* PDF */}
-
-              <button
-                type="button"
-
-                onClick={() =>
-                  pdfInputRef.current?.click()
-                }
-
-                className="
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-xl
-                  text-gray-400
-                  hover:bg-white/5
-                  hover:text-cyan-300
-                "
-
-                title="Upload PDF"
-              >
-
-                <FiFileText
-                  size={19}
-                />
-
-              </button>
-
-
               <input
-                ref={
-                  pdfInputRef
-                }
-
-                type="file"
-
-                accept="application/pdf,.pdf"
-
-                onChange={
-                  handlePdfSelect
-                }
-
-                className="hidden"
-              />
-
-
-              {/* TEXT */}
-
-              <input
-                value={
-                  typedText
-                }
-
-                onChange={e =>
-                  setTypedText(
+                value={historySearch}
+                onChange={(e) =>
+                  setHistorySearch(
                     e.target.value
                   )
                 }
-
-                onPaste={
-                  handlePaste
-                }
-
-                placeholder={
-
-                  selectedImage
-
-                    ? "Ask about the image..."
-
-                    : selectedPdf
-
-                      ? "Ask about the PDF..."
-
-                      : activePdf
-
-                        ? "Ask another question about the PDF..."
-
-                        : "Ask me anything..."
-                }
-
-                className="
-                  min-w-0
-                  flex-1
-                  bg-transparent
-                  px-1
-                  text-sm
-                  text-white
-                  outline-none
-                  placeholder:text-gray-600
-                  sm:px-2
-                "
+                placeholder="Search history..."
+                className="w-full bg-transparent py-2.5 text-sm outline-none placeholder:text-gray-600"
               />
+            </div>
+          </div>
 
 
-              {/* MIC */}
+          <div className="flex-1 overflow-y-auto p-3">
+
+            {filteredHistory.length ===
+            0 ? (
+              <div className="flex h-40 items-center justify-center text-center text-sm text-gray-600">
+                No history yet.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredHistory.map(
+                  (item, index) => (
+                    <div
+                      key={
+                        item._id ||
+                        index
+                      }
+                      className="group rounded-xl border border-white/5 bg-white/2.5 p-3 transition hover:bg-white/5"
+                    >
+
+                      <div className="flex items-start justify-between gap-2">
+
+                        <p className="line-clamp-2 text-sm font-medium text-gray-200">
+                          {item.command}
+                        </p>
+
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            deleteHistory(
+                              item._id
+                            )
+                          }
+                          className="shrink-0 text-gray-600 opacity-0 transition group-hover:opacity-100 hover:text-red-400"
+                        >
+                          <FiTrash2
+                            size={14}
+                          />
+                        </button>
+                      </div>
+
+
+                      <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-gray-500">
+                        {item.response}
+                      </p>
+
+
+                      {item.type && (
+                        <span className="mt-2 inline-block rounded-md bg-white/5 px-2 py-1 text-[10px] uppercase tracking-wider text-gray-600">
+                          {item.type}
+                        </span>
+                      )}
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </aside>
+
+
+      {/* ===================================================
+          MAIN
+      =================================================== */}
+
+      <main className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-36 pt-24 sm:px-6">
+
+        {/* Assistant */}
+        <section className="flex flex-col items-center">
+
+          <div
+            className={`relative rounded-full transition-all duration-500 ${
+              isAIActive
+                ? "scale-105 shadow-[0_0_80px_rgba(34,211,238,0.18)]"
+                : ""
+            }`}
+          >
+            <img
+              src={assistantImage}
+              alt={assistantName}
+              className="h-32 w-32 rounded-full object-cover ring-2 ring-cyan-400/20 sm:h-40 sm:w-40"
+            />
+
+            {isListening && (
+              <div className="absolute inset-0 animate-ping rounded-full border border-cyan-400/30" />
+            )}
+          </div>
+
+
+          <h1 className="mt-5 text-xl font-semibold sm:text-2xl">
+            {assistantName}
+          </h1>
+
+
+          <p className="mt-2 text-center text-xs text-gray-500 sm:text-sm">
+            {isPdfAnalyzing
+              ? "Reading and analyzing PDF..."
+              : isImageAnalyzing
+              ? "Analyzing image..."
+              : isSending
+              ? "Thinking..."
+              : isSpeaking
+              ? "Speaking..."
+              : isListening
+              ? "Listening..."
+              : "How can I help you?"}
+          </p>
+
+
+          {/* Stop speaking button */}
+          {isSpeaking && (
+            <button
+              type="button"
+              onClick={stopSpeaking}
+              className="mt-4 flex items-center gap-2 rounded-full border border-red-400/20 bg-red-400/10 px-4 py-2 text-sm text-red-300 transition hover:bg-red-400/20"
+            >
+              <FiX size={15} />
+              Stop speaking
+            </button>
+          )}
+        </section>
+
+
+        {/* =================================================
+            CONVERSATION
+        ================================================= */}
+
+        <section className="mx-auto mt-10 w-full max-w-3xl space-y-5">
+
+          {userText && (
+            <div className="flex justify-end">
+              <div className="max-w-[85%] rounded-2xl rounded-br-md bg-cyan-400/10 px-4 py-3 text-sm leading-relaxed text-gray-200 ring-1 ring-cyan-400/10">
+                <p className="wrap-break-word whitespace-pre-wrap">
+                  {userText}
+                </p>
+              </div>
+            </div>
+          )}
+
+
+          {showAIText &&
+            aiText && (
+              <div className="flex justify-start">
+                <div className="max-w-[90%] rounded-2xl rounded-bl-md border border-white/10 bg-white/5 px-4 py-4 text-sm leading-7 text-gray-200">
+                  <p className="wrap-break-word whitespace-pre-wrap">
+                    {aiText}
+                  </p>
+                </div>
+              </div>
+            )}
+
+
+          {/* Image preview */}
+          {imagePreview && (
+            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-3">
 
               <button
                 type="button"
-
-                onClick={
-                  isListening
-                    ? stopListening
-                    : startListening
-                }
-
-                className={`
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-xl
-                  transition
-                  sm:h-11
-                  sm:w-11
-                  ${
-                    isListening
-                      ? "bg-red-400/10 text-red-400"
-                      : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
-                  }
-                `}
+                onClick={removeImage}
+                className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white hover:bg-red-500/70"
               >
-
-                {isListening ? (
-
-                  <FiMicOff
-                    size={19}
-                  />
-
-                ) : (
-
-                  <FiMic
-                    size={19}
-                  />
-
-                )}
-
+                <FiX size={16} />
               </button>
 
 
-              {/* SEND */}
+              <img
+                src={imagePreview}
+                alt="Selected"
+                className="max-h-80 w-full rounded-xl object-contain"
+              />
+            </div>
+          )}
+
+
+          {/* PDF preview */}
+          {selectedPdf && (
+            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-400/10 text-red-300">
+                <FiFileText
+                  size={22}
+                />
+              </div>
+
+
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-gray-200">
+                  {selectedPdf.name}
+                </p>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  PDF ready for analysis
+                </p>
+              </div>
+
 
               <button
-                type="submit"
-
-                disabled={
-
-                  isImageAnalyzing ||
-
-                  isPdfAnalyzing ||
-
-                  isSending ||
-
-                  (
-                    !selectedImage &&
-                    !selectedPdf &&
-                    !activePdf &&
-                    !typedText.trim()
-                  )
-
-                }
-
-                className="
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-xl
-                  bg-cyan-400
-                  text-black
-                  transition
-                  hover:bg-cyan-300
-                  disabled:cursor-not-allowed
-                  disabled:opacity-40
-                  sm:h-11
-                  sm:w-11
-                "
+                type="button"
+                onClick={removePdf}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-gray-500 hover:bg-red-400/10 hover:text-red-400"
               >
-
-                <FiSend
-                  size={18}
-                />
-
+                <FiX size={18} />
               </button>
-
-            </form>
-
-
-            <p
-              className="
-                mt-2
-                text-center
-                text-[10px]
-                text-gray-700
-                sm:mt-3
-                sm:text-[11px]
-              "
-            >
-              Text • Voice • Image • PDF Analysis
-            </p>
-
-          </div>
-
+            </div>
+          )}
         </section>
-
       </main>
 
 
-      {/* =================================================
-          CUSTOM SCROLLBAR
-          ================================================= */}
+      {/* ===================================================
+          INPUT AREA
+      =================================================== */}
 
-      <style>
-        {`
-          .answer-scroll,
-          .answer-box,
-          .history-scroll {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(103, 232, 249, 0.25) transparent;
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
+
+        <div className="mx-auto max-w-3xl px-4 py-4 sm:px-6">
+
+          <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-white/5 p-2">
+
+            {/* IMAGE BUTTON */}
+            <button
+              type="button"
+              onClick={() =>
+                imageInputRef.current?.click()
+              }
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-400 transition hover:bg-white/5 hover:text-cyan-300 sm:h-11 sm:w-11"
+              title="Upload image"
+            >
+              <FiImage
+                size={19}
+              />
+            </button>
+
+
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              onChange={
+                handleImageSelect
+              }
+              className="hidden"
+            />
+
+
+            {/* PDF BUTTON */}
+            <button
+              type="button"
+              onClick={() =>
+                pdfInputRef.current?.click()
+              }
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-400 transition hover:bg-white/5 hover:text-cyan-300 sm:h-11 sm:w-11"
+              title="Upload PDF"
+            >
+              <FiFileText
+                size={19}
+              />
+            </button>
+
+
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept="application/pdf"
+              onChange={
+                handlePdfSelect
+              }
+              className="hidden"
+            />
+
+
+            {/* TEXT INPUT */}
+            <textarea
+              value={typedText}
+              onChange={(e) =>
+                setTypedText(
+                  e.target.value
+                )
+              }
+              onKeyDown={
+                handleInputKeyDown
+              }
+              placeholder={
+                selectedImage
+                  ? "Ask something about this image..."
+                  : selectedPdf
+                  ? "Ask something about this PDF..."
+                  : "Type your message..."
+              }
+              rows={1}
+              className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm leading-5 text-white outline-none placeholder:text-gray-600 sm:min-h-11"
+            />
+
+
+            {/* MICROPHONE */}
+            <button
+              type="button"
+              onClick={() => {
+                // If assistant is speaking,
+                // stop speech.
+                if (isSpeaking) {
+                  stopSpeaking();
+
+                  return;
+                }
+
+
+                // If microphone is listening,
+                // stop microphone.
+                if (isListening) {
+                  stopListening();
+
+                  return;
+                }
+
+
+                // Otherwise start microphone.
+                startListening();
+              }}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition sm:h-11 sm:w-11 ${
+                isSpeaking ||
+                isListening
+                  ? "bg-red-400/10 text-red-400 hover:bg-red-400/20"
+                  : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
+              }`}
+              title={
+                isSpeaking
+                  ? "Stop speaking"
+                  : isListening
+                  ? "Stop microphone"
+                  : "Start microphone"
+              }
+            >
+              {isSpeaking ? (
+                <FiX size={19} />
+              ) : isListening ? (
+                <FiMicOff
+                  size={19}
+                />
+              ) : (
+                <FiMic size={19} />
+              )}
+            </button>
+
+
+            {/* SEND */}
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={
+                isSending ||
+                (
+                  !typedText.trim() &&
+                  !selectedImage &&
+                  !selectedPdf
+                )
+              }
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-400 text-black transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-30 sm:h-11 sm:w-11"
+              title="Send"
+            >
+              <FiSend
+                size={18}
+              />
+            </button>
+          </div>
+
+
+          <p className="mt-2 text-center text-[10px] text-gray-600">
+            Voice questions are spoken aloud. Typed questions are displayed silently.
+          </p>
+        </div>
+      </div>
+
+
+      {/* ===================================================
+          MOBILE HISTORY OVERLAY
+      =================================================== */}
+
+      {showHistory && (
+        <button
+          type="button"
+          aria-label="Close history"
+          onClick={() =>
+            setShowHistory(false)
           }
-
-          .answer-scroll::-webkit-scrollbar,
-          .answer-box::-webkit-scrollbar,
-          .history-scroll::-webkit-scrollbar {
-            width: 5px;
-          }
-
-          .answer-scroll::-webkit-scrollbar-track,
-          .answer-box::-webkit-scrollbar-track,
-          .history-scroll::-webkit-scrollbar-track {
-            background: transparent;
-          }
-
-          .answer-scroll::-webkit-scrollbar-thumb,
-          .answer-box::-webkit-scrollbar-thumb,
-          .history-scroll::-webkit-scrollbar-thumb {
-            background: rgba(103, 232, 249, 0.22);
-            border-radius: 999px;
-          }
-
-          .answer-scroll::-webkit-scrollbar-thumb:hover,
-          .answer-box::-webkit-scrollbar-thumb:hover,
-          .history-scroll::-webkit-scrollbar-thumb:hover {
-            background: rgba(103, 232, 249, 0.45);
-          }
-
-          @media (max-width: 640px) {
-            .answer-box {
-              max-height: 48vh;
-            }
-          }
-        `}
-      </style>
-
+          className="fixed inset-0 z-50 bg-black/50 md:hidden"
+        />
+      )}
     </div>
   );
 }
 
+
+// ===========================================================
+// ONLY ONE DEFAULT EXPORT
+// ===========================================================
 
 export default Home;
