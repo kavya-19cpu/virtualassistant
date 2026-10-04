@@ -88,7 +88,9 @@ function Home() {
   const [historySearch, setHistorySearch] =
     useState("");
 
+
   // IMAGE
+
   const [selectedImage, setSelectedImage] =
     useState(null);
 
@@ -101,7 +103,9 @@ function Home() {
   const [historyImage, setHistoryImage] =
     useState("");
 
+
   // PDF
+
   const [selectedPdf, setSelectedPdf] =
     useState(null);
 
@@ -268,11 +272,14 @@ function Home() {
 
 
     cleaned = cleaned
+
       .replace(/\\pi\b/g, "π")
+
       .replace(
         /\\sqrt\{([^{}]+)\}/g,
         "√($1)"
       )
+
       .replace(/\\sin\b/g, "sin")
       .replace(/\\cos\b/g, "cos")
       .replace(/\\tan\b/g, "tan")
@@ -303,18 +310,22 @@ function Home() {
 
 
     cleaned = cleaned
+
       .replace(
         /\\text\{([^{}]*)\}/g,
         "$1"
       )
+
       .replace(
         /\\mathrm\{([^{}]*)\}/g,
         "$1"
       )
+
       .replace(
         /\\mathbf\{([^{}]*)\}/g,
         "$1"
       )
+
       .replace(
         /\\displaystyle/g,
         ""
@@ -322,18 +333,22 @@ function Home() {
 
 
     cleaned = cleaned
+
       .replace(
         /\^\{2\}/g,
         "²"
       )
+
       .replace(
         /\^\{3\}/g,
         "³"
       )
+
       .replace(
         /\^2/g,
         "²"
       )
+
       .replace(
         /\^3/g,
         "³"
@@ -341,14 +356,17 @@ function Home() {
 
 
     cleaned = cleaned
+
       .replace(
         /sin\^\{-1\}/g,
         "sin⁻¹"
       )
+
       .replace(
         /cos\^\{-1\}/g,
         "cos⁻¹"
       )
+
       .replace(
         /tan\^\{-1\}/g,
         "tan⁻¹"
@@ -389,6 +407,7 @@ function Home() {
       (resolve, reject) => {
 
         if (!file) {
+
           reject(
             new Error(
               "No image file provided"
@@ -398,13 +417,16 @@ function Home() {
           return;
         }
 
+
         const reader =
           new FileReader();
+
 
         reader.onload = () => {
 
           const img =
             new Image();
+
 
           img.onload = () => {
 
@@ -468,6 +490,7 @@ function Home() {
                 "2d"
               );
 
+
             if (!ctx) {
 
               reject(
@@ -494,6 +517,7 @@ function Home() {
                 "image/jpeg",
                 0.72
               );
+
 
             resolve(
               compressed
@@ -582,7 +606,9 @@ function Home() {
 
       const response =
         await axios.post(
+
           `${serverUrl}/api/user/savehistory`,
+
           {
             command,
             answer,
@@ -590,9 +616,11 @@ function Home() {
             image,
             fileName
           },
+
           {
             withCredentials: true
           }
+
         );
 
 
@@ -644,10 +672,13 @@ function Home() {
 
         const response =
           await axios.delete(
+
             `${serverUrl}/api/user/history/${historyId}`,
+
             {
               withCredentials: true
             }
+
           );
 
 
@@ -668,7 +699,6 @@ function Home() {
               updatedHistory
           })
         );
-
 
       } catch (error) {
 
@@ -710,10 +740,13 @@ function Home() {
     try {
 
       await axios.delete(
+
         `${serverUrl}/api/user/history`,
+
         {
           withCredentials: true
         }
+
       );
 
 
@@ -737,7 +770,6 @@ function Home() {
           history: []
         })
       );
-
 
     } catch (error) {
 
@@ -860,6 +892,7 @@ function Home() {
 
     let currentIndex = 0;
 
+
     speakingRef.current =
       true;
 
@@ -887,9 +920,10 @@ function Home() {
 
           try {
             recognitionRef.current.start();
-          } catch {}
+          } catch { }
 
         }
+
 
         return;
       }
@@ -1040,6 +1074,9 @@ function Home() {
     youtube:
       "https://www.youtube.com",
 
+    yahoo:
+      "https://www.yahoo.com",
+
     instagram:
       "https://www.instagram.com",
 
@@ -1115,43 +1152,78 @@ function Home() {
     switch (site) {
 
       case "google":
+
         return `https://www.google.com/search?q=${encodedQuery}`;
 
+
       case "youtube":
+
         return `https://www.youtube.com/results?search_query=${encodedQuery}`;
 
+
+      case "yahoo":
+
+        return `https://search.yahoo.com/search?p=${encodedQuery}`;
+
+
       case "amazon":
+
         return `https://www.amazon.in/s?k=${encodedQuery}`;
 
+
       case "flipkart":
+
         return `https://www.flipkart.com/search?q=${encodedQuery}`;
 
+
       case "wikipedia":
+
         return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
 
+
       case "reddit":
+
         return `https://www.reddit.com/search/?q=${encodedQuery}`;
 
+
       case "github":
+
         return `https://github.com/search?q=${encodedQuery}`;
 
+
       case "linkedin":
+
         return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
 
+
       case "spotify":
+
         return `https://open.spotify.com/search/${encodedQuery}`;
 
+
       case "pinterest":
+
         return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
 
+
       case "facebook":
+
         return `https://www.facebook.com/search/top?q=${encodedQuery}`;
+
 
       case "x":
       case "twitter":
+
         return `https://x.com/search?q=${encodedQuery}`;
 
+
+      case "instagram":
+
+        return `https://www.instagram.com/explore/search/keyword/?q=${encodedQuery}`;
+
+
       default:
+
         return null;
 
     }
@@ -1175,79 +1247,329 @@ function Home() {
         command
           .trim()
           .replace(
+            /[?!.]+$/g,
+            ""
+          )
+          .replace(
             /\s+/g,
             " "
           );
 
 
+      if (!text) {
+        return null;
+      }
+
+
+      /*
+      -----------------------------------------------------
+      WEBSITE ALIASES
+      -----------------------------------------------------
+      */
+
+      const siteAliases = {
+
+        google: "google",
+        goog: "google",
+
+        youtube: "youtube",
+        yt: "youtube",
+
+        yahoo: "yahoo",
+
+        instagram: "instagram",
+        insta: "instagram",
+
+        facebook: "facebook",
+        fb: "facebook",
+
+        github: "github",
+
+        linkedin: "linkedin",
+
+        amazon: "amazon",
+        amzn: "amazon",
+
+        flipkart: "flipkart",
+
+        spotify: "spotify",
+
+        wikipedia: "wikipedia",
+        wiki: "wikipedia",
+
+        reddit: "reddit",
+
+        pinterest: "pinterest",
+
+        twitter: "twitter",
+        x: "x",
+
+        whatsapp: "whatsapp",
+
+        gmail: "gmail",
+
+        netflix: "netflix",
+
+        discord: "discord",
+
+        canva: "canva",
+
+        telegram: "telegram"
+
+      };
+
+
+      const siteNames =
+        Object.keys(
+          siteAliases
+        ).join("|");
+
+
       let match;
 
 
+      /*
+      =====================================================
+      1. SEARCH QUERY ON/IN/USING SITE
+      =====================================================
+
+      search apple on youtube
+      search apple in youtube
+      search apple using youtube
+
+      search for apple on youtube
+      search for apple in youtube
+
+      find apple on google
+      look up apple in yahoo
+      */
+
       match =
         text.match(
-          /^(?:search|find|look up)\s+(.+?)\s+(?:on|in)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)$/i
+          new RegExp(
+            `^(?:search|find|look\\s*up)\\s+(?:for\\s+)?(.+?)\\s+(?:on|in|using)\\s+(${siteNames})$`,
+            "i"
+          )
         );
 
 
       if (match) {
 
-        return {
+        const query =
+          match[1].trim();
 
-          site:
-            match[2]
-              .trim()
-              .toLowerCase(),
+        const site =
+          siteAliases[
+          match[2].toLowerCase()
+          ];
 
-          query:
-            match[1].trim()
 
-        };
+        if (
+          query &&
+          site
+        ) {
+
+          return {
+            site,
+            query
+          };
+
+        }
 
       }
 
 
+      /*
+      =====================================================
+      2. SEARCH SITE FOR QUERY
+      =====================================================
+
+      search youtube for apple
+      search google for apple
+      search yahoo for apple
+
+      find youtube for apple
+      look up google for apple
+      */
+
       match =
         text.match(
-          /^(?:search|find|look up)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s+for\s+(.+)$/i
+          new RegExp(
+            `^(?:search|find|look\\s*up)\\s+(${siteNames})\\s+(?:for|about)\\s+(.+)$`,
+            "i"
+          )
         );
 
 
       if (match) {
 
-        return {
+        const site =
+          siteAliases[
+          match[1].toLowerCase()
+          ];
 
-          site:
-            match[1]
-              .trim()
-              .toLowerCase(),
+        const query =
+          match[2].trim();
 
-          query:
-            match[2].trim()
 
-        };
+        if (
+          site &&
+          query
+        ) {
+
+          return {
+            site,
+            query
+          };
+
+        }
 
       }
 
 
+      /*
+      =====================================================
+      3. SEARCH SITE QUERY
+      =====================================================
+
+      search youtube apple
+      search google apple
+      search yahoo apple
+      */
+
       match =
         text.match(
-          /^(?:open|launch|visit|go to|take me to)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)(?:\s+website|\s+site)?\s+(?:and\s+)?(?:search|find|look up)\s+(.+)$/i
+          new RegExp(
+            `^(?:search|find|look\\s*up)\\s+(${siteNames})\\s+(.+)$`,
+            "i"
+          )
         );
 
 
       if (match) {
 
-        return {
+        const site =
+          siteAliases[
+          match[1].toLowerCase()
+          ];
 
-          site:
-            match[1]
-              .trim()
-              .toLowerCase(),
+        const query =
+          match[2].trim();
 
-          query:
-            match[2].trim()
 
-        };
+        if (
+          site &&
+          query
+        ) {
+
+          return {
+            site,
+            query
+          };
+
+        }
+
+      }
+
+
+      /*
+      =====================================================
+      4. OPEN SITE AND SEARCH
+      =====================================================
+
+      open youtube and search apple
+      open youtube website and search apple
+      visit google and search apple
+      */
+
+      match =
+        text.match(
+          new RegExp(
+            `^(?:open|launch|visit|go\\s+to|take\\s+me\\s+to)\\s+(${siteNames})(?:\\s+(?:website|site))?\\s+(?:and\\s+)?(?:search|find|look\\s*up)\\s+(?:for\\s+)?(.+)$`,
+            "i"
+          )
+        );
+
+
+      if (match) {
+
+        const site =
+          siteAliases[
+          match[1].toLowerCase()
+          ];
+
+        const query =
+          match[2].trim();
+
+
+        if (
+          site &&
+          query
+        ) {
+
+          return {
+            site,
+            query
+          };
+
+        }
+
+      }
+
+
+      /*
+      =====================================================
+      5. NORMAL SEARCH WITHOUT SITE
+      =====================================================
+
+      search apple
+      search for apple
+      find apple
+      look up apple
+
+      These go to Google.
+      */
+
+      match =
+        text.match(
+          /^(?:search|find|look\s*up)\s+(?:for\s+)?(.+)$/i
+        );
+
+
+      if (match) {
+
+        const query =
+          match[1].trim();
+
+
+        /*
+        Don't treat:
+
+        search youtube
+        search google
+
+        as Google searches.
+
+        Those are handled as website commands.
+        */
+
+        const possibleSite =
+          siteAliases[
+          query.toLowerCase()
+          ];
+
+
+        if (
+          query &&
+          !possibleSite
+        ) {
+
+          return {
+            site: "google",
+            query
+          };
+
+        }
 
       }
 
@@ -1349,9 +1671,9 @@ function Home() {
             site === "x"
               ? "X"
               : site
-                  .charAt(0)
-                  .toUpperCase() +
-                site.slice(1);
+                .charAt(0)
+                .toUpperCase() +
+              site.slice(1);
 
 
           const answer =
@@ -1379,13 +1701,17 @@ function Home() {
 
           if (searchUrl) {
 
-            openUrl(searchUrl);
+            openUrl(
+              searchUrl
+            );
 
           }
 
 
           if (shouldSpeak) {
+
             speak(answer);
+
           }
 
 
@@ -1400,7 +1726,7 @@ function Home() {
 
         const googleSearchMatch =
           cleanedCommand.match(
-            /^(?:search|google)\s+(.+)$/i
+            /^(?:google)\s+(.+)$/i
           );
 
 
@@ -1443,16 +1769,20 @@ function Home() {
         // SIMPLE YOUTUBE SEARCH
         // =================================================
 
-        const youtubeQuery =
-          getYouTubeQuery(
-            cleanedCommand
+        const youtubeSearchMatch =
+          cleanedCommand.match(
+            /^(?:youtube|yt)\s+(.+)$/i
           );
 
 
-        if (youtubeQuery) {
+        if (youtubeSearchMatch) {
+
+          const query =
+            youtubeSearchMatch[1].trim();
+
 
           const answer =
-            `Searching YouTube for ${youtubeQuery}.`;
+            `Searching YouTube for ${query}.`;
 
 
           setAiText(answer);
@@ -1467,9 +1797,7 @@ function Home() {
           );
 
 
-          youtubeSearch(
-            youtubeQuery
-          );
+          youtubeSearch(query);
 
 
           if (shouldSpeak) {
@@ -1488,13 +1816,13 @@ function Home() {
 
         const directMatch =
           cleanedCommand.match(
-            /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
+            /^(?:open|launch|visit|go\s+to|take\s+me\s+to)\s+(.+)$/i
           );
 
 
         if (directMatch) {
 
-          const site =
+          let site =
             directMatch[1]
               .trim()
               .toLowerCase()
@@ -1504,10 +1832,29 @@ function Home() {
               );
 
 
+          /*
+          If user says:
+
+          open youtube
+
+          open google
+
+          open yahoo
+          */
+
           if (websites[site]) {
 
+            const displayName =
+              site === "x"
+                ? "X"
+                : site
+                  .charAt(0)
+                  .toUpperCase() +
+                site.slice(1);
+
+
             const answer =
-              `Opening ${site}.`;
+              `Opening ${displayName}.`;
 
 
             setAiText(answer);
@@ -1633,8 +1980,14 @@ function Home() {
             parsedResult?.query;
 
 
-          if (query?.trim()) {
-            googleSearch(query);
+          if (
+            query?.trim()
+          ) {
+
+            googleSearch(
+              query
+            );
+
           }
 
         }
@@ -1658,16 +2011,18 @@ function Home() {
 
         else if (
           parsedResult?.type ===
-            "youtube_search" ||
+          "youtube_search" ||
           parsedResult?.type ===
-            "youtube_play"
+          "youtube_play"
         ) {
 
           const query =
             parsedResult?.query;
 
 
-          if (query?.trim()) {
+          if (
+            query?.trim()
+          ) {
 
             youtubeSearch(
               query
@@ -1804,7 +2159,6 @@ function Home() {
 
       setTypedText("");
 
-
       setHistoryImage("");
 
       setHistoryFileName("");
@@ -1920,7 +2274,6 @@ function Home() {
       }
 
 
-      // 20 MB
       if (
         file.size >
         20 * 1024 * 1024
@@ -2140,11 +2493,15 @@ function Home() {
 
         const response =
           await axios.post(
+
             `${serverUrl}/api/user/analyze-pdf`,
+
             formData,
+
             {
               withCredentials: true
             }
+
           );
 
 
@@ -2199,8 +2556,8 @@ function Home() {
           )
         );
 
-        setShowAIText(true);
 
+        setShowAIText(true);
 
       } finally {
 
@@ -2279,11 +2636,15 @@ function Home() {
 
         const response =
           await axios.post(
+
             `${serverUrl}/api/user/analyze-image`,
+
             formData,
+
             {
               withCredentials: true
             }
+
           );
 
 
@@ -2357,6 +2718,7 @@ function Home() {
             errorMessage
           )
         );
+
 
         setShowAIText(true);
 
@@ -2448,7 +2810,7 @@ function Home() {
 
         const lastResult =
           event.results[
-            event.results.length - 1
+          event.results.length - 1
           ];
 
 
@@ -2473,13 +2835,21 @@ function Home() {
 
 
         const stopCommands = [
+
           "thank you",
+
           "thanks",
+
           "stop",
+
           "bye",
+
           "goodbye",
+
           "stop listening",
+
           "cancel"
+
         ];
 
 
@@ -2529,14 +2899,18 @@ function Home() {
               () => {
 
                 try {
+
                   recognition.start();
-                } catch {}
+
+                } catch { }
 
               },
               400
             );
 
-        } else if (
+        }
+
+        else if (
           !listeningRef.current
         ) {
 
@@ -2558,9 +2932,9 @@ function Home() {
 
         if (
           event.error ===
-            "not-allowed" ||
+          "not-allowed" ||
           event.error ===
-            "audio-capture"
+          "audio-capture"
         ) {
 
           listeningRef.current =
@@ -2586,14 +2960,17 @@ function Home() {
         restartTimeoutRef.current
       );
 
+
       clearTimeout(
         speechTimeoutRef.current
       );
 
 
       try {
+
         recognition.stop();
-      } catch {}
+
+      } catch { }
 
 
       window.speechSynthesis.cancel();
@@ -2639,6 +3016,7 @@ function Home() {
 
         setIsListening(true);
 
+
         recognitionRef.current.start();
 
       } catch {
@@ -2675,8 +3053,10 @@ function Home() {
       ) {
 
         try {
+
           recognitionRef.current.stop();
-        } catch {}
+
+        } catch { }
 
       }
 
@@ -2693,11 +3073,15 @@ function Home() {
       try {
 
         await axios.post(
+
           `${serverUrl}/api/auth/logout`,
+
           {},
+
           {
             withCredentials: true
           }
+
         );
 
       } catch (error) {
@@ -2754,6 +3138,7 @@ function Home() {
 
 
         return (
+
           command
             .toLowerCase()
             .includes(search) ||
@@ -2765,6 +3150,7 @@ function Home() {
           fileName
             .toLowerCase()
             .includes(search)
+
         );
 
       }
@@ -2956,9 +3342,13 @@ function Home() {
           >
 
             {showHistory ? (
+
               <IoMdClose size={22} />
+
             ) : (
+
               <IoMdMenu size={22} />
+
             )}
 
           </button>
@@ -2994,8 +3384,10 @@ function Home() {
                 text-white
               "
             >
+
               {userData?.assistantName ||
                 "Assistant"}
+
             </p>
 
 
@@ -3007,7 +3399,9 @@ function Home() {
                 sm:block
               "
             >
+
               Virtual Assistant
+
             </p>
 
           </div>
@@ -3044,7 +3438,9 @@ function Home() {
               sm:block
             "
           >
+
             Customize
+
           </button>
 
 
@@ -3145,8 +3541,10 @@ function Home() {
                     text-white
                   "
                 >
+
                   {userData?.name ||
                     "User"}
+
                 </p>
 
 
@@ -3157,8 +3555,10 @@ function Home() {
                     text-gray-500
                   "
                 >
+
                   {userData?.email ||
                     "Account"}
+
                 </p>
 
               </div>
@@ -3563,8 +3963,10 @@ function Home() {
                               text-cyan-300
                             "
                           >
+
                             {item.type ||
                               "text"}
+
                           </span>
 
 
@@ -3584,9 +3986,11 @@ function Home() {
                             />
 
                             <span className="truncate">
+
                               {formatDate(
                                 item.createdAt
                               )}
+
                             </span>
 
                           </span>
@@ -3644,6 +4048,7 @@ function Home() {
                                 "
                               />
 
+
                               <span
                                 className="
                                   min-w-0
@@ -3652,8 +4057,10 @@ function Home() {
                                   text-gray-400
                                 "
                               >
+
                                 {item.fileName ||
                                   "PDF document"}
+
                               </span>
 
                             </div>
@@ -3664,11 +4071,13 @@ function Home() {
                         <p
                           className="
                             line-clamp-2
-wrap-break-word                                                text-sm
+wrap-break-word                                      text-sm
                             text-gray-300
                           "
                         >
+
                           {item.command}
+
                         </p>
 
 
@@ -3683,7 +4092,9 @@ wrap-break-word                              text-xs
                               text-gray-600
                             "
                           >
+
                             {item.answer}
+
                           </p>
 
                         )}
@@ -3859,10 +4270,9 @@ wrap-break-word                              text-xs
                   p-1
                   transition
                   sm:mb-5
-                  ${
-                    isAIActive
-                      ? "ring-4 ring-cyan-400/30"
-                      : ""
+                  ${isAIActive
+                    ? "ring-4 ring-cyan-400/30"
+                    : ""
                   }
                 `}
               >
@@ -3895,7 +4305,7 @@ wrap-break-word                              text-xs
               <h1
                 className="
                   max-w-full
-wrap-break-word                                      px-3
+wrap-break-word                            px-3
                   text-center
                   text-xl
                   font-semibold
@@ -3904,8 +4314,10 @@ wrap-break-word                                      px-3
                   md:text-3xl
                 "
               >
+
                 {userData?.assistantName ||
                   "Assistant"}
+
               </h1>
 
 
@@ -3922,14 +4334,22 @@ wrap-break-word                                      px-3
               >
 
                 {isListening
+
                   ? "Listening..."
+
                   : isImageAnalyzing
-                  ? "Analyzing image..."
-                  : isPdfAnalyzing
-                  ? "Analyzing PDF..."
-                  : speakingRef.current
-                  ? "Speaking..."
-                  : "How can I help you?"}
+
+                    ? "Analyzing image..."
+
+                    : isPdfAnalyzing
+
+                      ? "Analyzing PDF..."
+
+                      : speakingRef.current
+
+                        ? "Speaking..."
+
+                        : "How can I help you?"}
 
               </p>
 
@@ -4049,7 +4469,9 @@ wrap-break-word                                      px-3
                         text-gray-300
                       "
                     >
+
                       {historyFileName}
+
                     </p>
 
                   </div>
@@ -4068,7 +4490,7 @@ wrap-break-word                                      px-3
                     mt-5
                     w-full
                     max-w-2xl
-wrap-break-word                                        rounded-2xl
+wrap-break-word                              rounded-2xl
                     border
                     border-cyan-400/10
                     bg-cyan-400/5
@@ -4082,7 +4504,9 @@ wrap-break-word                                        rounded-2xl
                     sm:px-5
                   "
                 >
+
                   {userText}
+
                 </div>
 
               )}
@@ -4099,7 +4523,7 @@ wrap-break-word                                        rounded-2xl
                       mb-5
                       w-full
                       max-w-3xl
-wrap-break-word                      rounded-2xl
+wrap-break-word                                rounded-2xl
                       border
                       border-white/10
                       bg-white/3
@@ -4115,7 +4539,9 @@ wrap-break-word                      rounded-2xl
                       sm:text-base
                     "
                   >
+
                     {aiText}
+
                   </div>
 
                 )}
@@ -4310,7 +4736,9 @@ wrap-break-word                      rounded-2xl
                       text-white
                     "
                   >
+
                     {pdfPreviewName}
+
                   </p>
 
 
@@ -4485,8 +4913,8 @@ wrap-break-word                      rounded-2xl
                   imagePreview
                     ? "Ask about the image..."
                     : pdfPreviewName
-                    ? "Ask about the PDF..."
-                    : "Ask me anything..."
+                      ? "Ask about the PDF..."
+                      : "Ask me anything..."
                 }
                 className="
                   min-w-0
@@ -4522,10 +4950,9 @@ wrap-break-word                      rounded-2xl
                   transition
                   sm:h-11
                   sm:w-11
-                  ${
-                    isListening
-                      ? "bg-red-400/10 text-red-400"
-                      : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
+                  ${isListening
+                    ? "bg-red-400/10 text-red-400"
+                    : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
                   }
                 `}
                 title={
@@ -4536,9 +4963,13 @@ wrap-break-word                      rounded-2xl
               >
 
                 {isListening ? (
+
                   <FiMicOff size={19} />
+
                 ) : (
+
                   <FiMic size={19} />
+
                 )}
 
               </button>
@@ -4551,11 +4982,13 @@ wrap-break-word                      rounded-2xl
                 disabled={
                   imagePreview
                     ? isImageAnalyzing ||
-                      !selectedImage
+                    !selectedImage
+
                     : pdfPreviewName
-                    ? isPdfAnalyzing ||
+                      ? isPdfAnalyzing ||
                       !selectedPdf
-                    : isSending ||
+
+                      : isSending ||
                       !typedText.trim()
                 }
                 className="
@@ -4579,8 +5012,8 @@ wrap-break-word                      rounded-2xl
                   imagePreview
                     ? "Analyze image"
                     : pdfPreviewName
-                    ? "Analyze PDF"
-                    : "Send"
+                      ? "Analyze PDF"
+                      : "Send"
                 }
               >
 
