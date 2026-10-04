@@ -45,16 +45,15 @@ function Home() {
     userData,
     serverUrl,
     setUserData,
-    getGeminiResponse,
-    analyzePdfFile
+    getGeminiResponse
   } = useContext(userDataContext);
 
   const navigate = useNavigate();
 
 
-  /* =====================================================
-     STATE
-     ===================================================== */
+  // =====================================================
+  // STATE
+  // =====================================================
 
   const [isListening, setIsListening] =
     useState(false);
@@ -89,11 +88,7 @@ function Home() {
   const [historySearch, setHistorySearch] =
     useState("");
 
-
-  /* =====================================================
-     IMAGE
-     ===================================================== */
-
+  // IMAGE
   const [selectedImage, setSelectedImage] =
     useState(null);
 
@@ -103,43 +98,26 @@ function Home() {
   const [isImageAnalyzing, setIsImageAnalyzing] =
     useState(false);
 
+  const [historyImage, setHistoryImage] =
+    useState("");
 
-  /* =====================================================
-     PDF
-     ===================================================== */
-
+  // PDF
   const [selectedPdf, setSelectedPdf] =
     useState(null);
 
-  const [pdfPreview, setPdfPreview] =
+  const [pdfPreviewName, setPdfPreviewName] =
     useState("");
 
   const [isPdfAnalyzing, setIsPdfAnalyzing] =
     useState(false);
 
-  const [pdfName, setPdfName] =
+  const [historyFileName, setHistoryFileName] =
     useState("");
 
 
-  /* =====================================================
-     HISTORY IMAGE
-     ===================================================== */
-
-  const [historyImage, setHistoryImage] =
-    useState("");
-
-
-  /* =====================================================
-     CURRENT PDF SESSION
-     ===================================================== */
-
-  const [activePdf, setActivePdf] =
-    useState(null);
-
-
-  /* =====================================================
-     REFS
-     ===================================================== */
+  // =====================================================
+  // REFS
+  // =====================================================
 
   const imageInputRef =
     useRef(null);
@@ -165,16 +143,13 @@ function Home() {
   const speechTimeoutRef =
     useRef(null);
 
-  const answerRef =
-    useRef(null);
-
   const assistantNameRef =
     useRef("");
 
 
-  /* =====================================================
-     ASSISTANT NAME
-     ===================================================== */
+  // =====================================================
+  // ASSISTANT NAME
+  // =====================================================
 
   useEffect(() => {
 
@@ -182,14 +157,12 @@ function Home() {
       userData?.assistantName ||
       "Assistant";
 
-  }, [
-    userData?.assistantName
-  ]);
+  }, [userData?.assistantName]);
 
 
-  /* =====================================================
-     LOAD HISTORY
-     ===================================================== */
+  // =====================================================
+  // LOAD HISTORY
+  // =====================================================
 
   useEffect(() => {
 
@@ -199,304 +172,381 @@ function Home() {
         : []
     );
 
-  }, [
-    userData?.history
-  ]);
+  }, [userData?.history]);
 
 
-  /* =====================================================
-     CLEAN AI RESPONSE
-     ===================================================== */
+  // =====================================================
+  // CLEAN GEMINI RESPONSE
+  // =====================================================
 
-  const cleanAIResponse = (text) => {
+  const cleanAIResponse = text => {
 
     if (!text) {
       return "";
     }
 
-    let cleaned =
-      String(text);
+    let cleaned = String(text);
 
-    cleaned =
-      cleaned.replace(
-        /```(?:json|javascript|js|text|markdown|md)?/gi,
-        ""
-      );
+    cleaned = cleaned.replace(
+      /```(?:json|javascript|js|text|markdown|md)?/gi,
+      ""
+    );
 
-    cleaned =
-      cleaned.replace(
-        /```/g,
-        ""
-      );
+    cleaned = cleaned.replace(
+      /```/g,
+      ""
+    );
 
-    cleaned =
-      cleaned.replace(
-        /\*\*/g,
-        ""
-      );
+    cleaned = cleaned.replace(
+      /\*\*/g,
+      ""
+    );
 
-    cleaned =
-      cleaned.replace(
-        /__/g,
-        ""
-      );
+    cleaned = cleaned.replace(
+      /__/g,
+      ""
+    );
 
-    cleaned =
-      cleaned.replace(
-        /^\s*#{1,6}\s*/gm,
-        ""
-      );
+    cleaned = cleaned.replace(
+      /^\s*#{1,6}\s*/gm,
+      ""
+    );
 
-    cleaned =
-      cleaned.replace(
-        /^\s*>\s?/gm,
-        ""
-      );
+    cleaned = cleaned.replace(
+      /^\s*>\s?/gm,
+      ""
+    );
 
-    cleaned =
-      cleaned.replace(
-        /^\s*[-*+]\s+/gm,
-        ""
-      );
+    cleaned = cleaned.replace(
+      /^\s*[-*+]\s+/gm,
+      ""
+    );
 
-    cleaned =
-      cleaned.replace(
-        /`/g,
-        ""
-      );
+    cleaned = cleaned.replace(
+      /`/g,
+      ""
+    );
 
-    cleaned =
-      cleaned.replace(
-        /\$\$/g,
-        ""
-      );
+    cleaned = cleaned.replace(
+      /\$\$/g,
+      ""
+    );
 
-    cleaned =
-      cleaned.replace(
-        /\$/g,
-        ""
-      );
+    cleaned = cleaned.replace(
+      /\\\[/g,
+      ""
+    );
 
-    cleaned =
-      cleaned.replace(
-        /\\\[/g,
-        ""
-      );
+    cleaned = cleaned.replace(
+      /\\\]/g,
+      ""
+    );
 
-    cleaned =
-      cleaned.replace(
-        /\\\]/g,
-        ""
-      );
+    cleaned = cleaned.replace(
+      /\\\(/g,
+      ""
+    );
 
-    cleaned =
-      cleaned.replace(
-        /\\\(/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\\\)/g,
-        ""
-      );
+    cleaned = cleaned.replace(
+      /\\\)/g,
+      ""
+    );
 
 
     let previous = "";
 
-    while (
-      previous !== cleaned
-    ) {
+    while (previous !== cleaned) {
 
-      previous =
-        cleaned;
+      previous = cleaned;
 
-      cleaned =
-        cleaned.replace(
-          /\\(?:frac|dfrac|tfrac)\{([^{}]+)\}\{([^{}]+)\}/g,
-          "$1/$2"
-        );
+      cleaned = cleaned.replace(
+        /\\(?:frac|dfrac|tfrac)\{([^{}]+)\}\{([^{}]+)\}/g,
+        "$1/$2"
+      );
+
     }
 
 
-    cleaned =
-      cleaned
-        .replace(
-          /\\pi\b/g,
-          "π"
-        )
-        .replace(
-          /\\sqrt\{([^{}]+)\}/g,
-          "√($1)"
-        )
-        .replace(
-          /\\sin\b/g,
-          "sin"
-        )
-        .replace(
-          /\\cos\b/g,
-          "cos"
-        )
-        .replace(
-          /\\tan\b/g,
-          "tan"
-        )
-        .replace(
-          /\\cot\b/g,
-          "cot"
-        )
-        .replace(
-          /\\sec\b/g,
-          "sec"
-        )
-        .replace(
-          /\\csc\b/g,
-          "csc"
-        )
-        .replace(
-          /\\log\b/g,
-          "log"
-        )
-        .replace(
-          /\\ln\b/g,
-          "ln"
-        )
-        .replace(
-          /\\infty\b/g,
-          "∞"
-        )
-        .replace(
-          /\\times\b/g,
-          "×"
-        )
-        .replace(
-          /\\cdot\b/g,
-          "·"
-        )
-        .replace(
-          /\\leq\b/g,
-          "≤"
-        )
-        .replace(
-          /\\geq\b/g,
-          "≥"
-        )
-        .replace(
-          /\\neq\b/g,
-          "≠"
-        )
-        .replace(
-          /\\pm\b/g,
-          "±"
-        );
+    cleaned = cleaned
+      .replace(/\\pi\b/g, "π")
+      .replace(
+        /\\sqrt\{([^{}]+)\}/g,
+        "√($1)"
+      )
+      .replace(/\\sin\b/g, "sin")
+      .replace(/\\cos\b/g, "cos")
+      .replace(/\\tan\b/g, "tan")
+      .replace(/\\cot\b/g, "cot")
+      .replace(/\\sec\b/g, "sec")
+      .replace(/\\csc\b/g, "csc")
+      .replace(/\\log\b/g, "log")
+      .replace(/\\ln\b/g, "ln")
+      .replace(/\\lim\b/g, "lim")
+      .replace(/\\infty\b/g, "∞")
+      .replace(/\\times\b/g, "×")
+      .replace(/\\cdot\b/g, "·")
+      .replace(/\\leq\b/g, "≤")
+      .replace(/\\geq\b/g, "≥")
+      .replace(/\\neq\b/g, "≠")
+      .replace(/\\pm\b/g, "±");
 
 
-    cleaned =
-      cleaned.replace(
-        /\\left\b/g,
-        ""
-      );
+    cleaned = cleaned.replace(
+      /\\left\b/g,
+      ""
+    );
 
-    cleaned =
-      cleaned.replace(
-        /\\right\b/g,
+    cleaned = cleaned.replace(
+      /\\right\b/g,
+      ""
+    );
+
+
+    cleaned = cleaned
+      .replace(
+        /\\text\{([^{}]*)\}/g,
+        "$1"
+      )
+      .replace(
+        /\\mathrm\{([^{}]*)\}/g,
+        "$1"
+      )
+      .replace(
+        /\\mathbf\{([^{}]*)\}/g,
+        "$1"
+      )
+      .replace(
+        /\\displaystyle/g,
         ""
       );
 
 
-    cleaned =
-      cleaned
-        .replace(
-          /\\text\{([^{}]*)\}/g,
-          "$1"
-        )
-        .replace(
-          /\\mathrm\{([^{}]*)\}/g,
-          "$1"
-        )
-        .replace(
-          /\\mathbf\{([^{}]*)\}/g,
-          "$1"
-        )
-        .replace(
-          /\\displaystyle/g,
-          ""
-        );
-
-
-    cleaned =
-      cleaned
-        .replace(
-          /\^\{2\}/g,
-          "²"
-        )
-        .replace(
-          /\^\{3\}/g,
-          "³"
-        )
-        .replace(
-          /\^2/g,
-          "²"
-        )
-        .replace(
-          /\^3/g,
-          "³"
-        );
-
-
-    cleaned =
-      cleaned
-        .replace(
-          /sin\^\{-1\}/g,
-          "sin⁻¹"
-        )
-        .replace(
-          /cos\^\{-1\}/g,
-          "cos⁻¹"
-        )
-        .replace(
-          /tan\^\{-1\}/g,
-          "tan⁻¹"
-        );
-
-
-    cleaned =
-      cleaned.replace(
-        /[{}]/g,
-        ""
+    cleaned = cleaned
+      .replace(
+        /\^\{2\}/g,
+        "²"
+      )
+      .replace(
+        /\^\{3\}/g,
+        "³"
+      )
+      .replace(
+        /\^2/g,
+        "²"
+      )
+      .replace(
+        /\^3/g,
+        "³"
       );
 
-    cleaned =
-      cleaned.replace(
-        /[ \t]+/g,
-        " "
+
+    cleaned = cleaned
+      .replace(
+        /sin\^\{-1\}/g,
+        "sin⁻¹"
+      )
+      .replace(
+        /cos\^\{-1\}/g,
+        "cos⁻¹"
+      )
+      .replace(
+        /tan\^\{-1\}/g,
+        "tan⁻¹"
       );
 
-    cleaned =
-      cleaned.replace(
-        /\n[ \t]+/g,
-        "\n"
-      );
 
-    cleaned =
-      cleaned.replace(
-        /\n{3,}/g,
-        "\n\n"
-      );
+    cleaned = cleaned.replace(
+      /[{}]/g,
+      ""
+    );
+
+    cleaned = cleaned.replace(
+      /[ \t]+/g,
+      " "
+    );
+
+    cleaned = cleaned.replace(
+      /\n[ \t]+/g,
+      "\n"
+    );
+
+    cleaned = cleaned.replace(
+      /\n{3,}/g,
+      "\n\n"
+    );
 
     return cleaned.trim();
   };
 
 
-  /* =====================================================
-     SAVE HISTORY
-     ===================================================== */
+  // =====================================================
+  // IMAGE -> COMPRESSED DATA URL
+  // =====================================================
+
+  const imageFileToDataUrl = file => {
+
+    return new Promise(
+      (resolve, reject) => {
+
+        if (!file) {
+          reject(
+            new Error(
+              "No image file provided"
+            )
+          );
+
+          return;
+        }
+
+        const reader =
+          new FileReader();
+
+        reader.onload = () => {
+
+          const img =
+            new Image();
+
+          img.onload = () => {
+
+            const maxSize = 1000;
+
+            let width =
+              img.width;
+
+            let height =
+              img.height;
+
+
+            if (
+              width > maxSize ||
+              height > maxSize
+            ) {
+
+              if (
+                width > height
+              ) {
+
+                height =
+                  Math.round(
+                    (height * maxSize) /
+                    width
+                  );
+
+                width =
+                  maxSize;
+
+              } else {
+
+                width =
+                  Math.round(
+                    (width * maxSize) /
+                    height
+                  );
+
+                height =
+                  maxSize;
+
+              }
+
+            }
+
+
+            const canvas =
+              document.createElement(
+                "canvas"
+              );
+
+            canvas.width =
+              width;
+
+            canvas.height =
+              height;
+
+
+            const ctx =
+              canvas.getContext(
+                "2d"
+              );
+
+            if (!ctx) {
+
+              reject(
+                new Error(
+                  "Could not create image canvas"
+                )
+              );
+
+              return;
+            }
+
+
+            ctx.drawImage(
+              img,
+              0,
+              0,
+              width,
+              height
+            );
+
+
+            const compressed =
+              canvas.toDataURL(
+                "image/jpeg",
+                0.72
+              );
+
+            resolve(
+              compressed
+            );
+
+          };
+
+
+          img.onerror = () => {
+
+            reject(
+              new Error(
+                "Could not load image"
+              )
+            );
+
+          };
+
+
+          img.src =
+            reader.result;
+
+        };
+
+
+        reader.onerror = () => {
+
+          reject(
+            new Error(
+              "Could not read image"
+            )
+          );
+
+        };
+
+
+        reader.readAsDataURL(file);
+
+      }
+    );
+  };
+
+
+  // =====================================================
+  // SAVE HISTORY
+  // =====================================================
 
   const addHistory = async (
     command,
     answer,
     type = "text",
-    image = ""
+    image = "",
+    fileName = ""
   ) => {
 
     const temporaryItem = {
@@ -511,6 +561,8 @@ function Home() {
       type,
 
       image,
+
+      fileName,
 
       createdAt:
         new Date().toISOString()
@@ -530,21 +582,17 @@ function Home() {
 
       const response =
         await axios.post(
-
           `${serverUrl}/api/user/savehistory`,
-
           {
             command,
             answer,
             type,
-            image
+            image,
+            fileName
           },
-
           {
-            withCredentials:
-              true
+            withCredentials: true
           }
-
         );
 
 
@@ -559,10 +607,12 @@ function Home() {
         setUserData(
           previous => ({
             ...previous,
+
             history:
               response.data.history
           })
         );
+
       }
 
     } catch (error) {
@@ -572,70 +622,70 @@ function Home() {
         error.response?.data ||
         error.message
       );
+
     }
+
   };
 
 
-  /* =====================================================
-     DELETE HISTORY
-     ===================================================== */
+  // =====================================================
+  // DELETE HISTORY
+  // =====================================================
 
-  const deleteHistory = async (
-    historyId
-  ) => {
+  const deleteHistory =
+    async historyId => {
 
-    if (!historyId) {
-      return;
-    }
+      if (!historyId) {
+        return;
+      }
 
 
-    try {
+      try {
 
-      const response =
-        await axios.delete(
+        const response =
+          await axios.delete(
+            `${serverUrl}/api/user/history/${historyId}`,
+            {
+              withCredentials: true
+            }
+          );
 
-          `${serverUrl}/api/user/history/${historyId}`,
 
-          {
-            withCredentials:
-              true
-          }
+        const updatedHistory =
+          response.data.history || [];
 
+
+        setHistoryItems(
+          updatedHistory
         );
 
 
-      const updatedHistory =
-        response.data.history ||
-        [];
+        setUserData(
+          previous => ({
+            ...previous,
+
+            history:
+              updatedHistory
+          })
+        );
 
 
-      setHistoryItems(
-        updatedHistory
-      );
+      } catch (error) {
+
+        console.error(
+          "DELETE HISTORY ERROR:",
+          error.response?.data ||
+          error.message
+        );
+
+      }
+
+    };
 
 
-      setUserData(
-        previous => ({
-          ...previous,
-          history:
-            updatedHistory
-        })
-      );
-
-    } catch (error) {
-
-      console.error(
-        "DELETE HISTORY ERROR:",
-        error.response?.data ||
-        error.message
-      );
-    }
-  };
-
-
-  /* =====================================================
-     CLEAR HISTORY
-     ===================================================== */
+  // =====================================================
+  // CLEAR HISTORY
+  // =====================================================
 
   const clearHistory = async () => {
 
@@ -660,14 +710,10 @@ function Home() {
     try {
 
       await axios.delete(
-
         `${serverUrl}/api/user/history`,
-
         {
-          withCredentials:
-            true
+          withCredentials: true
         }
-
       );
 
 
@@ -675,20 +721,23 @@ function Home() {
 
       setHistoryImage("");
 
+      setHistoryFileName("");
+
       setUserText("");
 
       setAiText("");
 
       setShowAIText(false);
 
-      setActivePdf(null);
 
       setUserData(
         previous => ({
           ...previous,
+
           history: []
         })
       );
+
 
     } catch (error) {
 
@@ -697,15 +746,17 @@ function Home() {
         error.response?.data ||
         error.message
       );
+
     }
+
   };
 
 
-  /* =====================================================
-     SPEECH
-     ===================================================== */
+  // =====================================================
+  // SPEECH
+  // =====================================================
 
-  const speak = (text) => {
+  const speak = text => {
 
     if (!text) {
       return;
@@ -723,6 +774,7 @@ function Home() {
 
     window.speechSynthesis.cancel();
 
+
     clearTimeout(
       speechTimeoutRef.current
     );
@@ -731,9 +783,7 @@ function Home() {
     const sentences =
       speechText.match(
         /[^.!?]+[.!?]+|[^.!?]+$/g
-      ) || [
-        speechText
-      ];
+      ) || [speechText];
 
 
     const chunks = [];
@@ -754,8 +804,7 @@ function Home() {
 
 
         const combined =
-          `${currentChunk} ${cleanSentence}`
-            .trim();
+          `${currentChunk} ${cleanSentence}`.trim();
 
 
         if (
@@ -769,6 +818,7 @@ function Home() {
             chunks.push(
               currentChunk.trim()
             );
+
           }
 
 
@@ -779,7 +829,9 @@ function Home() {
 
           currentChunk =
             combined;
+
         }
+
       }
     );
 
@@ -791,6 +843,7 @@ function Home() {
       chunks.push(
         currentChunk.trim()
       );
+
     }
 
 
@@ -801,11 +854,11 @@ function Home() {
       chunks.push(
         speechText
       );
+
     }
 
 
     let currentIndex = 0;
-
 
     speakingRef.current =
       true;
@@ -823,9 +876,7 @@ function Home() {
         speakingRef.current =
           false;
 
-        setIsAIActive(
-          false
-        );
+        setIsAIActive(false);
 
 
         if (
@@ -835,10 +886,9 @@ function Home() {
         ) {
 
           try {
-
             recognitionRef.current.start();
-
           } catch {}
+
         }
 
         return;
@@ -851,13 +901,17 @@ function Home() {
         );
 
 
-      utterance.rate = 1;
+      utterance.rate =
+        1;
 
-      utterance.pitch = 1;
+      utterance.pitch =
+        1;
 
-      utterance.volume = 1;
+      utterance.volume =
+        1;
 
-      utterance.lang = "en-US";
+      utterance.lang =
+        "en-US";
 
 
       utterance.onstart = () => {
@@ -866,6 +920,7 @@ function Home() {
           true;
 
         setIsAIActive(true);
+
       };
 
 
@@ -881,6 +936,7 @@ function Home() {
             },
             80
           );
+
       };
 
 
@@ -896,76 +952,47 @@ function Home() {
             },
             80
           );
+
       };
 
 
       window.speechSynthesis.speak(
         utterance
       );
+
     };
 
 
     speakNextChunk();
+
   };
 
 
-  /* =====================================================
-     OPEN URL
-     ===================================================== */
+  // =====================================================
+  // OPEN URL
+  // =====================================================
 
-  const openUrl = (url) => {
+  const openUrl = url => {
 
     if (!url) {
       return;
     }
 
 
-    try {
+    window.open(
+      url,
+      "_blank",
+      "noopener,noreferrer"
+    );
 
-      const finalUrl =
-        /^https?:\/\//i.test(url)
-          ? url
-          : `https://${url}`;
-
-
-      const newWindow =
-        window.open(
-          finalUrl,
-          "_blank",
-          "noopener,noreferrer"
-        );
-
-
-      /*
-       * Some browsers block window.open
-       * after asynchronous operations.
-       *
-       * Use current page as fallback.
-       */
-
-      if (!newWindow) {
-
-        window.location.href =
-          finalUrl;
-      }
-
-    } catch (error) {
-
-      console.error(
-        "OPEN URL ERROR:",
-        error
-      );
-    }
   };
 
 
-  /* =====================================================
-     GOOGLE SEARCH
-     ===================================================== */
+  // =====================================================
+  // GOOGLE SEARCH
+  // =====================================================
 
-  const googleSearch = (
-    query
-  ) => {
+  const googleSearch = query => {
 
     if (!query?.trim()) {
       return;
@@ -977,16 +1004,15 @@ function Home() {
         query.trim()
       )}`
     );
+
   };
 
 
-  /* =====================================================
-     YOUTUBE SEARCH
-     ===================================================== */
+  // =====================================================
+  // YOUTUBE SEARCH
+  // =====================================================
 
-  const youtubeSearch = (
-    query
-  ) => {
+  const youtubeSearch = query => {
 
     if (!query?.trim()) {
       return;
@@ -998,23 +1024,18 @@ function Home() {
         query.trim()
       )}`
     );
+
   };
 
 
-  /* =====================================================
-     WEBSITES
-     ===================================================== */
+  // =====================================================
+  // WEBSITES
+  // =====================================================
 
   const websites = {
 
     google:
       "https://www.google.com",
-
-    yahoo:
-      "https://www.yahoo.com",
-
-    bing:
-      "https://www.bing.com",
 
     youtube:
       "https://www.youtube.com",
@@ -1076,885 +1097,270 @@ function Home() {
   };
 
 
-  /* =====================================================
-     NORMALIZE SITE
-     ===================================================== */
-
-  const normalizeSite = (
-    site
-  ) => {
-
-    const value =
-      String(site || "")
-        .trim()
-        .toLowerCase()
-        .replace(
-          /^www\./,
-          ""
-        )
-        .replace(
-          /\.(com|in|org|net|co|tv)$/i,
-          ""
-        );
-
-
-    const aliases = {
-
-      google:
-        "google",
-
-      "google search":
-        "google",
-
-      yahoo:
-        "yahoo",
-
-      "yahoo search":
-        "yahoo",
-
-      bing:
-        "bing",
-
-      "bing search":
-        "bing",
-
-      youtube:
-        "youtube",
-
-      yt:
-        "youtube",
-
-      instagram:
-        "instagram",
-
-      insta:
-        "instagram",
-
-      facebook:
-        "facebook",
-
-      fb:
-        "facebook",
-
-      wikipedia:
-        "wikipedia",
-
-      wiki:
-        "wikipedia",
-
-      reddit:
-        "reddit",
-
-      amazon:
-        "amazon",
-
-      flipkart:
-        "flipkart",
-
-      spotify:
-        "spotify",
-
-      github:
-        "github",
-
-      linkedin:
-        "linkedin",
-
-      pinterest:
-        "pinterest",
-
-      twitter:
-        "twitter",
-
-      x:
-        "x",
-
-      quora:
-        "quora",
-
-      twitch:
-        "twitch",
-
-      imdb:
-        "imdb",
-
-      soundcloud:
-        "soundcloud",
-
-      deezer:
-        "deezer",
-
-      udemy:
-        "udemy",
-
-      coursera:
-        "coursera",
-
-      canva:
-        "canva",
-
-      stackoverflow:
-        "stackoverflow"
-
-    };
-
-
-    return (
-      aliases[value] ||
-      value
-    );
-  };
-
-
-  /* =====================================================
-     WEBSITE SEARCH URL
-     ===================================================== */
+  // =====================================================
+  // WEBSITE SEARCH URL
+  // =====================================================
 
   const getWebsiteSearchUrl = (
     site,
     query
   ) => {
 
-    const normalizedSite =
-      normalizeSite(site);
-
-
-    const cleanQuery =
-      String(query || "")
-        .trim();
-
-
-    if (!cleanQuery) {
-      return null;
-    }
-
-
     const encodedQuery =
       encodeURIComponent(
-        cleanQuery
+        query.trim()
       );
 
 
-    switch (
-      normalizedSite
-    ) {
+    switch (site) {
 
       case "google":
-
         return `https://www.google.com/search?q=${encodedQuery}`;
 
-
-      case "yahoo":
-
-        return `https://search.yahoo.com/search?p=${encodedQuery}`;
-
-
-      case "bing":
-
-        return `https://www.bing.com/search?q=${encodedQuery}`;
-
-
       case "youtube":
-
         return `https://www.youtube.com/results?search_query=${encodedQuery}`;
 
-
-      case "instagram":
-
-        return `https://www.instagram.com/explore/search/keyword/?q=${encodedQuery}`;
-
-
-      case "facebook":
-
-        return `https://www.facebook.com/search/top?q=${encodedQuery}`;
-
-
-      case "wikipedia":
-
-        return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
-
-
-      case "reddit":
-
-        return `https://www.reddit.com/search/?q=${encodedQuery}`;
-
-
       case "amazon":
-
         return `https://www.amazon.in/s?k=${encodedQuery}`;
 
-
       case "flipkart":
-
         return `https://www.flipkart.com/search?q=${encodedQuery}`;
 
+      case "wikipedia":
+        return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
 
-      case "spotify":
-
-        return `https://open.spotify.com/search/${encodedQuery}`;
-
+      case "reddit":
+        return `https://www.reddit.com/search/?q=${encodedQuery}`;
 
       case "github":
-
         return `https://github.com/search?q=${encodedQuery}`;
 
-
       case "linkedin":
-
         return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
 
+      case "spotify":
+        return `https://open.spotify.com/search/${encodedQuery}`;
 
       case "pinterest":
-
         return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
 
+      case "facebook":
+        return `https://www.facebook.com/search/top?q=${encodedQuery}`;
 
-      case "twitter":
       case "x":
-
+      case "twitter":
         return `https://x.com/search?q=${encodedQuery}`;
 
-
-      case "quora":
-
-        return `https://www.quora.com/search?q=${encodedQuery}`;
-
-
-      case "twitch":
-
-        return `https://www.twitch.tv/search?term=${encodedQuery}`;
-
-
-      case "imdb":
-
-        return `https://www.imdb.com/find/?q=${encodedQuery}`;
-
-
-      case "soundcloud":
-
-        return `https://soundcloud.com/search?q=${encodedQuery}`;
-
-
-      case "deezer":
-
-        return `https://www.deezer.com/search/${encodedQuery}`;
-
-
-      case "stackoverflow":
-
-        return `https://stackoverflow.com/search?q=${encodedQuery}`;
-
-
-      case "udemy":
-
-        return `https://www.udemy.com/courses/search/?q=${encodedQuery}`;
-
-
-      case "coursera":
-
-        return `https://www.coursera.org/search?query=${encodedQuery}`;
-
-
-      case "canva":
-
-        return `https://www.canva.com/search?q=${encodedQuery}`;
-
-
       default:
-
         return null;
+
     }
+
   };
 
 
-  /* =====================================================
-     EXTRACT SEARCH COMMAND
-     ===================================================== */
+  // =====================================================
+  // EXTRACT SEARCH COMMAND
+  // =====================================================
 
-  const extractSearchCommand = (
-    command
-  ) => {
+  const extractSearchCommand =
+    command => {
 
-    if (!command) {
-      return null;
-    }
-
-
-    const text =
-      String(command)
-        .trim()
-        .replace(
-          /\s+/g,
-          " "
-        )
-        .replace(
-          /[?!.]+$/,
-          ""
-        );
-
-
-    if (!text) {
-      return null;
-    }
-
-
-    let match;
-
-
-    /* =================================================
-       OPEN SITE AND SEARCH FOR QUERY
-
-       Examples:
-
-       open spotify and search for Savriabdul
-       open yahoo and search for cats
-       open google and search for photosynthesis
-       open youtube and search for arijit singh
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:open|launch|visit|go to|take me to)\s+([a-zA-Z0-9.-]+)(?:\s+(?:website|site))?\s+(?:and\s+)?(?:search|find|look for|look up)(?:\s+for|\s+about|\s+regarding)?\s+(.+)$/i
-      );
-
-
-    if (match) {
-
-      const site =
-        normalizeSite(
-          match[1]
-        );
-
-      const query =
-        match[2].trim();
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
+      if (!command) {
+        return null;
       }
-    }
 
 
-    /* =================================================
-       SEARCH QUERY ON SITE
-
-       search cats on yahoo
-       search cats in yahoo
-       search cats at yahoo
-       search cats using yahoo
-       find cats on google
-       look for cats on youtube
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:search|find|look for|look up)\s+(.+?)\s+(?:on|in|at|using)\s+([a-zA-Z0-9.-]+)$/i
-      );
-
-
-    if (match) {
-
-      const query =
-        match[1].trim();
-
-      const site =
-        normalizeSite(
-          match[2]
-        );
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
-    }
-
-
-    /* =================================================
-       SEARCH SITE FOR QUERY
-
-       search yahoo for cats
-       search google for photosynthesis
-       search youtube for arijit singh
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:search|find|look for|look up)\s+([a-zA-Z0-9.-]+)\s+(?:for|about|regarding)\s+(.+)$/i
-      );
-
-
-    if (match) {
-
-      const site =
-        normalizeSite(
-          match[1]
-        );
-
-      const query =
-        match[2].trim();
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
-    }
-
-
-    /* =================================================
-       SITE SEARCH QUERY
-
-       yahoo search cats
-       google search photosynthesis
-       youtube search arijit singh
-       spotify search Savriabdul
-       ================================================= */
-
-    match =
-      text.match(
-        /^([a-zA-Z0-9.-]+)\s+search\s+(.+)$/i
-      );
-
-
-    if (match) {
-
-      const site =
-        normalizeSite(
-          match[1]
-        );
-
-      const query =
-        match[2].trim();
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
-    }
-
-
-    /* =================================================
-       SEARCH SITE QUERY
-
-       search yahoo cats
-       search google photosynthesis
-       search youtube music
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:search|find)\s+([a-zA-Z0-9.-]+)\s+(.+)$/i
-      );
-
-
-    if (match) {
-
-      const site =
-        normalizeSite(
-          match[1]
-        );
-
-      const query =
-        match[2].trim();
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
-    }
-
-
-    /* =================================================
-       SEARCH QUERY SITE
-
-       search cats yahoo
-       search photosynthesis google
-       search arijit singh youtube
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:search|find|look for|look up)\s+(.+?)\s+([a-zA-Z0-9.-]+)$/i
-      );
-
-
-    if (match) {
-
-      const query =
-        match[1].trim();
-
-      const site =
-        normalizeSite(
-          match[2]
-        );
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
-    }
-
-
-    return null;
-  };
-
-
-  /* =====================================================
-     YOUTUBE QUERY
-     ===================================================== */
-
-  const getYouTubeQuery = (
-    command
-  ) => {
-
-    const result =
-      extractSearchCommand(
+      const text =
         command
+          .trim()
+          .replace(
+            /\s+/g,
+            " "
+          );
+
+
+      let match;
+
+
+      match =
+        text.match(
+          /^(?:search|find|look up)\s+(.+?)\s+(?:on|in)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)$/i
+        );
+
+
+      if (match) {
+
+        return {
+
+          site:
+            match[2]
+              .trim()
+              .toLowerCase(),
+
+          query:
+            match[1].trim()
+
+        };
+
+      }
+
+
+      match =
+        text.match(
+          /^(?:search|find|look up)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s+for\s+(.+)$/i
+        );
+
+
+      if (match) {
+
+        return {
+
+          site:
+            match[1]
+              .trim()
+              .toLowerCase(),
+
+          query:
+            match[2].trim()
+
+        };
+
+      }
+
+
+      match =
+        text.match(
+          /^(?:open|launch|visit|go to|take me to)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)(?:\s+website|\s+site)?\s+(?:and\s+)?(?:search|find|look up)\s+(.+)$/i
+        );
+
+
+      if (match) {
+
+        return {
+
+          site:
+            match[1]
+              .trim()
+              .toLowerCase(),
+
+          query:
+            match[2].trim()
+
+        };
+
+      }
+
+
+      return null;
+
+    };
+
+
+  // =====================================================
+  // YOUTUBE QUERY
+  // =====================================================
+
+  const getYouTubeQuery =
+    command => {
+
+      const result =
+        extractSearchCommand(
+          command
+        );
+
+
+      if (
+        result?.site ===
+        "youtube"
+      ) {
+
+        return result.query;
+
+      }
+
+
+      return "";
+
+    };
+
+
+  // =====================================================
+  // PROCESS COMMAND
+  // =====================================================
+
+  const processCommand =
+    async (
+      command,
+      type = "text",
+      shouldSpeak = false
+    ) => {
+
+      const cleanedCommand =
+        command.trim();
+
+
+      if (!cleanedCommand) {
+        return;
+      }
+
+
+      setHistoryImage("");
+
+      setHistoryFileName("");
+
+      setUserText(
+        cleanedCommand
       );
 
+      setAiText("");
 
-    if (
-      result?.site ===
-      "youtube"
-    ) {
+      setShowAIText(false);
 
-      return result.query;
-    }
+      setIsAIActive(true);
 
+      setIsSending(true);
 
-    return "";
-  };
+      processingRef.current =
+        true;
 
 
-  /* =====================================================
-     PROCESS COMMAND
-     ===================================================== */
+      try {
 
-  const processCommand = async (
-    command,
-    type = "text",
-    shouldSpeak = false
-  ) => {
+        // =================================================
+        // EXPLICIT SEARCH
+        // =================================================
 
-    const cleanedCommand =
-      String(command || "").trim();
+        const searchCommand =
+          extractSearchCommand(
+            cleanedCommand
+          );
 
 
-    if (!cleanedCommand) {
-      return;
-    }
+        if (searchCommand) {
 
+          const {
+            site,
+            query
+          } = searchCommand;
 
-    setHistoryImage("");
 
-    setUserText(
-      cleanedCommand
-    );
+          const siteName =
+            site === "x"
+              ? "X"
+              : site
+                  .charAt(0)
+                  .toUpperCase() +
+                site.slice(1);
 
-    setAiText("");
-
-    setShowAIText(false);
-
-    setIsAIActive(true);
-
-    setIsSending(true);
-
-    processingRef.current =
-      true;
-
-
-    try {
-
-      /* =================================================
-         WEBSITE SEARCH
-         ================================================= */
-
-      const searchCommand =
-        extractSearchCommand(
-          cleanedCommand
-        );
-
-
-      if (searchCommand) {
-
-        const {
-          site,
-          query,
-          url
-        } = searchCommand;
-
-
-        const normalizedSite =
-          normalizeSite(site);
-
-
-        const siteName =
-          normalizedSite === "x"
-            ? "X"
-            : normalizedSite
-                .charAt(0)
-                .toUpperCase() +
-              normalizedSite.slice(1);
-
-
-        const answer =
-          `Searching ${siteName} for ${query}.`;
-
-
-        setAiText(
-          answer
-        );
-
-        setShowAIText(
-          true
-        );
-
-
-        await addHistory(
-          cleanedCommand,
-          answer,
-          type
-        );
-
-
-        if (url) {
-
-          openUrl(url);
-        }
-
-
-        if (shouldSpeak) {
-
-          speak(answer);
-        }
-
-
-        return;
-      }
-
-
-      /* =================================================
-         SIMPLE GOOGLE SEARCH
-         ================================================= */
-
-      const googleSearchMatch =
-        cleanedCommand.match(
-          /^(?:search|google)\s+(.+)$/i
-        );
-
-
-      if (
-        googleSearchMatch
-      ) {
-
-        const query =
-          googleSearchMatch[1]
-            .trim();
-
-
-        const answer =
-          `Searching Google for ${query}.`;
-
-
-        setAiText(
-          answer
-        );
-
-        setShowAIText(
-          true
-        );
-
-
-        await addHistory(
-          cleanedCommand,
-          answer,
-          type
-        );
-
-
-        googleSearch(
-          query
-        );
-
-
-        if (shouldSpeak) {
-
-          speak(answer);
-        }
-
-
-        return;
-      }
-
-
-      /* =================================================
-         SIMPLE YOUTUBE SEARCH
-         ================================================= */
-
-      const youtubeSimpleMatch =
-        cleanedCommand.match(
-          /^(?:youtube)\s+(.+)$/i
-        );
-
-
-      if (
-        youtubeSimpleMatch
-      ) {
-
-        const query =
-          youtubeSimpleMatch[1]
-            .trim();
-
-
-        const answer =
-          `Searching YouTube for ${query}.`;
-
-
-        setAiText(
-          answer
-        );
-
-        setShowAIText(
-          true
-        );
-
-
-        await addHistory(
-          cleanedCommand,
-          answer,
-          type
-        );
-
-
-        youtubeSearch(
-          query
-        );
-
-
-        if (shouldSpeak) {
-
-          speak(answer);
-        }
-
-
-        return;
-      }
-
-
-      /* =================================================
-         DIRECT WEBSITE
-         ================================================= */
-
-      const directMatch =
-        cleanedCommand.match(
-          /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
-        );
-
-
-      if (directMatch) {
-
-        const site =
-          directMatch[1]
-            .trim()
-            .toLowerCase()
-            .replace(
-              /\s+(website|site)$/i,
-              ""
-            );
-
-
-        const normalizedSite =
-          normalizeSite(site);
-
-
-        if (
-          websites[
-            normalizedSite
-          ]
-        ) {
 
           const answer =
-            `Opening ${normalizedSite}.`;
+            `Searching ${siteName} for ${query}.`;
 
 
-          setAiText(
-            answer
-          );
+          setAiText(answer);
 
-          setShowAIText(
-            true
-          );
+          setShowAIText(true);
 
 
           await addHistory(
@@ -1964,434 +1370,667 @@ function Home() {
           );
 
 
-          openUrl(
-            websites[
-              normalizedSite
-            ]
-          );
+          const searchUrl =
+            getWebsiteSearchUrl(
+              site,
+              query
+            );
+
+
+          if (searchUrl) {
+
+            openUrl(searchUrl);
+
+          }
 
 
           if (shouldSpeak) {
-
             speak(answer);
           }
 
 
           return;
+
         }
-      }
 
 
-      /* =================================================
-         NORMAL GEMINI
-         ================================================= */
+        // =================================================
+        // SIMPLE GOOGLE SEARCH
+        // =================================================
 
-      const result =
-        await getGeminiResponse(
-          cleanedCommand
-        );
-
-
-      let parsedResult =
-        result;
-
-
-      if (
-        typeof result ===
-        "string"
-      ) {
-
-        const cleanResult =
-          result
-            .replace(
-              /```json/gi,
-              ""
-            )
-            .replace(
-              /```/g,
-              ""
-            )
-            .trim();
-
-
-        try {
-
-          parsedResult =
-            JSON.parse(
-              cleanResult
-            );
-
-        } catch {
-
-          parsedResult = {
-
-            type:
-              "general",
-
-            response:
-              cleanResult
-          };
-        }
-      }
-
-
-      const rawResponse =
-        parsedResult?.response ||
-        parsedResult?.answer ||
-        parsedResult?.text ||
-        "Sorry, I could not understand that.";
-
-
-      const response =
-        cleanAIResponse(
-          rawResponse
-        );
-
-
-      /* =================================================
-         GEMINI ACTIONS
-         ================================================= */
-
-      if (
-        parsedResult?.type ===
-        "google_open"
-      ) {
-
-        openUrl(
-          "https://www.google.com"
-        );
-
-      } else if (
-        parsedResult?.type ===
-        "google_search"
-      ) {
-
-        if (
-          parsedResult?.query
-        ) {
-
-          googleSearch(
-            parsedResult.query
+        const googleSearchMatch =
+          cleanedCommand.match(
+            /^(?:search|google)\s+(.+)$/i
           );
+
+
+        if (googleSearchMatch) {
+
+          const query =
+            googleSearchMatch[1].trim();
+
+
+          const answer =
+            `Searching Google for ${query}.`;
+
+
+          setAiText(answer);
+
+          setShowAIText(true);
+
+
+          await addHistory(
+            cleanedCommand,
+            answer,
+            type
+          );
+
+
+          googleSearch(query);
+
+
+          if (shouldSpeak) {
+            speak(answer);
+          }
+
+
+          return;
+
         }
 
-      } else if (
-        parsedResult?.type ===
-        "youtube_open"
-      ) {
 
-        openUrl(
-          "https://www.youtube.com"
-        );
+        // =================================================
+        // SIMPLE YOUTUBE SEARCH
+        // =================================================
 
-      } else if (
-        parsedResult?.type ===
-          "youtube_search" ||
-        parsedResult?.type ===
-          "youtube_play"
-      ) {
+        const youtubeQuery =
+          getYouTubeQuery(
+            cleanedCommand
+          );
 
-        if (
-          parsedResult?.query
-        ) {
+
+        if (youtubeQuery) {
+
+          const answer =
+            `Searching YouTube for ${youtubeQuery}.`;
+
+
+          setAiText(answer);
+
+          setShowAIText(true);
+
+
+          await addHistory(
+            cleanedCommand,
+            answer,
+            type
+          );
+
 
           youtubeSearch(
-            parsedResult.query
+            youtubeQuery
           );
+
+
+          if (shouldSpeak) {
+            speak(answer);
+          }
+
+
+          return;
+
         }
 
-      } else if (
-        parsedResult?.type ===
-        "calculator_open"
-      ) {
 
-        openUrl(
-          "https://www.google.com/search?q=calculator"
+        // =================================================
+        // DIRECT WEBSITE
+        // =================================================
+
+        const directMatch =
+          cleanedCommand.match(
+            /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
+          );
+
+
+        if (directMatch) {
+
+          const site =
+            directMatch[1]
+              .trim()
+              .toLowerCase()
+              .replace(
+                /\s+(website|site)$/i,
+                ""
+              );
+
+
+          if (websites[site]) {
+
+            const answer =
+              `Opening ${site}.`;
+
+
+            setAiText(answer);
+
+            setShowAIText(true);
+
+
+            await addHistory(
+              cleanedCommand,
+              answer,
+              type
+            );
+
+
+            openUrl(
+              websites[site]
+            );
+
+
+            if (shouldSpeak) {
+              speak(answer);
+            }
+
+
+            return;
+
+          }
+
+        }
+
+
+        // =================================================
+        // GEMINI
+        // =================================================
+
+        const result =
+          await getGeminiResponse(
+            cleanedCommand
+          );
+
+
+        let parsedResult =
+          result;
+
+
+        if (
+          typeof result ===
+          "string"
+        ) {
+
+          const cleanResult =
+            result
+              .replace(
+                /```json/gi,
+                ""
+              )
+              .replace(
+                /```/g,
+                ""
+              )
+              .trim();
+
+
+          try {
+
+            parsedResult =
+              JSON.parse(
+                cleanResult
+              );
+
+          } catch {
+
+            parsedResult = {
+
+              type:
+                "general",
+
+              response:
+                cleanResult
+
+            };
+
+          }
+
+        }
+
+
+        const rawResponse =
+          parsedResult?.response ||
+          parsedResult?.answer ||
+          parsedResult?.text ||
+          "Sorry, I could not understand that.";
+
+
+        const response =
+          cleanAIResponse(
+            rawResponse
+          );
+
+
+        // =================================================
+        // GOOGLE
+        // =================================================
+
+        if (
+          parsedResult?.type ===
+          "google_open"
+        ) {
+
+          openUrl(
+            "https://www.google.com"
+          );
+
+        }
+
+
+        else if (
+          parsedResult?.type ===
+          "google_search"
+        ) {
+
+          const query =
+            parsedResult?.query;
+
+
+          if (query?.trim()) {
+            googleSearch(query);
+          }
+
+        }
+
+
+        // =================================================
+        // YOUTUBE
+        // =================================================
+
+        else if (
+          parsedResult?.type ===
+          "youtube_open"
+        ) {
+
+          openUrl(
+            "https://www.youtube.com"
+          );
+
+        }
+
+
+        else if (
+          parsedResult?.type ===
+            "youtube_search" ||
+          parsedResult?.type ===
+            "youtube_play"
+        ) {
+
+          const query =
+            parsedResult?.query;
+
+
+          if (query?.trim()) {
+
+            youtubeSearch(
+              query
+            );
+
+          }
+
+        }
+
+
+        // =================================================
+        // CALCULATOR
+        // =================================================
+
+        else if (
+          parsedResult?.type ===
+          "calculator_open"
+        ) {
+
+          openUrl(
+            "https://www.google.com/search?q=calculator"
+          );
+
+        }
+
+
+        // =================================================
+        // SHOW ANSWER
+        // =================================================
+
+        setAiText(response);
+
+        setShowAIText(true);
+
+
+        await addHistory(
+          cleanedCommand,
+          response,
+          type
         );
-      }
 
 
-      setAiText(
-        response
-      );
-
-      setShowAIText(
-        true
-      );
+        if (shouldSpeak) {
+          speak(response);
+        }
 
 
-      await addHistory(
-        cleanedCommand,
-        response,
-        type
-      );
+      } catch (error) {
+
+        console.error(
+          "COMMAND ERROR:",
+          error
+        );
 
 
-      if (shouldSpeak) {
-
-        speak(response);
-      }
-
-    } catch (error) {
-
-      console.error(
-        "COMMAND ERROR:",
-        error
-      );
+        const errorMessage =
+          "Sorry, I could not complete that request right now.";
 
 
-      const errorMessage =
-        "Sorry, I could not complete that request right now.";
-
-
-      setAiText(
-        errorMessage
-      );
-
-      setShowAIText(
-        true
-      );
-
-
-      if (shouldSpeak) {
-
-        speak(
+        setAiText(
           errorMessage
         );
+
+        setShowAIText(true);
+
+
+        if (shouldSpeak) {
+          speak(errorMessage);
+        }
+
+
+      } finally {
+
+        processingRef.current =
+          false;
+
+        setIsSending(false);
+
+
+        if (
+          !speakingRef.current
+        ) {
+
+          setIsAIActive(false);
+
+        }
+
       }
 
-    } finally {
+    };
 
-      processingRef.current =
-        false;
 
-      setIsSending(
+  // =====================================================
+  // SEND TEXT
+  // =====================================================
+
+  const handleSend =
+    async e => {
+
+      e?.preventDefault();
+
+
+      if (selectedImage) {
+
+        await analyzeImage();
+
+        return;
+
+      }
+
+
+      if (selectedPdf) {
+
+        await analyzePdf();
+
+        return;
+
+      }
+
+
+      if (
+        !typedText.trim() ||
+        isSending
+      ) {
+
+        return;
+
+      }
+
+
+      const command =
+        typedText.trim();
+
+
+      setTypedText("");
+
+
+      setHistoryImage("");
+
+      setHistoryFileName("");
+
+
+      await processCommand(
+        command,
+        "text",
         false
       );
 
+    };
+
+
+  // =====================================================
+  // IMAGE SELECT
+  // =====================================================
+
+  const handleImageSelect =
+    e => {
+
+      const file =
+        e.target.files?.[0];
+
+
+      if (!file) {
+        return;
+      }
+
 
       if (
-        !speakingRef.current
+        !file.type.startsWith(
+          "image/"
+        )
       ) {
 
-        setIsAIActive(
-          false
+        alert(
+          "Please select an image file."
         );
+
+        return;
+
       }
-    }
-  };
 
 
-  /* =====================================================
-     SEND MESSAGE
-     ===================================================== */
+      if (
+        file.size >
+        10 * 1024 * 1024
+      ) {
 
-  const handleSend = async (
-    e
-  ) => {
+        alert(
+          "Image must be smaller than 10 MB."
+        );
 
-    e?.preventDefault();
+        return;
 
-
-    if (selectedImage) {
-
-      await analyzeImage();
-
-      return;
-    }
+      }
 
 
-    if (selectedPdf) {
+      if (imagePreview) {
 
-      await analyzePdf();
+        URL.revokeObjectURL(
+          imagePreview
+        );
 
-      return;
-    }
-
-
-    if (
-      !typedText.trim() ||
-      isSending
-    ) {
-
-      return;
-    }
+      }
 
 
-    const command =
-      typedText.trim();
+      setHistoryImage("");
 
+      setHistoryFileName("");
 
-    setTypedText("");
+      setSelectedPdf(null);
 
-    setHistoryImage("");
+      setPdfPreviewName("");
 
+      setSelectedImage(file);
 
-    if (activePdf) {
-
-      await analyzePdfQuestion(
-        command
+      setImagePreview(
+        URL.createObjectURL(file)
       );
 
-      return;
-    }
+    };
 
 
-    await processCommand(
-      command,
-      "text",
-      false
-    );
-  };
+  // =====================================================
+  // PDF SELECT
+  // =====================================================
+
+  const handlePdfSelect =
+    e => {
+
+      const file =
+        e.target.files?.[0];
 
 
-  /* =====================================================
-     IMAGE SELECT
-     ===================================================== */
-
-  const handleImageSelect = (
-    e
-  ) => {
-
-    const file =
-      e.target.files?.[0];
+      if (!file) {
+        return;
+      }
 
 
-    if (!file) {
-      return;
-    }
+      if (
+        file.type !==
+        "application/pdf"
+      ) {
+
+        alert(
+          "Please select a PDF file."
+        );
+
+        return;
+
+      }
 
 
-    if (
-      !file.type.startsWith(
-        "image/"
-      )
-    ) {
+      // 20 MB
+      if (
+        file.size >
+        20 * 1024 * 1024
+      ) {
 
-      alert(
-        "Please select an image file."
+        alert(
+          "PDF must be smaller than 20 MB."
+        );
+
+        return;
+
+      }
+
+
+      setHistoryImage("");
+
+      setHistoryFileName("");
+
+      removeImage();
+
+      setSelectedPdf(file);
+
+      setPdfPreviewName(
+        file.name
       );
 
-      return;
-    }
+    };
 
 
-    if (
-      file.size >
-      10 * 1024 * 1024
-    ) {
+  // =====================================================
+  // PASTE IMAGE
+  // =====================================================
 
-      alert(
-        "Image must be smaller than 10 MB."
-      );
+  const handlePaste =
+    event => {
 
-      return;
-    }
+      const clipboardItems =
+        event.clipboardData?.items;
 
 
-    if (imagePreview) {
-
-      URL.revokeObjectURL(
-        imagePreview
-      );
-    }
+      if (!clipboardItems) {
+        return;
+      }
 
 
-    removePdf();
+      for (
+        let i = 0;
+        i < clipboardItems.length;
+        i++
+      ) {
 
-    setHistoryImage("");
-
-    setSelectedImage(
-      file
-    );
-
-    setImagePreview(
-      URL.createObjectURL(
-        file
-      )
-    );
-  };
+        const item =
+          clipboardItems[i];
 
 
-  /* =====================================================
-     PDF SELECT
-     ===================================================== */
+        if (
+          item.type &&
+          item.type.startsWith(
+            "image/"
+          )
+        ) {
 
-  const handlePdfSelect = (
-    e
-  ) => {
-
-    const file =
-      e.target.files?.[0];
+          event.preventDefault();
 
 
-    if (!file) {
-      return;
-    }
+          const file =
+            item.getAsFile();
 
 
-    const isPdf =
-      file.type ===
-        "application/pdf" ||
-      file.name
-        .toLowerCase()
-        .endsWith(".pdf");
+          if (!file) {
+            return;
+          }
 
 
-    if (!isPdf) {
+          if (imagePreview) {
 
-      alert(
-        "Please select a PDF file."
-      );
+            URL.revokeObjectURL(
+              imagePreview
+            );
 
-      return;
-    }
-
-
-    if (
-      file.size >
-      20 * 1024 * 1024
-    ) {
-
-      alert(
-        "PDF must be smaller than 20 MB."
-      );
-
-      return;
-    }
+          }
 
 
-    removeImage();
+          setHistoryImage("");
 
-    setHistoryImage("");
+          setHistoryFileName("");
 
-    setActivePdf(null);
+          setSelectedPdf(null);
 
-    setSelectedPdf(
-      file
-    );
+          setPdfPreviewName("");
 
-    setPdfName(
-      file.name
-    );
+          setSelectedImage(file);
 
-    setPdfPreview(
-      URL.createObjectURL(
-        file
-      )
-    );
-
-    setUserText("");
-
-    setAiText("");
-
-    setShowAIText(false);
-  };
+          setImagePreview(
+            URL.createObjectURL(file)
+          );
 
 
-  /* =====================================================
-     REMOVE IMAGE
-     ===================================================== */
+          return;
+
+        }
+
+      }
+
+    };
+
+
+  // =====================================================
+  // REMOVE IMAGE
+  // =====================================================
 
   const removeImage = () => {
 
@@ -2400,6 +2039,7 @@ function Home() {
       URL.revokeObjectURL(
         imagePreview
       );
+
     }
 
 
@@ -2414,29 +2054,21 @@ function Home() {
 
       imageInputRef.current.value =
         "";
+
     }
+
   };
 
 
-  /* =====================================================
-     REMOVE PDF
-     ===================================================== */
+  // =====================================================
+  // REMOVE PDF
+  // =====================================================
 
   const removePdf = () => {
 
-    if (pdfPreview) {
-
-      URL.revokeObjectURL(
-        pdfPreview
-      );
-    }
-
-
     setSelectedPdf(null);
 
-    setPdfPreview("");
-
-    setPdfName("");
+    setPdfPreviewName("");
 
 
     if (
@@ -2445,648 +2077,312 @@ function Home() {
 
       pdfInputRef.current.value =
         "";
+
     }
+
   };
 
 
-  /* =====================================================
-     PDF ANALYSIS
-     ===================================================== */
+  // =====================================================
+  // PDF ANALYSIS
+  // =====================================================
 
-  const analyzePdf = async () => {
-
-    if (
-      !selectedPdf ||
-      isPdfAnalyzing
-    ) {
-
-      return;
-    }
-
-
-    const question =
-      typedText.trim() ||
-      "Analyze this PDF and explain its important contents.";
-
-
-    setIsPdfAnalyzing(true);
-
-    setIsAIActive(true);
-
-    setUserText(
-      question
-    );
-
-    setAiText("");
-
-    setShowAIText(false);
-
-
-    try {
-
-      const result =
-        await analyzePdfFile(
-          selectedPdf,
-          question
-        );
-
-
-      const answer =
-        cleanAIResponse(
-          result?.response ||
-          result?.answer ||
-          "I could not analyze this PDF."
-        );
-
-
-      setAiText(
-        answer
-      );
-
-      setShowAIText(
-        true
-      );
-
-
-      setActivePdf(
-        selectedPdf
-      );
-
-
-      await addHistory(
-        question,
-        answer,
-        "pdf"
-      );
-
-
-      setTypedText("");
-
-      removePdf();
-
-    } catch (error) {
-
-      console.error(
-        "PDF ANALYSIS ERROR:",
-        error.response?.data ||
-        error.message
-      );
-
-
-      const errorMessage =
-        error.response?.data?.message ||
-        "Unable to analyze the PDF.";
-
-
-      setAiText(
-        errorMessage
-      );
-
-      setShowAIText(
-        true
-      );
-
-    } finally {
-
-      setIsPdfAnalyzing(
-        false
-      );
-
+  const analyzePdf =
+    async () => {
 
       if (
-        !speakingRef.current
+        !selectedPdf ||
+        isPdfAnalyzing
       ) {
 
-        setIsAIActive(
-          false
-        );
+        return;
+
       }
-    }
-  };
 
 
-  /* =====================================================
-     ASK QUESTION ABOUT ACTIVE PDF
-     ===================================================== */
+      const question =
+        typedText.trim() ||
+        "Analyze this PDF and explain its important contents.";
 
-  const analyzePdfQuestion = async (
-    question
-  ) => {
 
-    if (
-      !activePdf ||
-      !question.trim() ||
-      isPdfAnalyzing
-    ) {
+      setHistoryImage("");
 
-      return;
-    }
+      setHistoryFileName("");
 
+      setIsPdfAnalyzing(true);
 
-    setIsPdfAnalyzing(
-      true
-    );
+      setUserText(question);
 
-    setIsAIActive(
-      true
-    );
+      setAiText("");
 
-    setUserText(
-      question
-    );
+      setShowAIText(false);
 
-    setAiText("");
-
-    setShowAIText(
-      false
-    );
-
-
-    try {
-
-      const result =
-        await analyzePdfFile(
-          activePdf,
-          question
-        );
-
-
-      const answer =
-        cleanAIResponse(
-          result?.response ||
-          result?.answer ||
-          "I could not answer that question from the PDF."
-        );
-
-
-      setAiText(
-        answer
-      );
-
-      setShowAIText(
-        true
-      );
-
-
-      await addHistory(
-        question,
-        answer,
-        "pdf"
-      );
-
-    } catch (error) {
-
-      console.error(
-        "PDF QUESTION ERROR:",
-        error.response?.data ||
-        error.message
-      );
-
-
-      setAiText(
-        "Unable to answer the question from the PDF."
-      );
-
-      setShowAIText(
-        true
-      );
-
-    } finally {
-
-      setIsPdfAnalyzing(
-        false
-      );
-
-      setIsAIActive(
-        false
-      );
-    }
-  };
-
-
-  /* =====================================================
-     IMAGE ANALYSIS
-     ===================================================== */
-
-  const analyzeImage = async () => {
-
-    if (
-      !selectedImage ||
-      isImageAnalyzing
-    ) {
-
-      return;
-    }
-
-
-    const question =
-      typedText.trim() ||
-      "Analyze this image and explain what you see.";
-
-
-    setHistoryImage("");
-
-    setIsImageAnalyzing(
-      true
-    );
-
-    setUserText(
-      question
-    );
-
-    setAiText("");
-
-    setShowAIText(
-      false
-    );
-
-    setIsAIActive(
-      true
-    );
-
-
-    try {
-
-      const formData =
-        new FormData();
-
-
-      formData.append(
-        "image",
-        selectedImage
-      );
-
-
-      formData.append(
-        "command",
-        question
-      );
-
-
-      const response =
-        await axios.post(
-
-          `${serverUrl}/api/user/analyze-image`,
-
-          formData,
-
-          {
-            withCredentials:
-              true,
-
-            timeout:
-              120000
-          }
-
-        );
-
-
-      const rawAnswer =
-        response.data?.response ||
-        response.data?.answer ||
-        "I could not analyze the image.";
-
-
-      const answer =
-        cleanAIResponse(
-          rawAnswer
-        );
-
-
-      setAiText(
-        answer
-      );
-
-      setShowAIText(
-        true
-      );
-
-
-      let imageForHistory =
-        "";
+      setIsAIActive(true);
 
 
       try {
 
-        imageForHistory =
-          await imageFileToDataUrl(
-            selectedImage
-          );
+        const formData =
+          new FormData();
 
-      } catch (
-        imageError
-      ) {
 
-        console.error(
-          "IMAGE HISTORY ERROR:",
-          imageError
+        formData.append(
+          "pdf",
+          selectedPdf
         );
-      }
 
 
-      await addHistory(
-        question,
-        answer,
-        "image",
-        imageForHistory
-      );
-
-
-      removeImage();
-
-      setTypedText("");
-
-    } catch (error) {
-
-      console.error(
-        "IMAGE ANALYSIS ERROR:",
-        error.response?.data ||
-        error.message
-      );
-
-
-      const errorMessage =
-        error.response?.data?.message ||
-        "Unable to analyze the image.";
-
-
-      setAiText(
-        cleanAIResponse(
-          errorMessage
-        )
-      );
-
-      setShowAIText(
-        true
-      );
-
-    } finally {
-
-      setIsImageAnalyzing(
-        false
-      );
-
-
-      if (
-        !speakingRef.current
-      ) {
-
-        setIsAIActive(
-          false
+        formData.append(
+          "command",
+          question
         );
-      }
-    }
-  };
 
 
-  /* =====================================================
-     IMAGE TO DATA URL
-     ===================================================== */
-
-  const imageFileToDataUrl = (
-    file
-  ) => {
-
-    return new Promise(
-      (
-        resolve,
-        reject
-      ) => {
-
-        if (!file) {
-
-          reject(
-            new Error(
-              "No image file provided"
-            )
-          );
-
-          return;
-        }
-
-
-        const reader =
-          new FileReader();
-
-
-        reader.onload = () => {
-
-          const img =
-            new Image();
-
-
-          img.onload = () => {
-
-            const maxSize =
-              1000;
-
-
-            let width =
-              img.width;
-
-            let height =
-              img.height;
-
-
-            if (
-              width > maxSize ||
-              height > maxSize
-            ) {
-
-              if (
-                width > height
-              ) {
-
-                height =
-                  Math.round(
-                    (
-                      height *
-                      maxSize
-                    ) /
-                    width
-                  );
-
-                width =
-                  maxSize;
-
-              } else {
-
-                width =
-                  Math.round(
-                    (
-                      width *
-                      maxSize
-                    ) /
-                    height
-                  );
-
-                height =
-                  maxSize;
-              }
+        const response =
+          await axios.post(
+            `${serverUrl}/api/user/analyze-pdf`,
+            formData,
+            {
+              withCredentials: true
             }
-
-
-            const canvas =
-              document.createElement(
-                "canvas"
-              );
-
-
-            canvas.width =
-              width;
-
-            canvas.height =
-              height;
-
-
-            const ctx =
-              canvas.getContext(
-                "2d"
-              );
-
-
-            if (!ctx) {
-
-              reject(
-                new Error(
-                  "Could not create canvas"
-                )
-              );
-
-              return;
-            }
-
-
-            ctx.drawImage(
-              img,
-              0,
-              0,
-              width,
-              height
-            );
-
-
-            resolve(
-              canvas.toDataURL(
-                "image/jpeg",
-                0.72
-              )
-            );
-          };
-
-
-          img.onerror = () => {
-
-            reject(
-              new Error(
-                "Could not load image"
-              )
-            );
-          };
-
-
-          img.src =
-            reader.result;
-        };
-
-
-        reader.onerror = () => {
-
-          reject(
-            new Error(
-              "Could not read image"
-            )
           );
-        };
 
 
-        reader.readAsDataURL(
-          file
+        const rawAnswer =
+          response.data?.response ||
+          response.data?.answer ||
+          "I could not analyze the PDF.";
+
+
+        const answer =
+          cleanAIResponse(
+            rawAnswer
+          );
+
+
+        setAiText(answer);
+
+        setShowAIText(true);
+
+
+        await addHistory(
+          question,
+          answer,
+          "file",
+          "",
+          selectedPdf.name
         );
-      }
-    );
-  };
-
-
-  /* =====================================================
-     PASTE IMAGE
-     ===================================================== */
-
-  const handlePaste = (
-    event
-  ) => {
-
-    const clipboardItems =
-      event.clipboardData?.items;
-
-
-    if (!clipboardItems) {
-      return;
-    }
-
-
-    for (
-      let i = 0;
-      i < clipboardItems.length;
-      i++
-    ) {
-
-      const item =
-        clipboardItems[i];
-
-
-      if (
-        item.type &&
-        item.type.startsWith(
-          "image/"
-        )
-      ) {
-
-        event.preventDefault();
-
-
-        const file =
-          item.getAsFile();
-
-
-        if (!file) {
-          return;
-        }
 
 
         removePdf();
 
-
-        if (imagePreview) {
-
-          URL.revokeObjectURL(
-            imagePreview
-          );
-        }
+        setTypedText("");
 
 
-        setHistoryImage("");
+      } catch (error) {
 
-        setSelectedImage(
-          file
+        console.error(
+          "PDF ANALYSIS ERROR:",
+          error.response?.data ||
+          error.message
         );
 
-        setImagePreview(
-          URL.createObjectURL(
-            file
+
+        const errorMessage =
+          error.response?.data?.message ||
+          "Unable to analyze the PDF.";
+
+
+        setAiText(
+          cleanAIResponse(
+            errorMessage
           )
         );
 
+        setShowAIText(true);
+
+
+      } finally {
+
+        setIsPdfAnalyzing(
+          false
+        );
+
+
+        if (
+          !speakingRef.current
+        ) {
+
+          setIsAIActive(false);
+
+        }
+
+      }
+
+    };
+
+
+  // =====================================================
+  // IMAGE ANALYSIS
+  // =====================================================
+
+  const analyzeImage =
+    async () => {
+
+      if (
+        !selectedImage ||
+        isImageAnalyzing
+      ) {
 
         return;
+
       }
-    }
-  };
 
 
-  /* =====================================================
-     SPEECH RECOGNITION
-     ===================================================== */
+      const question =
+        typedText.trim() ||
+        "Analyze this image and explain what you see.";
+
+
+      setHistoryImage("");
+
+      setHistoryFileName("");
+
+      setIsImageAnalyzing(true);
+
+      setUserText(question);
+
+      setAiText("");
+
+      setShowAIText(false);
+
+      setIsAIActive(true);
+
+
+      try {
+
+        const formData =
+          new FormData();
+
+
+        formData.append(
+          "image",
+          selectedImage
+        );
+
+
+        formData.append(
+          "command",
+          question
+        );
+
+
+        const response =
+          await axios.post(
+            `${serverUrl}/api/user/analyze-image`,
+            formData,
+            {
+              withCredentials: true
+            }
+          );
+
+
+        const rawAnswer =
+          response.data?.response ||
+          response.data?.answer ||
+          "I could not analyze the image.";
+
+
+        const answer =
+          cleanAIResponse(
+            rawAnswer
+          );
+
+
+        setAiText(answer);
+
+        setShowAIText(true);
+
+
+        let imageForHistory =
+          "";
+
+
+        try {
+
+          imageForHistory =
+            await imageFileToDataUrl(
+              selectedImage
+            );
+
+        } catch (imageError) {
+
+          console.error(
+            "IMAGE HISTORY CONVERSION ERROR:",
+            imageError
+          );
+
+        }
+
+
+        await addHistory(
+          question,
+          answer,
+          "image",
+          imageForHistory
+        );
+
+
+        removeImage();
+
+        setTypedText("");
+
+
+      } catch (error) {
+
+        console.error(
+          "IMAGE ANALYSIS ERROR:",
+          error.response?.data ||
+          error.message
+        );
+
+
+        const errorMessage =
+          error.response?.data?.message ||
+          "Unable to analyze the image.";
+
+
+        setAiText(
+          cleanAIResponse(
+            errorMessage
+          )
+        );
+
+        setShowAIText(true);
+
+      } finally {
+
+        setIsImageAnalyzing(
+          false
+        );
+
+
+        if (
+          !speakingRef.current
+        ) {
+
+          setIsAIActive(false);
+
+        }
+
+      }
+
+    };
+
+
+  // =====================================================
+  // SPEECH RECOGNITION
+  // =====================================================
 
   useEffect(() => {
 
@@ -3102,6 +2398,7 @@ function Home() {
       );
 
       return;
+
     }
 
 
@@ -3126,15 +2423,15 @@ function Home() {
       recognition;
 
 
-    recognition.onstart = () => {
+    recognition.onstart =
+      () => {
 
-      listeningRef.current =
-        true;
+        listeningRef.current =
+          true;
 
-      setIsListening(
-        true
-      );
-    };
+        setIsListening(true);
+
+      };
 
 
     recognition.onresult =
@@ -3145,6 +2442,7 @@ function Home() {
         ) {
 
           return;
+
         }
 
 
@@ -3175,21 +2473,13 @@ function Home() {
 
 
         const stopCommands = [
-
           "thank you",
-
           "thanks",
-
           "stop",
-
           "bye",
-
           "goodbye",
-
           "stop listening",
-
           "cancel"
-
         ];
 
 
@@ -3202,6 +2492,7 @@ function Home() {
           stopListening();
 
           return;
+
         }
 
 
@@ -3210,68 +2501,50 @@ function Home() {
         );
 
 
-        /* =============================================
-           PDF VOICE QUESTION
-           ============================================= */
-
-        if (activePdf) {
-
-          await analyzePdfQuestion(
-            transcript
-          );
-
-
-          return;
-        }
-
-
-        /* =============================================
-           NORMAL VOICE QUESTION
-           ============================================= */
-
         await processCommand(
           transcript,
           "voice",
           true
         );
+
       };
 
 
-    recognition.onend = () => {
+    recognition.onend =
+      () => {
 
-      if (
-        listeningRef.current &&
-        !speakingRef.current &&
-        !processingRef.current
-      ) {
+        if (
+          listeningRef.current &&
+          !speakingRef.current &&
+          !processingRef.current
+        ) {
 
-        clearTimeout(
-          restartTimeoutRef.current
-        );
-
-
-        restartTimeoutRef.current =
-          setTimeout(
-            () => {
-
-              try {
-
-                recognition.start();
-
-              } catch {}
-            },
-            400
+          clearTimeout(
+            restartTimeoutRef.current
           );
 
-      } else if (
-        !listeningRef.current
-      ) {
 
-        setIsListening(
-          false
-        );
-      }
-    };
+          restartTimeoutRef.current =
+            setTimeout(
+              () => {
+
+                try {
+                  recognition.start();
+                } catch {}
+
+              },
+              400
+            );
+
+        } else if (
+          !listeningRef.current
+        ) {
+
+          setIsListening(false);
+
+        }
+
+      };
 
 
     recognition.onerror =
@@ -3293,10 +2566,10 @@ function Home() {
           listeningRef.current =
             false;
 
-          setIsListening(
-            false
-          );
+          setIsListening(false);
+
         }
+
       };
 
 
@@ -3313,16 +2586,13 @@ function Home() {
         restartTimeoutRef.current
       );
 
-
       clearTimeout(
         speechTimeoutRef.current
       );
 
 
       try {
-
         recognition.stop();
-
       } catch {}
 
 
@@ -3331,135 +2601,125 @@ function Home() {
 
       recognitionRef.current =
         null;
+
     };
 
-  }, [
-    getGeminiResponse,
-    activePdf
-  ]);
+  }, [getGeminiResponse]);
 
 
-  /* =====================================================
-     START LISTENING
-     ===================================================== */
+  // =====================================================
+  // START LISTENING
+  // =====================================================
 
-  const startListening = () => {
+  const startListening =
+    () => {
 
-    if (
-      !recognitionRef.current
-    ) {
+      if (
+        !recognitionRef.current
+      ) {
 
-      alert(
-        "Speech recognition is not supported in this browser."
-      );
+        alert(
+          "Speech recognition is not supported in this browser."
+        );
 
-      return;
-    }
+        return;
 
+      }
 
-    try {
-
-      window.speechSynthesis.cancel();
-
-
-      speakingRef.current =
-        false;
-
-
-      listeningRef.current =
-        true;
-
-
-      setIsListening(
-        true
-      );
-
-
-      recognitionRef.current.start();
-
-    } catch {
-
-      console.log(
-        "Microphone already running."
-      );
-    }
-  };
-
-
-  /* =====================================================
-     STOP LISTENING
-     ===================================================== */
-
-  const stopListening = () => {
-
-    listeningRef.current =
-      false;
-
-
-    setIsListening(
-      false
-    );
-
-
-    clearTimeout(
-      restartTimeoutRef.current
-    );
-
-
-    if (
-      recognitionRef.current
-    ) {
 
       try {
 
-        recognitionRef.current.stop();
+        window.speechSynthesis.cancel();
 
-      } catch {}
-    }
-  };
+        speakingRef.current =
+          false;
+
+        listeningRef.current =
+          true;
+
+        setIsListening(true);
+
+        recognitionRef.current.start();
+
+      } catch {
+
+        console.log(
+          "Microphone already running."
+        );
+
+      }
+
+    };
 
 
-  /* =====================================================
-     LOGOUT
-     ===================================================== */
+  // =====================================================
+  // STOP LISTENING
+  // =====================================================
 
-  const handleLogout = async () => {
+  const stopListening =
+    () => {
 
-    try {
+      listeningRef.current =
+        false;
 
-      await axios.post(
+      setIsListening(false);
 
-        `${serverUrl}/api/auth/logout`,
 
-        {},
-
-        {
-          withCredentials:
-            true
-        }
-
+      clearTimeout(
+        restartTimeoutRef.current
       );
 
-    } catch (error) {
 
-      console.error(
-        "LOGOUT ERROR:",
-        error
-      );
-    }
+      if (
+        recognitionRef.current
+      ) {
 
+        try {
+          recognitionRef.current.stop();
+        } catch {}
 
-    setUserData(null);
+      }
 
-    navigate(
-      "/signin"
-    );
-  };
+    };
 
 
-  /* =====================================================
-     FILTER HISTORY
-     ===================================================== */
+  // =====================================================
+  // LOGOUT
+  // =====================================================
+
+  const handleLogout =
+    async () => {
+
+      try {
+
+        await axios.post(
+          `${serverUrl}/api/auth/logout`,
+          {},
+          {
+            withCredentials: true
+          }
+        );
+
+      } catch (error) {
+
+        console.error(
+          "LOGOUT ERROR:",
+          error
+        );
+
+      }
+
+
+      setUserData(null);
+
+      navigate("/signin");
+
+    };
+
+
+  // =====================================================
+  // FILTER HISTORY
+  // =====================================================
 
   const filteredHistory =
     historyItems.filter(
@@ -3474,6 +2734,11 @@ function Home() {
 
         const answer =
           item?.answer ||
+          "";
+
+
+        const fileName =
+          item?.fileName ||
           "";
 
 
@@ -3492,132 +2757,127 @@ function Home() {
           command
             .toLowerCase()
             .includes(search) ||
+
           answer
+            .toLowerCase()
+            .includes(search) ||
+
+          fileName
             .toLowerCase()
             .includes(search)
         );
+
       }
     );
 
 
-  /* =====================================================
-     OPEN HISTORY
-     ===================================================== */
+  // =====================================================
+  // OPEN HISTORY
+  // =====================================================
 
-  const openHistory = (
-    item
-  ) => {
+  const openHistory =
+    item => {
 
-    const command =
-      item?.command ||
-      "";
+      const command =
+        item?.command || "";
 
 
-    const answer =
-      item?.answer ||
-      "";
+      const answer =
+        item?.answer || "";
 
 
-    setUserText(
-      command
-    );
-
-
-    setAiText(
-      cleanAIResponse(
-        answer
-      )
-    );
-
-
-    setShowAIText(
-      true
-    );
-
-
-    if (
-      item?.type ===
-        "image" &&
-      item?.image
-    ) {
-
-      setHistoryImage(
-        item.image
+      setUserText(
+        command
       );
 
-    } else {
 
-      setHistoryImage(
-        ""
+      setAiText(
+        cleanAIResponse(
+          answer
+        )
       );
-    }
 
 
-    setActivePdf(
-      null
-    );
+      setShowAIText(true);
 
 
-    setShowHistory(
-      false
-    );
-  };
+      if (
+        item?.type === "image" &&
+        item?.image
+      ) {
 
+        setHistoryImage(
+          item.image
+        );
 
-  /* =====================================================
-     FORMAT DATE
-     ===================================================== */
+      } else {
 
-  const formatDate = (
-    date
-  ) => {
+        setHistoryImage("");
 
-    if (!date) {
-      return "";
-    }
-
-
-    return new Date(
-      date
-    ).toLocaleString(
-      "en-IN",
-      {
-        day:
-          "2-digit",
-
-        month:
-          "short",
-
-        year:
-          "numeric",
-
-        hour:
-          "2-digit",
-
-        minute:
-          "2-digit"
       }
-    );
-  };
 
 
-  /* =====================================================
-     UI
-     ===================================================== */
+      if (
+        item?.type === "file"
+      ) {
+
+        setHistoryFileName(
+          item?.fileName ||
+          "Previous PDF"
+        );
+
+      } else {
+
+        setHistoryFileName("");
+
+      }
+
+
+      setShowHistory(false);
+
+    };
+
+
+  // =====================================================
+  // FORMAT DATE
+  // =====================================================
+
+  const formatDate =
+    date => {
+
+      if (!date) {
+        return "";
+      }
+
+
+      return new Date(
+        date
+      ).toLocaleString(
+        "en-IN",
+        {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        }
+      );
+
+    };
+
+
+  // =====================================================
+  // UI
+  // =====================================================
 
   return (
 
     <div
-      onPaste={
-        handlePaste
-      }
-
+      onPaste={handlePaste}
       className="
         relative
-        flex
         min-h-screen
         w-full
-        flex-col
         overflow-hidden
         bg-[#070B14]
         text-white
@@ -3626,7 +2886,7 @@ function Home() {
 
       {/* =================================================
           HEADER
-          ================================================= */}
+      ================================================= */}
 
       <header
         className="
@@ -3634,7 +2894,7 @@ function Home() {
           z-40
           flex
           h-16
-          shrink-0
+          w-full
           items-center
           justify-between
           border-b
@@ -3646,6 +2906,8 @@ function Home() {
           md:px-6
         "
       >
+
+        {/* LEFT */}
 
         <div
           className="
@@ -3668,8 +2930,8 @@ function Home() {
               setShowProfileMenu(
                 false
               );
-            }}
 
+            }}
             className="
               flex
               h-10
@@ -3684,20 +2946,19 @@ function Home() {
               transition
               hover:bg-white/5
               hover:text-cyan-300
+              active:scale-95
             "
+            title={
+              showHistory
+                ? "Close history"
+                : "Open history"
+            }
           >
 
             {showHistory ? (
-
-              <IoMdClose
-                size={22}
-              />
-
+              <IoMdClose size={22} />
             ) : (
-
-              <IoMdMenu
-                size={22}
-              />
+              <IoMdMenu size={22} />
             )}
 
           </button>
@@ -3708,9 +2969,7 @@ function Home() {
               userData?.assistantImage ||
               aiImg
             }
-
             alt="Assistant"
-
             className="
               h-9
               w-9
@@ -3725,11 +2984,7 @@ function Home() {
           />
 
 
-          <div
-            className="
-              min-w-0
-            "
-          >
+          <div className="min-w-0">
 
             <p
               className="
@@ -3739,10 +2994,8 @@ function Home() {
                 text-white
               "
             >
-              {
-                userData?.assistantName ||
-                "Assistant"
-              }
+              {userData?.assistantName ||
+                "Assistant"}
             </p>
 
 
@@ -3762,6 +3015,8 @@ function Home() {
         </div>
 
 
+        {/* RIGHT */}
+
         <div
           className="
             relative
@@ -3773,11 +3028,8 @@ function Home() {
 
           <button
             onClick={() =>
-              navigate(
-                "/customize2"
-              )
+              navigate("/customize2")
             }
-
             className="
               hidden
               rounded-full
@@ -3804,11 +3056,9 @@ function Home() {
                   !previous
               );
 
-              setShowHistory(
-                false
-              );
-            }}
+              setShowHistory(false);
 
+            }}
             className="
               flex
               h-10
@@ -3825,7 +3075,10 @@ function Home() {
               transition
               hover:border-cyan-400/30
               hover:bg-cyan-400/10
+              hover:text-cyan-300
+              active:scale-95
             "
+            title="Account and settings"
           >
 
             {userData?.assistantImage ? (
@@ -3834,9 +3087,7 @@ function Home() {
                 src={
                   userData.assistantImage
                 }
-
                 alt="Profile"
-
                 className="
                   h-full
                   w-full
@@ -3846,13 +3097,14 @@ function Home() {
 
             ) : (
 
-              <FiSettings
-                size={19}
-              />
+              <FiSettings size={19} />
+
             )}
 
           </button>
 
+
+          {/* PROFILE MENU */}
 
           {showProfileMenu && (
 
@@ -3861,7 +3113,8 @@ function Home() {
                 absolute
                 right-0
                 top-12
-                z-70             w-[calc(100vw-1.5rem)]
+                z-70
+                w-[calc(100vw-1.5rem)]
                 max-w-xs
                 overflow-hidden
                 rounded-2xl
@@ -3870,6 +3123,7 @@ function Home() {
                 bg-[#0B1222]
                 p-2
                 shadow-2xl
+                shadow-black/50
               "
             >
 
@@ -3888,12 +3142,11 @@ function Home() {
                     truncate
                     text-sm
                     font-semibold
+                    text-white
                   "
                 >
-                  {
-                    userData?.name ||
-                    "User"
-                  }
+                  {userData?.name ||
+                    "User"}
                 </p>
 
 
@@ -3904,10 +3157,8 @@ function Home() {
                     text-gray-500
                   "
                 >
-                  {
-                    userData?.email ||
-                    "Account"
-                  }
+                  {userData?.email ||
+                    "Account"}
                 </p>
 
               </div>
@@ -3923,8 +3174,8 @@ function Home() {
                   setShowProfileMenu(
                     false
                   );
-                }}
 
+                }}
                 className="
                   flex
                   w-full
@@ -3936,7 +3187,9 @@ function Home() {
                   text-left
                   text-sm
                   text-gray-300
+                  transition
                   hover:bg-white/5
+                  hover:text-white
                 "
               >
 
@@ -3945,28 +3198,26 @@ function Home() {
                   className="text-cyan-400"
                 />
 
-                Customize Assistant
+                <span>
+                  Customize Assistant
+                </span>
 
               </button>
 
 
               <button
-                onClick={
-                  async () => {
+                onClick={async () => {
 
-                    await clearHistory();
+                  await clearHistory();
 
-                    setShowProfileMenu(
-                      false
-                    );
-                  }
-                }
+                  setShowProfileMenu(
+                    false
+                  );
 
+                }}
                 disabled={
-                  historyItems.length ===
-                  0
+                  historyItems.length === 0
                 }
-
                 className="
                   flex
                   w-full
@@ -3978,17 +3229,19 @@ function Home() {
                   text-left
                   text-sm
                   text-gray-300
+                  transition
                   hover:bg-red-400/10
                   hover:text-red-400
+                  disabled:cursor-not-allowed
                   disabled:opacity-40
                 "
               >
 
-                <FiTrash2
-                  size={17}
-                />
+                <FiTrash2 size={17} />
 
-                Clear All History
+                <span>
+                  Clear All History
+                </span>
 
               </button>
 
@@ -4003,8 +3256,8 @@ function Home() {
                   setShowProfileMenu(
                     false
                   );
-                }}
 
+                }}
                 className="
                   flex
                   w-full
@@ -4016,7 +3269,9 @@ function Home() {
                   text-left
                   text-sm
                   text-gray-300
+                  transition
                   hover:bg-white/5
+                  hover:text-white
                 "
               >
 
@@ -4025,7 +3280,9 @@ function Home() {
                   className="text-cyan-400"
                 />
 
-                Change Password
+                <span>
+                  Change Password
+                </span>
 
               </button>
 
@@ -4043,7 +3300,6 @@ function Home() {
                 onClick={
                   handleLogout
                 }
-
                 className="
                   flex
                   w-full
@@ -4055,19 +3311,21 @@ function Home() {
                   text-left
                   text-sm
                   text-red-400
+                  transition
                   hover:bg-red-400/10
                 "
               >
 
-                <FiLogOut
-                  size={17}
-                />
+                <FiLogOut size={17} />
 
-                Logout
+                <span>
+                  Logout
+                </span>
 
               </button>
 
             </div>
+
           )}
 
         </div>
@@ -4076,8 +3334,8 @@ function Home() {
 
 
       {/* =================================================
-          HISTORY
-          ================================================= */}
+          HISTORY DRAWER
+      ================================================= */}
 
       {showHistory && (
 
@@ -4085,11 +3343,8 @@ function Home() {
 
           <div
             onClick={() =>
-              setShowHistory(
-                false
-              )
+              setShowHistory(false)
             }
-
             className="
               fixed
               inset-0
@@ -4136,6 +3391,7 @@ function Home() {
                 <h2
                   className="
                     font-semibold
+                    text-white
                   "
                 >
                   History
@@ -4148,7 +3404,7 @@ function Home() {
                     text-gray-500
                   "
                 >
-                  Previous conversations
+                  Your previous conversations
                 </p>
 
               </div>
@@ -4156,11 +3412,8 @@ function Home() {
 
               <button
                 onClick={() =>
-                  setShowHistory(
-                    false
-                  )
+                  setShowHistory(false)
                 }
-
                 className="
                   flex
                   h-9
@@ -4170,12 +3423,11 @@ function Home() {
                   rounded-lg
                   text-gray-400
                   hover:bg-white/5
+                  hover:text-white
                 "
               >
 
-                <IoMdClose
-                  size={21}
-                />
+                <IoMdClose size={21} />
 
               </button>
 
@@ -4213,15 +3465,12 @@ function Home() {
                   value={
                     historySearch
                   }
-
                   onChange={e =>
                     setHistorySearch(
                       e.target.value
                     )
                   }
-
                   placeholder="Search history..."
-
                   className="
                     h-10
                     w-full
@@ -4246,15 +3495,16 @@ function Home() {
 
             <div
               className="
-                history-scroll
+                custom-scrollbar
+                min-h-0
                 flex-1
                 overflow-y-auto
+                overscroll-contain
                 p-3
               "
             >
 
-              {filteredHistory.length >
-              0 ? (
+              {filteredHistory.length > 0 ? (
 
                 filteredHistory.map(
                   item => (
@@ -4264,7 +3514,6 @@ function Home() {
                         item._id ||
                         `${item.command}-${item.createdAt}`
                       }
-
                       className="
                         group
                         mb-2
@@ -4275,6 +3524,7 @@ function Home() {
                         p-3
                         transition
                         hover:border-cyan-400/20
+                        hover:bg-white/4
                       "
                     >
 
@@ -4284,7 +3534,6 @@ function Home() {
                             item
                           )
                         }
-
                         className="
                           w-full
                           text-left
@@ -4303,19 +3552,19 @@ function Home() {
 
                           <span
                             className="
+                              shrink-0
                               rounded-full
                               bg-cyan-400/10
                               px-2
                               py-1
                               text-[10px]
                               uppercase
+                              tracking-wide
                               text-cyan-300
                             "
                           >
-                            {
-                              item.type ||
-                              "text"
-                            }
+                            {item.type ||
+                              "text"}
                           </span>
 
 
@@ -4334,16 +3583,10 @@ function Home() {
                               size={10}
                             />
 
-                            <span
-                              className="
-                                truncate
-                              "
-                            >
-                              {
-                                formatDate(
-                                  item.createdAt
-                                )
-                              }
+                            <span className="truncate">
+                              {formatDate(
+                                item.createdAt
+                              )}
                             </span>
 
                           </span>
@@ -4359,9 +3602,7 @@ function Home() {
                               src={
                                 item.image
                               }
-
                               alt="Previous question"
-
                               className="
                                 mb-3
                                 h-28
@@ -4373,20 +3614,61 @@ function Home() {
                                 object-cover
                               "
                             />
+
+                          )}
+
+
+                        {item?.type ===
+                          "file" && (
+
+                            <div
+                              className="
+                                mb-3
+                                flex
+                                min-w-0
+                                items-center
+                                gap-3
+                                rounded-xl
+                                border
+                                border-cyan-400/10
+                                bg-cyan-400/3
+                                p-3
+                              "
+                            >
+
+                              <FiFileText
+                                size={22}
+                                className="
+                                  shrink-0
+                                  text-cyan-400
+                                "
+                              />
+
+                              <span
+                                className="
+                                  min-w-0
+                                  truncate
+                                  text-xs
+                                  text-gray-400
+                                "
+                              >
+                                {item.fileName ||
+                                  "PDF document"}
+                              </span>
+
+                            </div>
+
                           )}
 
 
                         <p
                           className="
                             line-clamp-2
-                            wrap-break-word
-                            text-sm
+wrap-break-word                                                text-sm
                             text-gray-300
                           "
                         >
-                          {
-                            item.command
-                          }
+                          {item.command}
                         </p>
 
 
@@ -4396,15 +3678,12 @@ function Home() {
                             className="
                               mt-2
                               line-clamp-2
-                              wrap-break-word
-                              text-xs
+wrap-break-word                              text-xs
                               leading-relaxed
                               text-gray-600
                             "
                           >
-                            {
-                              item.answer
-                            }
+                            {item.answer}
                           </p>
 
                         )}
@@ -4425,7 +3704,6 @@ function Home() {
                                 item._id
                               )
                             }
-
                             className="
                               mt-2
                               flex
@@ -4433,6 +3711,7 @@ function Home() {
                               gap-1
                               text-xs
                               text-gray-600
+                              transition
                               hover:text-red-400
                             "
                           >
@@ -4462,9 +3741,29 @@ function Home() {
                     flex-col
                     items-center
                     justify-center
+                    px-5
                     text-center
                   "
                 >
+
+                  <div
+                    className="
+                      mb-3
+                      flex
+                      h-12
+                      w-12
+                      items-center
+                      justify-center
+                      rounded-full
+                      border
+                      border-white/10
+                      bg-white/5
+                      text-gray-600
+                    "
+                  >
+                    ✦
+                  </div>
+
 
                   <p
                     className="
@@ -4476,6 +3775,7 @@ function Home() {
                   </p>
 
                 </div>
+
               )}
 
             </div>
@@ -4483,18 +3783,19 @@ function Home() {
           </aside>
 
         </>
+
       )}
 
 
       {/* =================================================
           MAIN
-          ================================================= */}
+      ================================================= */}
 
       <main
         className="
           flex
-          min-h-0
-          flex-1
+          h-[calc(100vh-4rem)]
+          w-full
           justify-center
           overflow-hidden
         "
@@ -4503,11 +3804,12 @@ function Home() {
         <section
           className="
             flex
+            h-full
             min-w-0
             w-full
-            max-w-5xl
-            flex-1
+            max-w-6xl
             flex-col
+            items-center
             overflow-hidden
             px-3
             py-4
@@ -4516,15 +3818,22 @@ function Home() {
           "
         >
 
+          {/* =================================================
+              CONVERSATION
+          ================================================= */}
+
           <div
             className="
-              answer-scroll
+              custom-scrollbar
+              flex
               min-h-0
+              w-full
               flex-1
+              justify-center
               overflow-y-auto
               overscroll-contain
               px-1
-              pb-6
+              pb-5
             "
           >
 
@@ -4532,8 +3841,12 @@ function Home() {
               className="
                 flex
                 w-full
+                max-w-3xl
                 flex-col
                 items-center
+                pt-2
+                sm:pt-5
+                md:pt-7
               "
             >
 
@@ -4541,12 +3854,10 @@ function Home() {
 
               <div
                 className={`
-                  mt-2
                   mb-4
                   rounded-full
                   p-1
                   transition
-                  sm:mt-4
                   sm:mb-5
                   ${
                     isAIActive
@@ -4561,15 +3872,14 @@ function Home() {
                     userData?.assistantImage ||
                     aiImg
                   }
-
                   alt="Assistant"
-
                   className="
-                    h-24
-                    w-24
+                    h-20
+                    w-20
                     rounded-full
                     object-cover
                     shadow-2xl
+                    shadow-cyan-950/30
                     sm:h-28
                     sm:w-28
                     md:h-32
@@ -4584,20 +3894,18 @@ function Home() {
 
               <h1
                 className="
-                  w-full
-                  max-w-3xl
-                  wrap-break-word
+                  max-w-full
+wrap-break-word                                      px-3
                   text-center
                   text-xl
                   font-semibold
+                  text-white
                   sm:text-2xl
                   md:text-3xl
                 "
               >
-                {
-                  userData?.assistantName ||
-                  "Assistant"
-                }
+                {userData?.assistantName ||
+                  "Assistant"}
               </h1>
 
 
@@ -4614,135 +3922,16 @@ function Home() {
               >
 
                 {isListening
-
                   ? "Listening..."
-
+                  : isImageAnalyzing
+                  ? "Analyzing image..."
                   : isPdfAnalyzing
-
-                    ? "Analyzing PDF..."
-
-                    : isImageAnalyzing
-
-                      ? "Analyzing image..."
-
-                      : speakingRef.current
-
-                        ? "Speaking..."
-
-                        : activePdf
-
-                          ? `PDF active: ${activePdf.name}`
-
-                          : "How can I help you?"}
+                  ? "Analyzing PDF..."
+                  : speakingRef.current
+                  ? "Speaking..."
+                  : "How can I help you?"}
 
               </p>
-
-
-              {/* PDF SESSION */}
-
-              {activePdf && (
-
-                <div
-                  className="
-                    mt-5
-                    flex
-                    w-full
-                    max-w-2xl
-                    items-center
-                    gap-3
-                    rounded-2xl
-                    border
-                    border-cyan-400/20
-                    bg-cyan-400/5
-                    p-3
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      h-11
-                      w-11
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-xl
-                      bg-cyan-400/10
-                      text-cyan-300
-                    "
-                  >
-
-                    <FiFileText
-                      size={21}
-                    />
-
-                  </div>
-
-
-                  <div
-                    className="
-                      min-w-0
-                      flex-1
-                    "
-                  >
-
-                    <p
-                      className="
-                        truncate
-                        text-sm
-                        font-medium
-                        text-white
-                      "
-                    >
-                      {
-                        activePdf.name
-                      }
-                    </p>
-
-
-                    <p
-                      className="
-                        text-xs
-                        text-cyan-300/70
-                      "
-                    >
-                      PDF analysis active
-                    </p>
-
-                  </div>
-
-
-                  <button
-                    type="button"
-
-                    onClick={() =>
-                      setActivePdf(
-                        null
-                      )
-                    }
-
-                    className="
-                      flex
-                      h-8
-                      w-8
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-lg
-                      text-gray-500
-                      hover:bg-white/5
-                      hover:text-red-400
-                    "
-                  >
-
-                    <FiX
-                      size={17}
-                    />
-
-                  </button>
-
-                </div>
-              )}
 
 
               {/* OLD IMAGE */}
@@ -4760,25 +3949,113 @@ function Home() {
                     border-cyan-400/10
                     bg-black/20
                     p-2
+                    sm:mt-7
                   "
                 >
 
                   <img
-                    src={
-                      historyImage
-                    }
-
-                    alt="Previous image"
-
+                    src={historyImage}
+                    alt="Previous image question"
                     className="
-                      max-h-105
+                      mx-auto
+                      max-h-[45vh]
                       w-full
                       rounded-xl
                       object-contain
                     "
                   />
 
+
+                  <p
+                    className="
+                      mt-2
+                      text-center
+                      text-[10px]
+                      text-gray-600
+                    "
+                  >
+                    Previous image from history
+                  </p>
+
                 </div>
+
+              )}
+
+
+              {/* OLD PDF */}
+
+              {historyFileName && (
+
+                <div
+                  className="
+                    mt-5
+                    flex
+                    w-full
+                    max-w-2xl
+                    min-w-0
+                    items-center
+                    gap-3
+                    rounded-2xl
+                    border
+                    border-cyan-400/10
+                    bg-cyan-400/3
+                    p-4
+                    sm:mt-7
+                  "
+                >
+
+                  <div
+                    className="
+                      flex
+                      h-11
+                      w-11
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-xl
+                      bg-cyan-400/10
+                    "
+                  >
+
+                    <FiFileText
+                      size={21}
+                      className="text-cyan-400"
+                    />
+
+                  </div>
+
+
+                  <div
+                    className="
+                      min-w-0
+                      flex-1
+                    "
+                  >
+
+                    <p
+                      className="
+                        text-xs
+                        text-gray-500
+                      "
+                    >
+                      Previous PDF
+                    </p>
+
+
+                    <p
+                      className="
+                        truncate
+                        text-sm
+                        text-gray-300
+                      "
+                    >
+                      {historyFileName}
+                    </p>
+
+                  </div>
+
+                </div>
+
               )}
 
 
@@ -4790,9 +4067,8 @@ function Home() {
                   className="
                     mt-5
                     w-full
-                    max-w-3xl
-                    wrap-break-word
-                    rounded-2xl
+                    max-w-2xl
+wrap-break-word                                        rounded-2xl
                     border
                     border-cyan-400/10
                     bg-cyan-400/5
@@ -4802,56 +4078,46 @@ function Home() {
                     text-sm
                     leading-relaxed
                     text-gray-300
+                    sm:mt-7
                     sm:px-5
                   "
                 >
-                  {
-                    userText
-                  }
+                  {userText}
                 </div>
+
               )}
 
 
-              {/* ANSWER */}
+              {/* AI ANSWER */}
 
               {showAIText &&
                 aiText && (
 
                   <div
-                    ref={
-                      answerRef
-                    }
-
                     className="
-                      answer-box
                       mt-4
-                      mb-6
+                      mb-5
                       w-full
                       max-w-3xl
-                      max-h-[55vh]
-                      overflow-y-auto
-                      overscroll-contain
-                      wrap-break-word
-                      rounded-2xl
+wrap-break-word                      rounded-2xl
                       border
                       border-white/10
                       bg-white/3
                       px-4
-                      py-5
+                      py-4
                       text-left
                       text-sm
                       leading-7
                       whitespace-pre-wrap
                       text-gray-200
                       sm:px-6
-                      sm:py-6
+                      sm:py-5
                       sm:text-base
                     "
                   >
-                    {
-                      aiText
-                    }
+                    {aiText}
                   </div>
+
                 )}
 
             </div>
@@ -4859,7 +4125,9 @@ function Home() {
           </div>
 
 
-          {/* IMAGE PREVIEW */}
+          {/* =================================================
+              IMAGE PREVIEW
+          ================================================= */}
 
           {imagePreview && (
 
@@ -4868,7 +4136,7 @@ function Home() {
                 mb-3
                 w-full
                 max-w-3xl
-                self-center
+                shrink-0
                 rounded-2xl
                 border
                 border-cyan-400/20
@@ -4887,18 +4155,16 @@ function Home() {
               >
 
                 <img
-                  src={
-                    imagePreview
-                  }
-
+                  src={imagePreview}
                   alt="Selected"
-
                   className="
                     h-14
                     w-14
                     shrink-0
                     rounded-xl
                     object-cover
+                    sm:h-16
+                    sm:w-16
                   "
                 />
 
@@ -4915,6 +4181,7 @@ function Home() {
                       truncate
                       text-sm
                       font-medium
+                      text-white
                     "
                   >
                     Image selected
@@ -4930,7 +4197,7 @@ function Home() {
                       sm:block
                     "
                   >
-                    Ask your question and press Send.
+                    Type your question below and press Send.
                   </p>
 
                 </div>
@@ -4938,11 +4205,9 @@ function Home() {
 
                 <button
                   type="button"
-
                   onClick={
                     removeImage
                   }
-
                   className="
                     flex
                     h-8
@@ -4952,32 +4217,34 @@ function Home() {
                     justify-center
                     rounded-lg
                     text-gray-500
+                    hover:bg-white/5
                     hover:text-red-400
                   "
                 >
 
-                  <FiX
-                    size={18}
-                  />
+                  <FiX size={18} />
 
                 </button>
 
               </div>
 
             </div>
+
           )}
 
 
-          {/* PDF PREVIEW */}
+          {/* =================================================
+              PDF PREVIEW
+          ================================================= */}
 
-          {pdfPreview && (
+          {pdfPreviewName && (
 
             <div
               className="
                 mb-3
                 w-full
                 max-w-3xl
-                self-center
+                shrink-0
                 rounded-2xl
                 border
                 border-cyan-400/20
@@ -5005,12 +4272,14 @@ function Home() {
                     justify-center
                     rounded-xl
                     bg-red-400/10
-                    text-red-300
+                    text-red-400
+                    sm:h-16
+                    sm:w-16
                   "
                 >
 
                   <FiFileText
-                    size={24}
+                    size={25}
                   />
 
                 </div>
@@ -5025,25 +4294,36 @@ function Home() {
 
                   <p
                     className="
+                      text-xs
+                      text-gray-500
+                    "
+                  >
+                    PDF selected
+                  </p>
+
+
+                  <p
+                    className="
                       truncate
                       text-sm
                       font-medium
+                      text-white
                     "
                   >
-                    {
-                      pdfName
-                    }
+                    {pdfPreviewName}
                   </p>
 
 
                   <p
                     className="
                       mt-1
+                      hidden
                       text-xs
                       text-gray-500
+                      sm:block
                     "
                   >
-                    Ask a question about this PDF.
+                    Type your question below and press Send.
                   </p>
 
                 </div>
@@ -5051,11 +4331,9 @@ function Home() {
 
                 <button
                   type="button"
-
                   onClick={
                     removePdf
                   }
-
                   className="
                     flex
                     h-8
@@ -5065,37 +4343,36 @@ function Home() {
                     justify-center
                     rounded-lg
                     text-gray-500
+                    hover:bg-white/5
                     hover:text-red-400
                   "
                 >
 
-                  <FiX
-                    size={18}
-                  />
+                  <FiX size={18} />
 
                 </button>
 
               </div>
 
             </div>
+
           )}
 
 
-          {/* INPUT */}
+          {/* =================================================
+              INPUT
+          ================================================= */}
 
           <div
             className="
               w-full
               max-w-3xl
-              self-center
+              shrink-0
             "
           >
 
             <form
-              onSubmit={
-                handleSend
-              }
-
+              onSubmit={handleSend}
               className="
                 flex
                 min-w-0
@@ -5116,11 +4393,9 @@ function Home() {
 
               <button
                 type="button"
-
                 onClick={() =>
                   imageInputRef.current?.click()
                 }
-
                 className="
                   flex
                   h-10
@@ -5130,33 +4405,27 @@ function Home() {
                   justify-center
                   rounded-xl
                   text-gray-400
+                  transition
                   hover:bg-white/5
                   hover:text-cyan-300
+                  sm:h-11
+                  sm:w-11
                 "
-
                 title="Analyze image"
               >
 
-                <FiImage
-                  size={19}
-                />
+                <FiImage size={19} />
 
               </button>
 
 
               <input
-                ref={
-                  imageInputRef
-                }
-
+                ref={imageInputRef}
                 type="file"
-
                 accept="image/*"
-
                 onChange={
                   handleImageSelect
                 }
-
                 className="hidden"
               />
 
@@ -5165,11 +4434,9 @@ function Home() {
 
               <button
                 type="button"
-
                 onClick={() =>
                   pdfInputRef.current?.click()
                 }
-
                 className="
                   flex
                   h-10
@@ -5179,33 +4446,27 @@ function Home() {
                   justify-center
                   rounded-xl
                   text-gray-400
+                  transition
                   hover:bg-white/5
                   hover:text-cyan-300
+                  sm:h-11
+                  sm:w-11
                 "
-
                 title="Upload PDF"
               >
 
-                <FiFileText
-                  size={19}
-                />
+                <FiFileText size={19} />
 
               </button>
 
 
               <input
-                ref={
-                  pdfInputRef
-                }
-
+                ref={pdfInputRef}
                 type="file"
-
                 accept="application/pdf,.pdf"
-
                 onChange={
                   handlePdfSelect
                 }
-
                 className="hidden"
               />
 
@@ -5213,37 +4474,20 @@ function Home() {
               {/* TEXT */}
 
               <input
-                value={
-                  typedText
-                }
-
+                value={typedText}
                 onChange={e =>
                   setTypedText(
                     e.target.value
                   )
                 }
-
-                onPaste={
-                  handlePaste
-                }
-
+                onPaste={handlePaste}
                 placeholder={
-
-                  selectedImage
-
+                  imagePreview
                     ? "Ask about the image..."
-
-                    : selectedPdf
-
-                      ? "Ask about the PDF..."
-
-                      : activePdf
-
-                        ? "Ask another question about the PDF..."
-
-                        : "Ask me anything..."
+                    : pdfPreviewName
+                    ? "Ask about the PDF..."
+                    : "Ask me anything..."
                 }
-
                 className="
                   min-w-0
                   flex-1
@@ -5258,17 +4502,15 @@ function Home() {
               />
 
 
-              {/* MIC */}
+              {/* MICROPHONE */}
 
               <button
                 type="button"
-
                 onClick={
                   isListening
                     ? stopListening
                     : startListening
                 }
-
                 className={`
                   flex
                   h-10
@@ -5286,20 +4528,17 @@ function Home() {
                       : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
                   }
                 `}
+                title={
+                  isListening
+                    ? "Stop microphone"
+                    : "Start microphone"
+                }
               >
 
                 {isListening ? (
-
-                  <FiMicOff
-                    size={19}
-                  />
-
+                  <FiMicOff size={19} />
                 ) : (
-
-                  <FiMic
-                    size={19}
-                  />
-
+                  <FiMic size={19} />
                 )}
 
               </button>
@@ -5309,24 +4548,16 @@ function Home() {
 
               <button
                 type="submit"
-
                 disabled={
-
-                  isImageAnalyzing ||
-
-                  isPdfAnalyzing ||
-
-                  isSending ||
-
-                  (
-                    !selectedImage &&
-                    !selectedPdf &&
-                    !activePdf &&
-                    !typedText.trim()
-                  )
-
+                  imagePreview
+                    ? isImageAnalyzing ||
+                      !selectedImage
+                    : pdfPreviewName
+                    ? isPdfAnalyzing ||
+                      !selectedPdf
+                    : isSending ||
+                      !typedText.trim()
                 }
-
                 className="
                   flex
                   h-10
@@ -5344,11 +4575,16 @@ function Home() {
                   sm:h-11
                   sm:w-11
                 "
+                title={
+                  imagePreview
+                    ? "Analyze image"
+                    : pdfPreviewName
+                    ? "Analyze PDF"
+                    : "Send"
+                }
               >
 
-                <FiSend
-                  size={18}
-                />
+                <FiSend size={18} />
 
               </button>
 
@@ -5374,55 +4610,10 @@ function Home() {
 
       </main>
 
-
-      {/* =================================================
-          CUSTOM SCROLLBAR
-          ================================================= */}
-
-      <style>
-        {`
-          .answer-scroll,
-          .answer-box,
-          .history-scroll {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(103, 232, 249, 0.25) transparent;
-          }
-
-          .answer-scroll::-webkit-scrollbar,
-          .answer-box::-webkit-scrollbar,
-          .history-scroll::-webkit-scrollbar {
-            width: 5px;
-          }
-
-          .answer-scroll::-webkit-scrollbar-track,
-          .answer-box::-webkit-scrollbar-track,
-          .history-scroll::-webkit-scrollbar-track {
-            background: transparent;
-          }
-
-          .answer-scroll::-webkit-scrollbar-thumb,
-          .answer-box::-webkit-scrollbar-thumb,
-          .history-scroll::-webkit-scrollbar-thumb {
-            background: rgba(103, 232, 249, 0.22);
-            border-radius: 999px;
-          }
-
-          .answer-scroll::-webkit-scrollbar-thumb:hover,
-          .answer-box::-webkit-scrollbar-thumb:hover,
-          .history-scroll::-webkit-scrollbar-thumb:hover {
-            background: rgba(103, 232, 249, 0.45);
-          }
-
-          @media (max-width: 640px) {
-            .answer-box {
-              max-height: 48vh;
-            }
-          }
-        `}
-      </style>
-
     </div>
+
   );
+
 }
 
 
