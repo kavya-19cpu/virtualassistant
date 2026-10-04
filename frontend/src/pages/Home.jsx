@@ -33,6 +33,7 @@ import {
 
 
 function Home() {
+
   const {
     userData,
     serverUrl,
@@ -124,9 +125,11 @@ function Home() {
   // =====================================================
 
   useEffect(() => {
+
     assistantNameRef.current =
       userData?.assistantName ||
       "Assistant";
+
   }, [userData?.assistantName]);
 
 
@@ -135,32 +138,39 @@ function Home() {
   // =====================================================
 
   useEffect(() => {
+
     setHistoryItems(
       Array.isArray(userData?.history)
         ? userData.history
         : []
     );
+
   }, [userData?.history]);
 
 
   // =====================================================
   // CLEAN GEMINI RESPONSE
   //
-  // This makes Gemini responses look clean and natural.
+  // Makes Gemini output look like normal ChatGPT text.
   //
   // Removes:
   // **
+  // *
+  // __
+  // $
   // $$
-  // LaTeX formatting
+  // \frac{}
+  // \dfrac{}
+  // \tfrac{}
+  // \left
+  // \right
   // Markdown headings
   // Markdown bullets
-  // Markdown links
   // code fences
-  // unnecessary braces
-  // excessive blank lines
   // =====================================================
 
   const cleanAIResponse = text => {
+
     if (!text) {
       return "";
     }
@@ -173,7 +183,7 @@ function Home() {
     // ---------------------------------------------------
 
     cleaned = cleaned.replace(
-      /```(?:json|javascript|js|python|java|cpp|html|css|jsx|tsx|text)?/gi,
+      /```(?:json|javascript|js|text|markdown)?/gi,
       ""
     );
 
@@ -184,51 +194,69 @@ function Home() {
 
 
     // ---------------------------------------------------
-    // Convert Markdown links
-    //
-    // [Google](https://google.com)
-    // becomes
-    // Google
+    // Remove Markdown bold
     // ---------------------------------------------------
-
-    cleaned = cleaned.replace(
-      /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
-      "$1"
-    );
-
-
-    // ---------------------------------------------------
-    // Remove Markdown bold / italic
-    // ---------------------------------------------------
-
-    cleaned = cleaned.replace(
-      /\*\*\*/g,
-      ""
-    );
 
     cleaned = cleaned.replace(
       /\*\*/g,
       ""
     );
 
+
+    // ---------------------------------------------------
+    // Remove Markdown underline/bold
+    // ---------------------------------------------------
+
     cleaned = cleaned.replace(
       /__/g,
       ""
     );
 
-    cleaned = cleaned.replace(
-      /(?<!\*)\*(?!\*)/g,
-      ""
-    );
+
+    // ---------------------------------------------------
+    // Remove single Markdown *
+    // ---------------------------------------------------
 
     cleaned = cleaned.replace(
-      /(?<!_)_(?!_)/g,
+      /(^|[\s])\*([^*\n]+)\*(?=\s|$)/g,
+      "$1$2"
+    );
+
+
+    // ---------------------------------------------------
+    // Remove Markdown headings
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /^#{1,6}\s*/gm,
       ""
     );
 
 
     // ---------------------------------------------------
-    // Remove LaTeX delimiters
+    // Convert LaTeX fractions
+    //
+    // \frac{a}{b}
+    // ->
+    // a/b
+    // ---------------------------------------------------
+
+    let previous = "";
+
+    while (previous !== cleaned) {
+
+      previous = cleaned;
+
+      cleaned = cleaned.replace(
+        /\\(?:frac|dfrac|tfrac)\{([^{}]*)\}\{([^{}]*)\}/g,
+        "$1/$2"
+      );
+
+    }
+
+
+    // ---------------------------------------------------
+    // Remove math delimiters
     // ---------------------------------------------------
 
     cleaned = cleaned.replace(
@@ -241,85 +269,20 @@ function Home() {
       ""
     );
 
-    cleaned = cleaned.replace(
-      /\\\(/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\)/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\[/g,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\\\]/g,
-      ""
-    );
-
 
     // ---------------------------------------------------
-    // Convert common LaTeX fractions
+    // Common LaTeX symbols
     // ---------------------------------------------------
 
     cleaned = cleaned.replace(
-      /\\(?:dfrac|tfrac|frac)\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g,
-      "$1/$2"
+      /\\pi\b/g,
+      "π"
     );
 
-
-    // ---------------------------------------------------
-    // Convert common LaTeX symbols
-    // ---------------------------------------------------
-
-    const latexSymbols = {
-      "\\pi": "π",
-      "\\theta": "θ",
-      "\\alpha": "α",
-      "\\beta": "β",
-      "\\gamma": "γ",
-      "\\delta": "δ",
-      "\\lambda": "λ",
-      "\\mu": "μ",
-      "\\sigma": "σ",
-      "\\omega": "ω",
-      "\\infty": "∞",
-      "\\pm": "±",
-      "\\times": "×",
-      "\\div": "÷",
-      "\\leq": "≤",
-      "\\geq": "≥",
-      "\\neq": "≠",
-      "\\approx": "≈",
-      "\\cdot": "·",
-      "\\rightarrow": "→",
-      "\\to": "→",
-      "\\degree": "°"
-    };
-
-    Object.entries(latexSymbols).forEach(
-      ([latex, symbol]) => {
-        cleaned = cleaned.replace(
-          new RegExp(
-            latex.replace(
-              /[.*+?^${}()|[\]\\]/g,
-              "\\$&"
-            ),
-            "g"
-          ),
-          symbol
-        );
-      }
+    cleaned = cleaned.replace(
+      /\\sqrt\{([^{}]+)\}/g,
+      "√($1)"
     );
-
-
-    // ---------------------------------------------------
-    // Convert common LaTeX functions
-    // ---------------------------------------------------
 
     cleaned = cleaned.replace(
       /\\sin\b/g,
@@ -362,8 +325,43 @@ function Home() {
     );
 
     cleaned = cleaned.replace(
-      /\\sqrt\s*\{([^{}]*)\}/g,
-      "√($1)"
+      /\\lim\b/g,
+      "lim"
+    );
+
+    cleaned = cleaned.replace(
+      /\\infty\b/g,
+      "∞"
+    );
+
+    cleaned = cleaned.replace(
+      /\\times\b/g,
+      "×"
+    );
+
+    cleaned = cleaned.replace(
+      /\\cdot\b/g,
+      "·"
+    );
+
+    cleaned = cleaned.replace(
+      /\\leq\b/g,
+      "≤"
+    );
+
+    cleaned = cleaned.replace(
+      /\\geq\b/g,
+      "≥"
+    );
+
+    cleaned = cleaned.replace(
+      /\\neq\b/g,
+      "≠"
+    );
+
+    cleaned = cleaned.replace(
+      /\\pm\b/g,
+      "±"
     );
 
 
@@ -381,44 +379,79 @@ function Home() {
       ""
     );
 
+
+    // ---------------------------------------------------
+    // Remove common LaTeX commands
+    // ---------------------------------------------------
+
     cleaned = cleaned.replace(
-      /\\text\s*\{([^{}]*)\}/g,
+      /\\text\{([^{}]*)\}/g,
       "$1"
     );
 
     cleaned = cleaned.replace(
-      /\\mathrm\s*\{([^{}]*)\}/g,
+      /\\mathrm\{([^{}]*)\}/g,
       "$1"
     );
 
     cleaned = cleaned.replace(
-      /\\mathbf\s*\{([^{}]*)\}/g,
+      /\\mathbf\{([^{}]*)\}/g,
       "$1"
     );
 
-
-    // ---------------------------------------------------
-    // Convert simple superscripts
-    // ---------------------------------------------------
-
     cleaned = cleaned.replace(
-      /\^\{([^{}]+)\}/g,
-      "^$1"
-    );
-
-
-    // ---------------------------------------------------
-    // Remove remaining LaTeX commands
-    // ---------------------------------------------------
-
-    cleaned = cleaned.replace(
-      /\\[a-zA-Z]+/g,
+      /\\displaystyle/g,
       ""
     );
 
 
     // ---------------------------------------------------
-    // Remove LaTeX braces
+    // Convert common superscripts
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /\^\{2\}/g,
+      "²"
+    );
+
+    cleaned = cleaned.replace(
+      /\^\{3\}/g,
+      "³"
+    );
+
+    cleaned = cleaned.replace(
+      /\^2/g,
+      "²"
+    );
+
+    cleaned = cleaned.replace(
+      /\^3/g,
+      "³"
+    );
+
+
+    // ---------------------------------------------------
+    // Convert inverse trig notation
+    // ---------------------------------------------------
+
+    cleaned = cleaned.replace(
+      /sin\^\{-1\}/g,
+      "sin⁻¹"
+    );
+
+    cleaned = cleaned.replace(
+      /cos\^\{-1\}/g,
+      "cos⁻¹"
+    );
+
+    cleaned = cleaned.replace(
+      /tan\^\{-1\}/g,
+      "tan⁻¹"
+    );
+
+
+    // ---------------------------------------------------
+    // Remove remaining curly braces
     // ---------------------------------------------------
 
     cleaned = cleaned.replace(
@@ -428,21 +461,9 @@ function Home() {
 
 
     // ---------------------------------------------------
-    // Remove Markdown headings
+    // Remove Markdown bullet characters
     //
-    // ### Answer
-    // becomes
-    // Answer
-    // ---------------------------------------------------
-
-    cleaned = cleaned.replace(
-      /^\s*#{1,6}\s*/gm,
-      ""
-    );
-
-
-    // ---------------------------------------------------
-    // Convert Markdown bullet points into clean lines
+    // Keep normal "-" inside sentences.
     // ---------------------------------------------------
 
     cleaned = cleaned.replace(
@@ -452,64 +473,7 @@ function Home() {
 
 
     // ---------------------------------------------------
-    // Remove blockquote marker
-    // ---------------------------------------------------
-
-    cleaned = cleaned.replace(
-      /^\s*>\s?/gm,
-      ""
-    );
-
-
-    // ---------------------------------------------------
-    // Remove Markdown horizontal lines
-    // ---------------------------------------------------
-
-    cleaned = cleaned.replace(
-      /^\s*([-*_]){3,}\s*$/gm,
-      ""
-    );
-
-
-    // ---------------------------------------------------
-    // Remove unnecessary square brackets
-    //
-    // Used mainly by Gemini for formatting.
-    // ---------------------------------------------------
-
-    cleaned = cleaned.replace(
-      /^\s*\[\s*/gm,
-      ""
-    );
-
-    cleaned = cleaned.replace(
-      /\s*\]\s*$/gm,
-      ""
-    );
-
-
-    // ---------------------------------------------------
-    // Remove unnecessary escaped characters
-    // ---------------------------------------------------
-
-    cleaned = cleaned.replace(
-      /\\([()[\]])/g,
-      "$1"
-    );
-
-
-    // ---------------------------------------------------
-    // Clean spaces before punctuation
-    // ---------------------------------------------------
-
-    cleaned = cleaned.replace(
-      /\s+([,.!?;:])/g,
-      "$1"
-    );
-
-
-    // ---------------------------------------------------
-    // Clean excessive spaces
+    // Remove excessive spaces
     // ---------------------------------------------------
 
     cleaned = cleaned.replace(
@@ -551,12 +515,15 @@ function Home() {
         new Date().toISOString()
     };
 
+
     setHistoryItems(previous => [
       temporaryItem,
       ...previous
     ]);
 
+
     try {
+
       const response =
         await axios.post(
           `${serverUrl}/api/user/savehistory`,
@@ -570,6 +537,7 @@ function Home() {
           }
         );
 
+
       if (response.data?.history) {
 
         setHistoryItems(
@@ -581,6 +549,7 @@ function Home() {
           history:
             response.data.history
         }));
+
       }
 
     } catch (error) {
@@ -588,14 +557,15 @@ function Home() {
       console.error(
         "HISTORY SAVE ERROR:",
         error.response?.data ||
-          error.message
+        error.message
       );
+
     }
   };
 
 
   // =====================================================
-  // DELETE ONE HISTORY ITEM
+  // DELETE HISTORY
   // =====================================================
 
   const deleteHistory = async historyId => {
@@ -603,6 +573,7 @@ function Home() {
     if (!historyId) {
       return;
     }
+
 
     try {
 
@@ -614,31 +585,37 @@ function Home() {
           }
         );
 
+
       const updatedHistory =
         response.data.history || [];
+
 
       setHistoryItems(
         updatedHistory
       );
 
+
       setUserData(previous => ({
         ...previous,
-        history: updatedHistory
+        history:
+          updatedHistory
       }));
+
 
     } catch (error) {
 
       console.error(
         "DELETE HISTORY ERROR:",
         error.response?.data ||
-          error.message
+        error.message
       );
+
     }
   };
 
 
   // =====================================================
-  // CLEAR ALL HISTORY
+  // CLEAR HISTORY
   // =====================================================
 
   const clearHistory = async () => {
@@ -647,14 +624,17 @@ function Home() {
       return;
     }
 
+
     const confirmed =
       window.confirm(
         "Clear all history?"
       );
 
+
     if (!confirmed) {
       return;
     }
+
 
     try {
 
@@ -665,20 +645,24 @@ function Home() {
         }
       );
 
+
       setHistoryItems([]);
+
 
       setUserData(previous => ({
         ...previous,
         history: []
       }));
 
+
     } catch (error) {
 
       console.error(
         "CLEAR HISTORY ERROR:",
         error.response?.data ||
-          error.message
+        error.message
       );
+
     }
   };
 
@@ -693,27 +677,29 @@ function Home() {
       return;
     }
 
+
     const speechText =
       String(text).trim();
+
 
     if (!speechText) {
       return;
     }
 
+
     window.speechSynthesis.cancel();
+
 
     clearTimeout(
       speechTimeoutRef.current
     );
 
 
-    // Split long answers into smaller
-    // sentences so Chrome doesn't stop early.
-
     const sentences =
       speechText.match(
         /[^.!?]+[.!?]+|[^.!?]+$/g
       ) || [speechText];
+
 
     const chunks = [];
 
@@ -725,13 +711,15 @@ function Home() {
       const cleanSentence =
         sentence.trim();
 
+
       if (!cleanSentence) {
         return;
       }
 
+
       const combined =
-        `${currentChunk} ${cleanSentence}`
-          .trim();
+        `${currentChunk} ${cleanSentence}`.trim();
+
 
       if (combined.length > 180) {
 
@@ -748,7 +736,9 @@ function Home() {
 
         currentChunk =
           combined;
+
       }
+
     });
 
 
@@ -757,6 +747,7 @@ function Home() {
       chunks.push(
         currentChunk.trim()
       );
+
     }
 
 
@@ -766,6 +757,7 @@ function Home() {
 
 
     let currentIndex = 0;
+
 
     speakingRef.current = true;
 
@@ -794,6 +786,7 @@ function Home() {
           try {
             recognitionRef.current.start();
           } catch {}
+
         }
 
         return;
@@ -814,10 +807,10 @@ function Home() {
 
       utterance.onstart = () => {
 
-        speakingRef.current =
-          true;
+        speakingRef.current = true;
 
         setIsAIActive(true);
+
       };
 
 
@@ -825,10 +818,14 @@ function Home() {
 
         currentIndex++;
 
+
         speechTimeoutRef.current =
           setTimeout(() => {
+
             speakNextChunk();
+
           }, 80);
+
       };
 
 
@@ -839,22 +836,29 @@ function Home() {
           error
         );
 
+
         currentIndex++;
+
 
         speechTimeoutRef.current =
           setTimeout(() => {
+
             speakNextChunk();
+
           }, 80);
+
       };
 
 
       window.speechSynthesis.speak(
         utterance
       );
+
     };
 
 
     speakNextChunk();
+
   };
 
 
@@ -868,11 +872,13 @@ function Home() {
       return;
     }
 
+
     window.open(
       url,
       "_blank",
       "noopener,noreferrer"
     );
+
   };
 
 
@@ -886,11 +892,13 @@ function Home() {
       return;
     }
 
+
     openUrl(
       `https://www.google.com/search?q=${encodeURIComponent(
         query.trim()
       )}`
     );
+
   };
 
 
@@ -904,16 +912,18 @@ function Home() {
       return;
     }
 
+
     openUrl(
       `https://www.youtube.com/results?search_query=${encodeURIComponent(
         query.trim()
       )}`
     );
+
   };
 
 
   // =====================================================
-  // DIRECT WEBSITES
+  // WEBSITES
   // =====================================================
 
   const websites = {
@@ -977,6 +987,7 @@ function Home() {
 
     telegram:
       "https://web.telegram.org"
+
   };
 
 
@@ -994,48 +1005,76 @@ function Home() {
         query.trim()
       );
 
+
     switch (site) {
 
       case "google":
+
         return `https://www.google.com/search?q=${encodedQuery}`;
 
+
       case "youtube":
+
         return `https://www.youtube.com/results?search_query=${encodedQuery}`;
 
+
       case "amazon":
+
         return `https://www.amazon.in/s?k=${encodedQuery}`;
 
+
       case "flipkart":
+
         return `https://www.flipkart.com/search?q=${encodedQuery}`;
 
+
       case "wikipedia":
+
         return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
 
+
       case "reddit":
+
         return `https://www.reddit.com/search/?q=${encodedQuery}`;
 
+
       case "github":
+
         return `https://github.com/search?q=${encodedQuery}`;
 
+
       case "linkedin":
+
         return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
 
+
       case "spotify":
+
         return `https://open.spotify.com/search/${encodedQuery}`;
 
+
       case "pinterest":
+
         return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
 
+
       case "facebook":
+
         return `https://www.facebook.com/search/top?q=${encodedQuery}`;
+
 
       case "x":
       case "twitter":
+
         return `https://x.com/search?q=${encodedQuery}`;
 
+
       default:
+
         return null;
+
     }
+
   };
 
 
@@ -1050,21 +1089,22 @@ function Home() {
         return null;
       }
 
+
       const text =
         command
           .trim()
           .replace(/\s+/g, " ");
 
+
       let match;
 
 
-      // -------------------------------------------------
       // search photosynthesis on Google
-      // -------------------------------------------------
 
       match = text.match(
         /^(?:search|find|look up)\s+(.+?)\s+(?:on|in)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s*$/i
       );
+
 
       if (match) {
 
@@ -1077,17 +1117,17 @@ function Home() {
           query:
             match[1].trim()
         };
+
       }
 
 
-      // -------------------------------------------------
       // search Google for photosynthesis
-      // -------------------------------------------------
 
       match = text.match(
         /^(?:search|find|look up)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s+(?:for)\s+(.+)$/i
       );
 
+
       if (match) {
 
         return {
@@ -1099,17 +1139,17 @@ function Home() {
           query:
             match[2].trim()
         };
+
       }
 
 
-      // -------------------------------------------------
       // open YouTube and search Sun Savaria
-      // -------------------------------------------------
 
       match = text.match(
         /^(?:open|launch|visit|go to|take me to)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)(?:\s+website|\s+site)?\s+(?:and\s+)?(?:search|find|look up)\s+(.+)$/i
       );
 
+
       if (match) {
 
         return {
@@ -1121,10 +1161,12 @@ function Home() {
           query:
             match[2].trim()
         };
+
       }
 
 
       return null;
+
     };
 
 
@@ -1140,14 +1182,19 @@ function Home() {
           command
         );
 
+
       if (
         result?.site ===
         "youtube"
       ) {
+
         return result.query;
+
       }
 
+
       return "";
+
     };
 
 
@@ -1164,6 +1211,7 @@ function Home() {
 
       const cleanedCommand =
         command.trim();
+
 
       if (!cleanedCommand) {
         return;
@@ -1189,7 +1237,7 @@ function Home() {
       try {
 
         // =================================================
-        // 1. EXPLICIT SEARCH
+        // EXPLICIT SEARCH
         // =================================================
 
         const searchCommand =
@@ -1253,6 +1301,7 @@ function Home() {
           ) {
 
             googleSearch(query);
+
           }
 
 
@@ -1260,12 +1309,14 @@ function Home() {
             speak(answer);
           }
 
+
           return;
+
         }
 
 
         // =================================================
-        // 2. SIMPLE GOOGLE SEARCH
+        // SIMPLE GOOGLE SEARCH
         // =================================================
 
         const googleSearchMatch =
@@ -1303,12 +1354,14 @@ function Home() {
             speak(answer);
           }
 
+
           return;
+
         }
 
 
         // =================================================
-        // 3. SIMPLE YOUTUBE SEARCH
+        // SIMPLE YOUTUBE SEARCH
         // =================================================
 
         const youtubeQuery =
@@ -1344,12 +1397,14 @@ function Home() {
             speak(answer);
           }
 
+
           return;
+
         }
 
 
         // =================================================
-        // 4. DIRECT WEBSITE OPEN
+        // DIRECT WEBSITE OPEN
         // =================================================
 
         const directMatch =
@@ -1397,13 +1452,16 @@ function Home() {
               speak(answer);
             }
 
+
             return;
+
           }
+
         }
 
 
         // =================================================
-        // 5. GEMINI
+        // GEMINI
         // =================================================
 
         const result =
@@ -1416,9 +1474,9 @@ function Home() {
           result;
 
 
-        // -------------------------------------------------
-        // Parse Gemini JSON
-        // -------------------------------------------------
+        // =================================================
+        // PARSE GEMINI RESULT
+        // =================================================
 
         if (
           typeof result ===
@@ -1452,12 +1510,14 @@ function Home() {
               response:
                 cleanResult
             };
+
           }
+
         }
 
 
         // =================================================
-        // GET COMPLETE GEMINI RESPONSE
+        // COMPLETE GEMINI RESPONSE
         // =================================================
 
         const rawResponse =
@@ -1469,8 +1529,6 @@ function Home() {
 
         // =================================================
         // CLEAN RESPONSE
-        //
-        // THIS IS THE MAIN FIX
         // =================================================
 
         const response =
@@ -1480,7 +1538,7 @@ function Home() {
 
 
         // =================================================
-        // GEMINI GOOGLE OPEN
+        // GOOGLE OPEN
         // =================================================
 
         if (
@@ -1491,11 +1549,12 @@ function Home() {
           openUrl(
             "https://www.google.com"
           );
+
         }
 
 
         // =================================================
-        // GEMINI GOOGLE SEARCH
+        // GOOGLE SEARCH
         // =================================================
 
         else if (
@@ -1517,13 +1576,16 @@ function Home() {
 
 
           if (query?.trim()) {
+
             googleSearch(query);
+
           }
+
         }
 
 
         // =================================================
-        // GEMINI YOUTUBE OPEN
+        // YOUTUBE OPEN
         // =================================================
 
         else if (
@@ -1534,11 +1596,12 @@ function Home() {
           openUrl(
             "https://www.youtube.com"
           );
+
         }
 
 
         // =================================================
-        // GEMINI YOUTUBE SEARCH / PLAY
+        // YOUTUBE SEARCH / PLAY
         // =================================================
 
         else if (
@@ -1564,7 +1627,9 @@ function Home() {
             youtubeSearch(
               query
             );
+
           }
+
         }
 
 
@@ -1580,11 +1645,12 @@ function Home() {
           openUrl(
             "https://www.google.com/search?q=calculator"
           );
+
         }
 
 
         // =================================================
-        // SHOW CLEAN COMPLETE ANSWER
+        // SHOW COMPLETE ANSWER
         // =================================================
 
         setAiText(response);
@@ -1592,7 +1658,6 @@ function Home() {
         setShowAIText(true);
 
 
-        // Save CLEAN response to history
         await addHistory(
           cleanedCommand,
           response,
@@ -1605,8 +1670,11 @@ function Home() {
         // =================================================
 
         if (shouldSpeak) {
+
           speak(response);
+
         }
+
 
       } catch (error) {
 
@@ -1632,6 +1700,7 @@ function Home() {
           speak(
             errorMessage
           );
+
         }
 
       } finally {
@@ -1645,9 +1714,13 @@ function Home() {
         if (
           !speakingRef.current
         ) {
+
           setIsAIActive(false);
+
         }
+
       }
+
     };
 
 
@@ -1660,13 +1733,12 @@ function Home() {
     e?.preventDefault();
 
 
-    // Image mode
-
     if (selectedImage) {
 
       await analyzeImage();
 
       return;
+
     }
 
 
@@ -1674,7 +1746,9 @@ function Home() {
       !typedText.trim() ||
       isSending
     ) {
+
       return;
+
     }
 
 
@@ -1685,13 +1759,14 @@ function Home() {
     setTypedText("");
 
 
-    // Typed question = NEVER SPEAK
+    // Typed = NEVER SPEAK
 
     await processCommand(
       command,
       "text",
       false
     );
+
   };
 
 
@@ -1721,6 +1796,7 @@ function Home() {
       );
 
       return;
+
     }
 
 
@@ -1734,6 +1810,7 @@ function Home() {
       );
 
       return;
+
     }
 
 
@@ -1742,6 +1819,7 @@ function Home() {
       URL.revokeObjectURL(
         imagePreview
       );
+
     }
 
 
@@ -1750,6 +1828,83 @@ function Home() {
     setImagePreview(
       URL.createObjectURL(file)
     );
+
+  };
+
+
+  // =====================================================
+  // PASTE IMAGE
+  //
+  // Supports:
+  //
+  // Ctrl + V
+  // Right click -> Paste
+  //
+  // from screenshots and copied images.
+  // =====================================================
+
+  const handlePaste = event => {
+
+    const clipboardItems =
+      event.clipboardData?.items;
+
+
+    if (!clipboardItems) {
+      return;
+    }
+
+
+    for (
+      let i = 0;
+      i < clipboardItems.length;
+      i++
+    ) {
+
+      const item =
+        clipboardItems[i];
+
+
+      if (
+        item.type &&
+        item.type.startsWith(
+          "image/"
+        )
+      ) {
+
+        event.preventDefault();
+
+
+        const file =
+          item.getAsFile();
+
+
+        if (!file) {
+          return;
+        }
+
+
+        if (imagePreview) {
+
+          URL.revokeObjectURL(
+            imagePreview
+          );
+
+        }
+
+
+        setSelectedImage(file);
+
+        setImagePreview(
+          URL.createObjectURL(file)
+        );
+
+
+        return;
+
+      }
+
+    }
+
   };
 
 
@@ -1764,6 +1919,7 @@ function Home() {
       URL.revokeObjectURL(
         imagePreview
       );
+
     }
 
 
@@ -1776,7 +1932,9 @@ function Home() {
 
       imageInputRef.current.value =
         "";
+
     }
+
   };
 
 
@@ -1790,7 +1948,9 @@ function Home() {
       !selectedImage ||
       isImageAnalyzing
     ) {
+
       return;
+
     }
 
 
@@ -1844,8 +2004,6 @@ function Home() {
         "I could not analyze the image.";
 
 
-      // Clean image analysis too
-
       const answer =
         cleanAIResponse(
           rawAnswer
@@ -1864,18 +2022,17 @@ function Home() {
       );
 
 
-      // Image typed question = silent
-
       removeImage();
 
       setTypedText("");
+
 
     } catch (error) {
 
       console.error(
         "IMAGE ANALYSIS ERROR:",
         error.response?.data ||
-          error.message
+        error.message
       );
 
 
@@ -1890,6 +2047,7 @@ function Home() {
         )
       );
 
+
       setShowAIText(true);
 
     } finally {
@@ -1902,8 +2060,11 @@ function Home() {
       ) {
 
         setIsAIActive(false);
+
       }
+
     }
+
   };
 
 
@@ -1925,6 +2086,7 @@ function Home() {
       );
 
       return;
+
     }
 
 
@@ -1948,22 +2110,15 @@ function Home() {
       recognition;
 
 
-    // ===================================================
-    // START
-    // ===================================================
-
     recognition.onstart = () => {
 
       listeningRef.current =
         true;
 
       setIsListening(true);
+
     };
 
-
-    // ===================================================
-    // RESULT
-    // ===================================================
 
     recognition.onresult =
       async event => {
@@ -1971,7 +2126,9 @@ function Home() {
         if (
           processingRef.current
         ) {
+
           return;
+
         }
 
 
@@ -2002,6 +2159,7 @@ function Home() {
 
 
         const stopCommands = [
+
           "thank you",
           "thanks",
           "stop",
@@ -2009,6 +2167,7 @@ function Home() {
           "goodbye",
           "stop listening",
           "cancel"
+
         ];
 
 
@@ -2021,6 +2180,7 @@ function Home() {
           stopListening();
 
           return;
+
         }
 
 
@@ -2029,19 +2189,16 @@ function Home() {
         );
 
 
-        // Voice question = speak complete answer
+        // Voice = complete answer + speech
 
         await processCommand(
           transcript,
           "voice",
           true
         );
+
       };
 
-
-    // ===================================================
-    // END
-    // ===================================================
 
     recognition.onend = () => {
 
@@ -2060,7 +2217,9 @@ function Home() {
           setTimeout(() => {
 
             try {
+
               recognition.start();
+
             } catch {}
 
           }, 400);
@@ -2070,13 +2229,11 @@ function Home() {
       ) {
 
         setIsListening(false);
+
       }
+
     };
 
-
-    // ===================================================
-    // ERROR
-    // ===================================================
 
     recognition.onerror =
       event => {
@@ -2098,7 +2255,9 @@ function Home() {
             false;
 
           setIsListening(false);
+
         }
+
       };
 
 
@@ -2122,14 +2281,18 @@ function Home() {
 
 
       try {
+
         recognition.stop();
+
       } catch {}
 
 
       window.speechSynthesis.cancel();
 
+
       recognitionRef.current =
         null;
+
     };
 
   }, [getGeminiResponse]);
@@ -2150,6 +2313,7 @@ function Home() {
       );
 
       return;
+
     }
 
 
@@ -2165,6 +2329,7 @@ function Home() {
 
       setIsListening(true);
 
+
       recognitionRef.current.start();
 
     } catch {
@@ -2172,7 +2337,9 @@ function Home() {
       console.log(
         "Microphone already running."
       );
+
     }
+
   };
 
 
@@ -2198,9 +2365,13 @@ function Home() {
     ) {
 
       try {
+
         recognitionRef.current.stop();
+
       } catch {}
+
     }
+
   };
 
 
@@ -2227,12 +2398,14 @@ function Home() {
           "LOGOUT ERROR:",
           error
         );
+
       }
 
 
       setUserData(null);
 
       navigate("/signin");
+
     };
 
 
@@ -2249,8 +2422,10 @@ function Home() {
         item?.query ||
         "";
 
+
       const answer =
-        item?.answer || "";
+        item?.answer ||
+        "";
 
 
       const search =
@@ -2272,6 +2447,7 @@ function Home() {
           .toLowerCase()
           .includes(search)
       );
+
     });
 
 
@@ -2283,6 +2459,7 @@ function Home() {
 
     const command =
       item?.command || "";
+
 
     const answer =
       item?.answer || "";
@@ -2297,6 +2474,7 @@ function Home() {
     setShowAIText(true);
 
     setShowHistory(false);
+
   };
 
 
@@ -2323,6 +2501,7 @@ function Home() {
         minute: "2-digit"
       }
     );
+
   };
 
 
@@ -2333,6 +2512,7 @@ function Home() {
   return (
 
     <div
+      onPaste={handlePaste}
       className="
         relative
         min-h-screen
@@ -2365,7 +2545,7 @@ function Home() {
         "
       >
 
-        {/* LEFT SIDE */}
+        {/* LEFT */}
 
         <div
           className="
@@ -2376,8 +2556,6 @@ function Home() {
             sm:gap-3
           "
         >
-
-          {/* HAMBURGER */}
 
           <button
             onClick={() => {
@@ -2390,6 +2568,7 @@ function Home() {
               setShowProfileMenu(
                 false
               );
+
             }}
             className="
               flex
@@ -2423,8 +2602,6 @@ function Home() {
           </button>
 
 
-          {/* ASSISTANT IMAGE */}
-
           <img
             src={
               userData?.assistantImage ||
@@ -2445,8 +2622,6 @@ function Home() {
           />
 
 
-          {/* ASSISTANT NAME */}
-
           <div className="min-w-0">
 
             <p
@@ -2457,8 +2632,10 @@ function Home() {
                 text-white
               "
             >
+
               {userData?.assistantName ||
                 "Assistant"}
+
             </p>
 
 
@@ -2470,7 +2647,9 @@ function Home() {
                 sm:block
               "
             >
+
               Virtual Assistant
+
             </p>
 
           </div>
@@ -2478,7 +2657,7 @@ function Home() {
         </div>
 
 
-        {/* RIGHT SIDE */}
+        {/* RIGHT */}
 
         <div
           className="
@@ -2488,8 +2667,6 @@ function Home() {
             gap-2
           "
         >
-
-          {/* DESKTOP CUSTOMIZE */}
 
           <button
             onClick={() =>
@@ -2511,11 +2688,11 @@ function Home() {
               sm:block
             "
           >
+
             Customize
+
           </button>
 
-
-          {/* PROFILE BUTTON */}
 
           <button
             onClick={() => {
@@ -2526,6 +2703,7 @@ function Home() {
               );
 
               setShowHistory(false);
+
             }}
             className="
               flex
@@ -2595,8 +2773,6 @@ function Home() {
               "
             >
 
-              {/* USER INFO */}
-
               <div
                 className="
                   mb-1
@@ -2615,8 +2791,10 @@ function Home() {
                     text-white
                   "
                 >
+
                   {userData?.name ||
                     "User"}
+
                 </p>
 
 
@@ -2627,14 +2805,14 @@ function Home() {
                     text-gray-500
                   "
                 >
+
                   {userData?.email ||
                     "Account"}
+
                 </p>
 
               </div>
 
-
-              {/* CUSTOMIZE */}
 
               <button
                 onClick={() => {
@@ -2646,6 +2824,7 @@ function Home() {
                   setShowProfileMenu(
                     false
                   );
+
                 }}
                 className="
                   flex
@@ -2676,8 +2855,6 @@ function Home() {
               </button>
 
 
-              {/* CLEAR HISTORY */}
-
               <button
                 onClick={async () => {
 
@@ -2686,10 +2863,10 @@ function Home() {
                   setShowProfileMenu(
                     false
                   );
+
                 }}
                 disabled={
-                  historyItems.length ===
-                  0
+                  historyItems.length === 0
                 }
                 className="
                   flex
@@ -2710,9 +2887,7 @@ function Home() {
                 "
               >
 
-                <FiTrash2
-                  size={17}
-                />
+                <FiTrash2 size={17} />
 
                 <span>
                   Clear All History
@@ -2720,8 +2895,6 @@ function Home() {
 
               </button>
 
-
-              {/* CHANGE PASSWORD */}
 
               <button
                 onClick={() => {
@@ -2733,6 +2906,7 @@ function Home() {
                   setShowProfileMenu(
                     false
                   );
+
                 }}
                 className="
                   flex
@@ -2762,8 +2936,6 @@ function Home() {
 
               </button>
 
-
-              {/* LOGOUT */}
 
               <div
                 className="
@@ -2803,6 +2975,7 @@ function Home() {
               </button>
 
             </div>
+
           )}
 
         </div>
@@ -2818,8 +2991,6 @@ function Home() {
 
         <>
 
-          {/* OVERLAY */}
-
           <div
             onClick={() =>
               setShowHistory(false)
@@ -2833,8 +3004,6 @@ function Home() {
             "
           />
 
-
-          {/* DRAWER */}
 
           <aside
             className="
@@ -2853,8 +3022,6 @@ function Home() {
               shadow-2xl
             "
           >
-
-            {/* HEADER */}
 
             <div
               className="
@@ -2879,7 +3046,6 @@ function Home() {
                 >
                   History
                 </h2>
-
 
                 <p
                   className="
@@ -2909,15 +3075,15 @@ function Home() {
                   hover:text-white
                 "
               >
+
                 <IoMdClose
                   size={21}
                 />
+
               </button>
 
             </div>
 
-
-            {/* SEARCH */}
 
             <div
               className="
@@ -2973,8 +3139,6 @@ function Home() {
 
             </div>
 
-
-            {/* HISTORY LIST */}
 
             <div
               className="
@@ -3042,8 +3206,10 @@ function Home() {
                               text-cyan-300
                             "
                           >
+
                             {item.type ||
                               "text"}
+
                           </span>
 
 
@@ -3063,9 +3229,11 @@ function Home() {
                             />
 
                             <span className="truncate">
+
                               {formatDate(
                                 item.createdAt
                               )}
+
                             </span>
 
                           </span>
@@ -3081,7 +3249,9 @@ function Home() {
                             text-gray-300
                           "
                         >
+
                           {item.command}
+
                         </p>
 
 
@@ -3097,15 +3267,15 @@ function Home() {
                               text-gray-600
                             "
                           >
+
                             {item.answer}
+
                           </p>
 
                         )}
 
                       </button>
 
-
-                      {/* DELETE ONE */}
 
                       {item._id &&
                         !String(
@@ -3145,6 +3315,7 @@ function Home() {
                     </div>
 
                   )
+
                 )
 
               ) : (
@@ -3198,6 +3369,7 @@ function Home() {
           </aside>
 
         </>
+
       )}
 
 
@@ -3219,8 +3391,6 @@ function Home() {
             min-w-0
             flex-1
             flex-col
-            items-center
-            justify-between
             overflow-hidden
             px-3
             py-4
@@ -3229,163 +3399,196 @@ function Home() {
           "
         >
 
+
           {/* =================================================
-              ASSISTANT CONTENT
+              CONVERSATION AREA
+
+              IMPORTANT:
+              This is now scrollable.
+
+              Long answers will NOT be cut.
           ================================================= */}
 
           <div
             className="
               flex
               w-full
-              max-w-3xl
+              max-w-4xl
               min-h-0
               flex-1
               flex-col
-              items-center
-              justify-center
               overflow-y-auto
+              overscroll-contain
               px-1
+              pb-6
             "
           >
 
-            {/* ASSISTANT IMAGE */}
+            {/* TOP CONTENT */}
 
             <div
-              className={`
-                mb-5
-                rounded-full
-                p-1
-                transition
-                sm:mb-6
-                ${
-                  isAIActive
-                    ? "ring-4 ring-cyan-400/30"
-                    : ""
-                }
-              `}
-            >
-
-              <img
-                src={
-                  userData?.assistantImage ||
-                  aiImg
-                }
-                alt="Assistant"
-                className="
-                  h-24
-                  w-24
-                  rounded-full
-                  object-cover
-                  shadow-2xl
-                  shadow-cyan-950/30
-                  sm:h-32
-                  sm:w-32
-                  md:h-40
-                  md:w-40
-                "
-              />
-
-            </div>
-
-
-            {/* NAME */}
-
-            <h1
               className="
-                max-w-full
-                wrap-break-word
-                text-center
-                text-xl
-                font-semibold
-                text-white
-                sm:text-2xl
-                md:text-3xl
+                flex
+                w-full
+                flex-col
+                items-center
+                pt-4
+                sm:pt-8
               "
             >
-              {userData?.assistantName ||
-                "Assistant"}
-            </h1>
 
-
-            {/* STATUS */}
-
-            <p
-              className="
-                mt-2
-                text-center
-                text-xs
-                text-gray-500
-                sm:text-sm
-              "
-            >
-              {isListening
-                ? "Listening..."
-                : isImageAnalyzing
-                ? "Analyzing image..."
-                : speakingRef.current
-                ? "Speaking..."
-                : "How can I help you?"}
-            </p>
-
-
-            {/* USER QUESTION */}
-
-            {userText && (
+              {/* ASSISTANT IMAGE */}
 
               <div
-                className="
-                  mt-6
-                  w-full
-                  max-w-xl
-                  wrap-break-word
-                  rounded-2xl
-                  border
-                  border-cyan-400/10
-                  bg-cyan-400/5
-                  px-4
-                  py-3
-                  text-center
-                  text-sm
-                  text-gray-300
-                  sm:mt-8
-                  sm:px-5
-                "
+                className={`
+                  mb-5
+                  rounded-full
+                  p-1
+                  transition
+                  sm:mb-6
+                  ${
+                    isAIActive
+                      ? "ring-4 ring-cyan-400/30"
+                      : ""
+                  }
+                `}
               >
-                {userText}
+
+                <img
+                  src={
+                    userData?.assistantImage ||
+                    aiImg
+                  }
+                  alt="Assistant"
+                  className="
+                    h-24
+                    w-24
+                    rounded-full
+                    object-cover
+                    shadow-2xl
+                    shadow-cyan-950/30
+                    sm:h-32
+                    sm:w-32
+                    md:h-40
+                    md:w-40
+                  "
+                />
+
               </div>
 
-            )}
+
+              {/* NAME */}
+
+              <h1
+                className="
+                  max-w-full
+                  wrap-break-word
+                  text-center
+                  text-xl
+                  font-semibold
+                  text-white
+                  sm:text-2xl
+                  md:text-3xl
+                "
+              >
+
+                {userData?.assistantName ||
+                  "Assistant"}
+
+              </h1>
 
 
-            {/* AI ANSWER */}
+              {/* STATUS */}
 
-            {showAIText &&
-              aiText && (
+              <p
+                className="
+                  mt-2
+                  text-center
+                  text-xs
+                  text-gray-500
+                  sm:text-sm
+                "
+              >
+
+                {isListening
+                  ? "Listening..."
+                  : isImageAnalyzing
+                  ? "Analyzing image..."
+                  : speakingRef.current
+                  ? "Speaking..."
+                  : "How can I help you?"}
+
+              </p>
+
+
+              {/* USER QUESTION */}
+
+              {userText && (
 
                 <div
                   className="
-                    mt-4
+                    mt-6
                     w-full
                     max-w-2xl
                     wrap-break-word
                     rounded-2xl
                     border
-                    border-white/10
-                    bg-white/3
+                    border-cyan-400/10
+                    bg-cyan-400/5
                     px-4
-                    py-4
+                    py-3
                     text-left
                     text-sm
-                    leading-7
-                    whitespace-pre-wrap
+                    leading-relaxed
                     text-gray-300
+                    sm:mt-8
                     sm:px-5
                   "
                 >
-                  {aiText}
+
+                  {userText}
+
                 </div>
 
               )}
+
+
+              {/* AI ANSWER */}
+
+              {showAIText &&
+                aiText && (
+
+                  <div
+                    className="
+                      mt-4
+                      mb-6
+                      w-full
+                      max-w-3xl
+                      wrap-break-word
+                      rounded-2xl
+                      border
+                      border-white/10
+                      bg-white/3
+                      px-4
+                      py-5
+                      text-left
+                      text-sm
+                      leading-7
+                      whitespace-pre-wrap
+                      text-gray-200
+                      sm:px-6
+                      sm:py-6
+                      sm:text-base
+                    "
+                  >
+
+                    {aiText}
+
+                  </div>
+
+                )}
+
+            </div>
 
           </div>
 
@@ -3401,6 +3604,7 @@ function Home() {
                 mb-3
                 w-full
                 max-w-3xl
+                self-center
                 rounded-2xl
                 border
                 border-cyan-400/20
@@ -3485,7 +3689,9 @@ function Home() {
                     hover:text-red-400
                   "
                 >
+
                   <FiX size={18} />
+
                 </button>
 
               </div>
@@ -3503,6 +3709,7 @@ function Home() {
             className="
               w-full
               max-w-3xl
+              self-center
             "
           >
 
@@ -3548,7 +3755,9 @@ function Home() {
                 "
                 title="Analyze image"
               >
+
                 <FiImage size={19} />
+
               </button>
 
 
@@ -3563,7 +3772,7 @@ function Home() {
               />
 
 
-              {/* TEXT INPUT */}
+              {/* TEXT */}
 
               <input
                 value={typedText}
@@ -3572,6 +3781,7 @@ function Home() {
                     e.target.value
                   )
                 }
+                onPaste={handlePaste}
                 placeholder={
                   imagePreview
                     ? "Ask about the image..."
@@ -3667,7 +3877,9 @@ function Home() {
                     : "Send"
                 }
               >
+
                 <FiSend size={18} />
+
               </button>
 
             </form>
@@ -3693,7 +3905,9 @@ function Home() {
       </main>
 
     </div>
+
   );
+
 }
 
 
