@@ -45,53 +45,77 @@ function Home() {
   // STATE
   // =====================================================
 
-  const [isListening, setIsListening] = useState(false);
+  const [isListening, setIsListening] =
+    useState(false);
 
-  const [isAIActive, setIsAIActive] = useState(false);
+  const [isAIActive, setIsAIActive] =
+    useState(false);
 
-  const [userText, setUserText] = useState("");
+  const [userText, setUserText] =
+    useState("");
 
-  const [aiText, setAiText] = useState("");
+  const [aiText, setAiText] =
+    useState("");
 
-  const [showAIText, setShowAIText] = useState(false);
+  const [showAIText, setShowAIText] =
+    useState(false);
 
-  // HISTORY DRAWER
-  const [showHistory, setShowHistory] = useState(false);
+  // History drawer
+  const [showHistory, setShowHistory] =
+    useState(false);
 
-  // PROFILE / SETTINGS MENU
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  // Profile/settings menu
+  const [showProfileMenu, setShowProfileMenu] =
+    useState(false);
 
-  const [historyItems, setHistoryItems] = useState([]);
+  const [historyItems, setHistoryItems] =
+    useState([]);
 
-  const [typedText, setTypedText] = useState("");
+  const [typedText, setTypedText] =
+    useState("");
 
-  const [isSending, setIsSending] = useState(false);
+  const [isSending, setIsSending] =
+    useState(false);
 
-  const [historySearch, setHistorySearch] = useState("");
+  const [historySearch, setHistorySearch] =
+    useState("");
 
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImage, setSelectedImage] =
+    useState(null);
 
-  const [imagePreview, setImagePreview] = useState("");
+  const [imagePreview, setImagePreview] =
+    useState("");
 
-  const [isImageAnalyzing, setIsImageAnalyzing] = useState(false);
+  const [isImageAnalyzing, setIsImageAnalyzing] =
+    useState(false);
 
   // =====================================================
   // REFS
   // =====================================================
 
-  const imageInputRef = useRef(null);
+  const imageInputRef =
+    useRef(null);
 
-  const recognitionRef = useRef(null);
+  const recognitionRef =
+    useRef(null);
 
-  const listeningRef = useRef(false);
+  const listeningRef =
+    useRef(false);
 
-  const speakingRef = useRef(false);
+  const speakingRef =
+    useRef(false);
 
-  const processingRef = useRef(false);
+  const processingRef =
+    useRef(false);
 
-  const restartTimeoutRef = useRef(null);
+  const restartTimeoutRef =
+    useRef(null);
 
-  const assistantNameRef = useRef("");
+  const speechTimeoutRef =
+    useRef(null);
+
+  const assistantNameRef =
+    useRef("");
 
   // =====================================================
   // ASSISTANT NAME
@@ -99,7 +123,8 @@ function Home() {
 
   useEffect(() => {
     assistantNameRef.current =
-      userData?.assistantName || "Assistant";
+      userData?.assistantName ||
+      "Assistant";
   }, [userData?.assistantName]);
 
   // =====================================================
@@ -128,7 +153,8 @@ function Home() {
       command,
       answer,
       type,
-      createdAt: new Date().toISOString()
+      createdAt:
+        new Date().toISOString()
     };
 
     setHistoryItems(previous => [
@@ -137,30 +163,35 @@ function Home() {
     ]);
 
     try {
-      const response = await axios.post(
-        `${serverUrl}/api/user/savehistory`,
-        {
-          command,
-          answer,
-          type
-        },
-        {
-          withCredentials: true
-        }
-      );
+      const response =
+        await axios.post(
+          `${serverUrl}/api/user/savehistory`,
+          {
+            command,
+            answer,
+            type
+          },
+          {
+            withCredentials: true
+          }
+        );
 
       if (response.data?.history) {
-        setHistoryItems(response.data.history);
+        setHistoryItems(
+          response.data.history
+        );
 
         setUserData(previous => ({
           ...previous,
-          history: response.data.history
+          history:
+            response.data.history
         }));
       }
     } catch (error) {
       console.error(
         "HISTORY SAVE ERROR:",
-        error.response?.data || error.message
+        error.response?.data ||
+          error.message
       );
     }
   };
@@ -170,28 +201,35 @@ function Home() {
   // =====================================================
 
   const deleteHistory = async historyId => {
-    if (!historyId) return;
+    if (!historyId) {
+      return;
+    }
 
     try {
-      const response = await axios.delete(
-        `${serverUrl}/api/user/history/${historyId}`,
-        {
-          withCredentials: true
-        }
-      );
+      const response =
+        await axios.delete(
+          `${serverUrl}/api/user/history/${historyId}`,
+          {
+            withCredentials: true
+          }
+        );
+
+      const updatedHistory =
+        response.data.history || [];
 
       setHistoryItems(
-        response.data.history || []
+        updatedHistory
       );
 
       setUserData(previous => ({
         ...previous,
-        history: response.data.history || []
+        history: updatedHistory
       }));
     } catch (error) {
       console.error(
         "DELETE HISTORY ERROR:",
-        error.response?.data || error.message
+        error.response?.data ||
+          error.message
       );
     }
   };
@@ -205,9 +243,10 @@ function Home() {
       return;
     }
 
-    const confirmed = window.confirm(
-      "Clear all history?"
-    );
+    const confirmed =
+      window.confirm(
+        "Clear all history?"
+      );
 
     if (!confirmed) {
       return;
@@ -230,58 +269,173 @@ function Home() {
     } catch (error) {
       console.error(
         "CLEAR HISTORY ERROR:",
-        error.response?.data || error.message
+        error.response?.data ||
+          error.message
       );
     }
   };
 
   // =====================================================
-  // SPEAK
+  // SPEECH
+  //
+  // IMPORTANT:
+  // Long Gemini answers are divided into smaller chunks.
+  // This prevents Chrome SpeechSynthesis from stopping
+  // halfway through a long answer.
   // =====================================================
 
   const speak = text => {
-    if (!text) return;
+    if (!text) {
+      return;
+    }
 
+    const speechText =
+      String(text).trim();
+
+    if (!speechText) {
+      return;
+    }
+
+    // Stop previous speech
     window.speechSynthesis.cancel();
 
-    const utterance =
-      new SpeechSynthesisUtterance(
-        String(text)
-      );
-
-    utterance.rate = 1;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    utterance.lang = "en-US";
-
-    utterance.onstart = () => {
-      speakingRef.current = true;
-      setIsAIActive(true);
-    };
-
-    utterance.onend = () => {
-      speakingRef.current = false;
-      setIsAIActive(false);
-
-      if (
-        listeningRef.current &&
-        !processingRef.current &&
-        recognitionRef.current
-      ) {
-        try {
-          recognitionRef.current.start();
-        } catch { }
-      }
-    };
-
-    utterance.onerror = () => {
-      speakingRef.current = false;
-      setIsAIActive(false);
-    };
-
-    window.speechSynthesis.speak(
-      utterance
+    clearTimeout(
+      speechTimeoutRef.current
     );
+
+    // ---------------------------------------------------
+    // Split response into sentences
+    // ---------------------------------------------------
+
+    const sentences =
+      speechText.match(
+        /[^.!?]+[.!?]+|[^.!?]+$/g
+      ) || [speechText];
+
+    const chunks = [];
+
+    let currentChunk = "";
+
+    sentences.forEach(sentence => {
+      const cleanSentence =
+        sentence.trim();
+
+      if (!cleanSentence) {
+        return;
+      }
+
+      const combined =
+        `${currentChunk} ${cleanSentence}`
+          .trim();
+
+      // Keep each utterance reasonably small.
+      if (combined.length > 180) {
+        if (currentChunk.trim()) {
+          chunks.push(
+            currentChunk.trim()
+          );
+        }
+
+        currentChunk =
+          cleanSentence;
+      } else {
+        currentChunk =
+          combined;
+      }
+    });
+
+    if (currentChunk.trim()) {
+      chunks.push(
+        currentChunk.trim()
+      );
+    }
+
+    if (chunks.length === 0) {
+      chunks.push(speechText);
+    }
+
+    let currentIndex = 0;
+
+    speakingRef.current = true;
+
+    setIsAIActive(true);
+
+    // ---------------------------------------------------
+    // Speak each chunk one after another
+    // ---------------------------------------------------
+
+    const speakNextChunk = () => {
+      if (
+        currentIndex >=
+        chunks.length
+      ) {
+        speakingRef.current =
+          false;
+
+        setIsAIActive(false);
+
+        if (
+          listeningRef.current &&
+          !processingRef.current &&
+          recognitionRef.current
+        ) {
+          try {
+            recognitionRef.current.start();
+          } catch {}
+        }
+
+        return;
+      }
+
+      const currentText =
+        chunks[currentIndex];
+
+      const utterance =
+        new SpeechSynthesisUtterance(
+          currentText
+        );
+
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      utterance.lang = "en-US";
+
+      utterance.onstart = () => {
+        speakingRef.current =
+          true;
+
+        setIsAIActive(true);
+      };
+
+      utterance.onend = () => {
+        currentIndex++;
+
+        speechTimeoutRef.current =
+          setTimeout(() => {
+            speakNextChunk();
+          }, 80);
+      };
+
+      utterance.onerror = error => {
+        console.error(
+          "SPEECH SYNTHESIS ERROR:",
+          error
+        );
+
+        currentIndex++;
+
+        speechTimeoutRef.current =
+          setTimeout(() => {
+            speakNextChunk();
+          }, 80);
+      };
+
+      window.speechSynthesis.speak(
+        utterance
+      );
+    };
+
+    speakNextChunk();
   };
 
   // =====================================================
@@ -289,7 +443,9 @@ function Home() {
   // =====================================================
 
   const openUrl = url => {
-    if (!url) return;
+    if (!url) {
+      return;
+    }
 
     window.open(
       url,
@@ -299,11 +455,13 @@ function Home() {
   };
 
   // =====================================================
-  // SEARCH URL HELPERS
+  // GOOGLE SEARCH
   // =====================================================
 
   const googleSearch = query => {
-    if (!query?.trim()) return;
+    if (!query?.trim()) {
+      return;
+    }
 
     openUrl(
       `https://www.google.com/search?q=${encodeURIComponent(
@@ -312,8 +470,14 @@ function Home() {
     );
   };
 
+  // =====================================================
+  // YOUTUBE SEARCH
+  // =====================================================
+
   const youtubeSearch = query => {
-    if (!query?.trim()) return;
+    if (!query?.trim()) {
+      return;
+    }
 
     openUrl(
       `https://www.youtube.com/results?search_query=${encodeURIComponent(
@@ -323,53 +487,73 @@ function Home() {
   };
 
   // =====================================================
-  // WEBSITE URLS
+  // DIRECT WEBSITES
   // =====================================================
 
   const websites = {
-    google: "https://www.google.com",
+    google:
+      "https://www.google.com",
 
-    youtube: "https://www.youtube.com",
+    youtube:
+      "https://www.youtube.com",
 
-    instagram: "https://www.instagram.com",
+    instagram:
+      "https://www.instagram.com",
 
-    facebook: "https://www.facebook.com",
+    facebook:
+      "https://www.facebook.com",
 
-    github: "https://github.com",
+    github:
+      "https://github.com",
 
-    linkedin: "https://www.linkedin.com",
+    linkedin:
+      "https://www.linkedin.com",
 
-    whatsapp: "https://web.whatsapp.com",
+    whatsapp:
+      "https://web.whatsapp.com",
 
-    gmail: "https://mail.google.com",
+    gmail:
+      "https://mail.google.com",
 
-    amazon: "https://www.amazon.in",
+    amazon:
+      "https://www.amazon.in",
 
-    flipkart: "https://www.flipkart.com",
+    flipkart:
+      "https://www.flipkart.com",
 
-    spotify: "https://open.spotify.com",
+    spotify:
+      "https://open.spotify.com",
 
-    netflix: "https://www.netflix.com",
+    netflix:
+      "https://www.netflix.com",
 
-    wikipedia: "https://www.wikipedia.org",
+    wikipedia:
+      "https://www.wikipedia.org",
 
-    reddit: "https://www.reddit.com",
+    reddit:
+      "https://www.reddit.com",
 
-    discord: "https://discord.com",
+    discord:
+      "https://discord.com",
 
-    canva: "https://www.canva.com",
+    canva:
+      "https://www.canva.com",
 
-    pinterest: "https://www.pinterest.com",
+    pinterest:
+      "https://www.pinterest.com",
 
-    twitter: "https://x.com",
+    twitter:
+      "https://x.com",
 
-    x: "https://x.com",
+    x:
+      "https://x.com",
 
-    telegram: "https://web.telegram.org"
+    telegram:
+      "https://web.telegram.org"
   };
 
   // =====================================================
-  // WEBSITE SEARCH URLS
+  // WEBSITE SEARCH URL
   // =====================================================
 
   const getWebsiteSearchUrl = (
@@ -425,335 +609,279 @@ function Home() {
   };
 
   // =====================================================
-  // CLEAN SEARCH QUERY
+  // EXTRACT SEARCH COMMAND
   //
   // Examples:
   //
   // search photosynthesis on Google
-  //       -> photosynthesis
+  // -> site: google
+  // -> query: photosynthesis
   //
   // search Sun Savaria on YouTube
-  //       -> Sun Savaria
+  // -> site: youtube
+  // -> query: Sun Savaria
   //
   // open YouTube and search Sun Savaria
-  //       -> Sun Savaria
-  //
-  // open Google and search photosynthesis
-  //       -> photosynthesis
+  // -> site: youtube
+  // -> query: Sun Savaria
   // =====================================================
 
-  const extractSearchCommand = command => {
-    if (!command) {
+  const extractSearchCommand =
+    command => {
+      if (!command) {
+        return null;
+      }
+
+      const text =
+        command
+          .trim()
+          .replace(/\s+/g, " ");
+
+      let match;
+
+      // -------------------------------------------------
+      // SEARCH QUERY ON SITE
+      // -------------------------------------------------
+
+      match = text.match(
+        /^(?:search|find|look up)\s+(.+?)\s+(?:on|in)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s*$/i
+      );
+
+      if (match) {
+        return {
+          site: match[2]
+            .trim()
+            .toLowerCase(),
+
+          query:
+            match[1].trim()
+        };
+      }
+
+      // -------------------------------------------------
+      // SEARCH SITE FOR QUERY
+      // -------------------------------------------------
+
+      match = text.match(
+        /^(?:search|find|look up)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s+(?:for)\s+(.+)$/i
+      );
+
+      if (match) {
+        return {
+          site: match[1]
+            .trim()
+            .toLowerCase(),
+
+          query:
+            match[2].trim()
+        };
+      }
+
+      // -------------------------------------------------
+      // OPEN SITE AND SEARCH QUERY
+      // -------------------------------------------------
+
+      match = text.match(
+        /^(?:open|launch|visit|go to|take me to)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)(?:\s+website|\s+site)?\s+(?:and\s+)?(?:search|find|look up)\s+(.+)$/i
+      );
+
+      if (match) {
+        return {
+          site: match[1]
+            .trim()
+            .toLowerCase(),
+
+          query:
+            match[2].trim()
+        };
+      }
+
       return null;
-    }
-
-    const text = command
-      .trim()
-      .replace(/\s+/g, " ");
-
-    // ---------------------------------------------------
-    // SEARCH <QUERY> ON/IN <SITE>
-    // ---------------------------------------------------
-
-    let match = text.match(
-      /^(?:search|find|look up)\s+(.+?)\s+(?:on|in)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s*$/i
-    );
-
-    if (match) {
-      return {
-        site: match[2]
-          .trim()
-          .toLowerCase(),
-
-        query: match[1].trim()
-      };
-    }
-
-    // ---------------------------------------------------
-    // SEARCH <SITE> FOR <QUERY>
-    //
-    // Example:
-    // search YouTube for Sun Savaria
-    // ---------------------------------------------------
-
-    match = text.match(
-      /^(?:search|find|look up)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)\s+(?:for)\s+(.+)$/i
-    );
-
-    if (match) {
-      return {
-        site: match[1]
-          .trim()
-          .toLowerCase(),
-
-        query: match[2].trim()
-      };
-    }
-
-    // ---------------------------------------------------
-    // OPEN <SITE> AND SEARCH <QUERY>
-    //
-    // Example:
-    // open YouTube and search Sun Savaria
-    // ---------------------------------------------------
-
-    match = text.match(
-      /^(?:open|launch|visit|go to|take me to)\s+(google|youtube|instagram|facebook|github|linkedin|amazon|flipkart|spotify|wikipedia|reddit|pinterest|twitter|x)(?:\s+website|\s+site)?\s+(?:and\s+)?(?:search|find|look up)\s+(.+)$/i
-    );
-
-    if (match) {
-      return {
-        site: match[1]
-          .trim()
-          .toLowerCase(),
-
-        query: match[2].trim()
-      };
-    }
-
-    // ---------------------------------------------------
-    // SEARCH <QUERY> ON <SITE> WITH EXTRA WORDING
-    // ---------------------------------------------------
-
-    match = text.match(
-      /^(?:search|find|look up)\s+(.+?)\s+(?:on|in)\s+(google|youtube)\s*$/i
-    );
-
-    if (match) {
-      return {
-        site: match[2]
-          .trim()
-          .toLowerCase(),
-
-        query: match[1].trim()
-      };
-    }
-
-    return null;
-  };
+    };
 
   // =====================================================
   // YOUTUBE QUERY
   // =====================================================
 
-  const getYouTubeQuery = command => {
-    const result =
-      extractSearchCommand(command);
+  const getYouTubeQuery =
+    command => {
+      const result =
+        extractSearchCommand(
+          command
+        );
 
-    if (
-      result?.site === "youtube"
-    ) {
-      return result.query;
-    }
+      if (
+        result?.site ===
+        "youtube"
+      ) {
+        return result.query;
+      }
 
-    return "";
-  };
+      return "";
+    };
 
   // =====================================================
   // PROCESS COMMAND
   // =====================================================
 
-  const processCommand = async (
-    command,
-    type = "text",
-    shouldSpeak = true
-  ) => {
-    const cleanedCommand =
-      command.trim();
+  const processCommand =
+    async (
+      command,
+      type = "text",
+      shouldSpeak = false
+    ) => {
+      const cleanedCommand =
+        command.trim();
 
-    if (!cleanedCommand) {
-      return;
-    }
+      if (!cleanedCommand) {
+        return;
+      }
 
-    setUserText(cleanedCommand);
-    setAiText("");
-    setShowAIText(false);
-    setIsAIActive(true);
-    setIsSending(true);
+      setUserText(
+        cleanedCommand
+      );
 
-    processingRef.current = true;
+      setAiText("");
 
-    try {
-      // =================================================
-      // 1. CHECK EXPLICIT SEARCH COMMAND FIRST
-      // =================================================
+      setShowAIText(false);
 
-      const searchCommand =
-        extractSearchCommand(
-          cleanedCommand
-        );
+      setIsAIActive(true);
 
-      if (searchCommand) {
-        const {
-          site,
-          query
-        } = searchCommand;
+      setIsSending(true);
 
-        const siteName =
-          site === "x"
-            ? "X"
-            : site.charAt(0).toUpperCase() +
-            site.slice(1);
+      processingRef.current =
+        true;
 
-        const answer =
-          `Searching ${siteName} for ${query}.`;
+      try {
+        // ===============================================
+        // 1. EXPLICIT SEARCH COMMAND
+        // ===============================================
 
-        setAiText(answer);
-        setShowAIText(true);
-
-        addHistory(
-          cleanedCommand,
-          answer,
-          type
-        );
-
-        // ------------------------------------------------
-        // IMPORTANT:
-        // ONLY QUERY IS SENT TO THE SEARCH ENGINE.
-        //
-        // NOT:
-        // "open YouTube and search Sun Savaria"
-        //
-        // ONLY:
-        // "Sun Savaria"
-        // ------------------------------------------------
-
-        const searchUrl =
-          getWebsiteSearchUrl(
-            site,
-            query
+        const searchCommand =
+          extractSearchCommand(
+            cleanedCommand
           );
 
-        if (searchUrl) {
-          openUrl(searchUrl);
-        } else if (
-          site === "youtube"
-        ) {
-          youtubeSearch(query);
-        } else if (
-          site === "google"
-        ) {
-          googleSearch(query);
-        }
+        if (searchCommand) {
+          const {
+            site,
+            query
+          } = searchCommand;
 
-        if (shouldSpeak) {
-          speak(answer);
-        }
+          const siteName =
+            site === "x"
+              ? "X"
+              : site
+                  .charAt(0)
+                  .toUpperCase() +
+                site.slice(1);
 
-        return;
-      }
-
-      // =================================================
-      // 2. SIMPLE GOOGLE SEARCH
-      //
-      // search photosynthesis
-      // google photosynthesis
-      // =================================================
-
-      let googleSearchMatch =
-        cleanedCommand.match(
-          /^(?:search|google)\s+(.+)$/i
-        );
-
-      if (googleSearchMatch) {
-        const query =
-          googleSearchMatch[1].trim();
-
-        const answer =
-          `Searching Google for ${query}.`;
-
-        setAiText(answer);
-        setShowAIText(true);
-
-        addHistory(
-          cleanedCommand,
-          answer,
-          type
-        );
-
-        googleSearch(query);
-
-        if (shouldSpeak) {
-          speak(answer);
-        }
-
-        return;
-      }
-
-      // =================================================
-      // 3. SIMPLE YOUTUBE SEARCH
-      //
-      // youtube mitochondria
-      // play mitochondria on youtube
-      // =================================================
-
-      const youtubeQuery =
-        getYouTubeQuery(
-          cleanedCommand
-        );
-
-      if (youtubeQuery) {
-        const answer =
-          `Searching YouTube for ${youtubeQuery}.`;
-
-        setAiText(answer);
-        setShowAIText(true);
-
-        addHistory(
-          cleanedCommand,
-          answer,
-          type
-        );
-
-        youtubeSearch(
-          youtubeQuery
-        );
-
-        if (shouldSpeak) {
-          speak(answer);
-        }
-
-        return;
-      }
-
-      // =================================================
-      // 4. DIRECT WEBSITE OPEN
-      //
-      // open YouTube
-      // open Google
-      // open Instagram
-      // =================================================
-
-      const directMatch =
-        cleanedCommand.match(
-          /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
-        );
-
-      if (directMatch) {
-        const site =
-          directMatch[1]
-            .trim()
-            .toLowerCase()
-            .replace(
-              /\s+(website|site)$/i,
-              ""
-            );
-
-        if (websites[site]) {
           const answer =
-            `Opening ${site}.`;
+            `Searching ${siteName} for ${query}.`;
 
           setAiText(answer);
+
           setShowAIText(true);
 
-          addHistory(
+          await addHistory(
             cleanedCommand,
             answer,
             type
           );
 
-          openUrl(
-            websites[site]
+          const searchUrl =
+            getWebsiteSearchUrl(
+              site,
+              query
+            );
+
+          if (searchUrl) {
+            openUrl(searchUrl);
+          } else if (
+            site === "youtube"
+          ) {
+            youtubeSearch(query);
+          } else if (
+            site === "google"
+          ) {
+            googleSearch(query);
+          }
+
+          // Voice -> speak
+          // Typed -> don't speak
+          if (shouldSpeak) {
+            speak(answer);
+          }
+
+          return;
+        }
+
+        // ===============================================
+        // 2. SIMPLE GOOGLE SEARCH
+        //
+        // search photosynthesis
+        // google photosynthesis
+        // ===============================================
+
+        const googleSearchMatch =
+          cleanedCommand.match(
+            /^(?:search|google)\s+(.+)$/i
+          );
+
+        if (googleSearchMatch) {
+          const query =
+            googleSearchMatch[1].trim();
+
+          const answer =
+            `Searching Google for ${query}.`;
+
+          setAiText(answer);
+
+          setShowAIText(true);
+
+          await addHistory(
+            cleanedCommand,
+            answer,
+            type
+          );
+
+          googleSearch(query);
+
+          if (shouldSpeak) {
+            speak(answer);
+          }
+
+          return;
+        }
+
+        // ===============================================
+        // 3. SIMPLE YOUTUBE SEARCH
+        //
+        // youtube mitochondria
+        // play mitochondria on youtube
+        // ===============================================
+
+        const youtubeQuery =
+          getYouTubeQuery(
+            cleanedCommand
+          );
+
+        if (youtubeQuery) {
+          const answer =
+            `Searching YouTube for ${youtubeQuery}.`;
+
+          setAiText(answer);
+
+          setShowAIText(true);
+
+          await addHistory(
+            cleanedCommand,
+            answer,
+            type
+          );
+
+          youtubeSearch(
+            youtubeQuery
           );
 
           if (shouldSpeak) {
@@ -762,194 +890,301 @@ function Home() {
 
           return;
         }
-      }
 
-      // =================================================
-      // 5. GEMINI
-      // =================================================
+        // ===============================================
+        // 4. DIRECT WEBSITE OPEN
+        // ===============================================
 
-      const result =
-        await getGeminiResponse(
-          cleanedCommand
-        );
+        const directMatch =
+          cleanedCommand.match(
+            /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
+          );
 
-      let parsedResult = result;
+        if (directMatch) {
+          const site =
+            directMatch[1]
+              .trim()
+              .toLowerCase()
+              .replace(
+                /\s+(website|site)$/i,
+                ""
+              );
 
-      if (
-        typeof result === "string"
-      ) {
-        const cleanResult =
-          result
-            .replace(
-              /```json/gi,
-              ""
-            )
-            .replace(
-              /```/g,
-              ""
-            )
-            .trim();
+          if (websites[site]) {
+            const answer =
+              `Opening ${site}.`;
 
-        try {
-          parsedResult =
-            JSON.parse(
-              cleanResult
+            setAiText(answer);
+
+            setShowAIText(true);
+
+            await addHistory(
+              cleanedCommand,
+              answer,
+              type
             );
-        } catch {
-          parsedResult = {
-            type: "general",
-            response: cleanResult
-          };
+
+            openUrl(
+              websites[site]
+            );
+
+            if (shouldSpeak) {
+              speak(answer);
+            }
+
+            return;
+          }
         }
-      }
 
-      const response =
-        parsedResult?.response ||
-        parsedResult?.answer ||
-        "Sorry, I could not understand that.";
+        // ===============================================
+        // 5. GEMINI
+        // ===============================================
 
-      // =================================================
-      // 6. GEMINI COMMAND TYPES
-      // =================================================
-
-      if (
-        parsedResult.type ===
-        "google_open"
-      ) {
-        openUrl(
-          "https://www.google.com"
-        );
-      }
-
-      // -------------------------------------------------
-      // GOOGLE SEARCH
-      // -------------------------------------------------
-
-      else if (
-        parsedResult.type ===
-        "google_search"
-      ) {
-        const query =
-          parsedResult.query ||
-          cleanedCommand;
-
-        googleSearch(query);
-      }
-
-      // -------------------------------------------------
-      // YOUTUBE OPEN
-      // -------------------------------------------------
-
-      else if (
-        parsedResult.type ===
-        "youtube_open"
-      ) {
-        openUrl(
-          "https://www.youtube.com"
-        );
-      }
-
-      // -------------------------------------------------
-      // YOUTUBE SEARCH / PLAY
-      // -------------------------------------------------
-
-      else if (
-        parsedResult.type ===
-        "youtube_search" ||
-        parsedResult.type ===
-        "youtube_play"
-      ) {
-        const extractedQuery =
-          getYouTubeQuery(
+        const result =
+          await getGeminiResponse(
             cleanedCommand
           );
 
-        const query =
-          extractedQuery ||
-          parsedResult.query ||
-          cleanedCommand
-            .replace(
-              /^(?:search|find|look up|play)\s+/i,
-              ""
-            )
-            .replace(
-              /\s+(?:on|in)\s+youtube$/i,
-              ""
-            )
-            .replace(
-              /^(?:open|launch|visit|go to)\s+youtube\s+(?:and\s+)?(?:search|find|look up)\s+/i,
-              ""
-            )
-            .trim();
+        let parsedResult =
+          result;
 
-        youtubeSearch(query);
-      }
+        // -----------------------------------------------
+        // Parse Gemini JSON
+        // -----------------------------------------------
 
-      // -------------------------------------------------
-      // CALCULATOR
-      // -------------------------------------------------
+        if (
+          typeof result ===
+          "string"
+        ) {
+          const cleanResult =
+            result
+              .replace(
+                /```json/gi,
+                ""
+              )
+              .replace(
+                /```/g,
+                ""
+              )
+              .trim();
 
-      else if (
-        parsedResult.type ===
-        "calculator_open"
-      ) {
-        openUrl(
-          "https://www.google.com/search?q=calculator"
+          try {
+            parsedResult =
+              JSON.parse(
+                cleanResult
+              );
+          } catch {
+            parsedResult = {
+              type: "general",
+              response:
+                cleanResult
+            };
+          }
+        }
+
+        // ===============================================
+        // IMPORTANT:
+        // Get the COMPLETE Gemini response.
+        // ===============================================
+
+        const response =
+          parsedResult?.response ||
+          parsedResult?.answer ||
+          parsedResult?.text ||
+          "Sorry, I could not understand that.";
+
+        // ===============================================
+        // GEMINI GOOGLE OPEN
+        // ===============================================
+
+        if (
+          parsedResult?.type ===
+          "google_open"
+        ) {
+          openUrl(
+            "https://www.google.com"
+          );
+        }
+
+        // ===============================================
+        // GEMINI GOOGLE SEARCH
+        // ===============================================
+
+        else if (
+          parsedResult?.type ===
+          "google_search"
+        ) {
+          /*
+            First try to extract the actual query
+            from the user's command.
+
+            This prevents the entire command from
+            being sent to Google.
+          */
+
+          const extractedSearch =
+            extractSearchCommand(
+              cleanedCommand
+            );
+
+          const query =
+            extractedSearch?.site ===
+            "google"
+              ? extractedSearch.query
+              : parsedResult?.query;
+
+          if (query?.trim()) {
+            googleSearch(query);
+          }
+        }
+
+        // ===============================================
+        // GEMINI YOUTUBE OPEN
+        // ===============================================
+
+        else if (
+          parsedResult?.type ===
+          "youtube_open"
+        ) {
+          openUrl(
+            "https://www.youtube.com"
+          );
+        }
+
+        // ===============================================
+        // GEMINI YOUTUBE SEARCH / PLAY
+        // ===============================================
+
+        else if (
+          parsedResult?.type ===
+            "youtube_search" ||
+          parsedResult?.type ===
+            "youtube_play"
+        ) {
+          /*
+            IMPORTANT:
+            Never use the complete command as a
+            fallback search query.
+
+            Example:
+
+            User:
+            open YouTube and search Sun Savaria
+
+            Search query:
+            Sun Savaria
+
+            NOT:
+            open YouTube and search Sun Savaria
+          */
+
+          const extractedQuery =
+            getYouTubeQuery(
+              cleanedCommand
+            );
+
+          const query =
+            extractedQuery ||
+            parsedResult?.query;
+
+          if (query?.trim()) {
+            youtubeSearch(
+              query
+            );
+          }
+        }
+
+        // ===============================================
+        // CALCULATOR
+        // ===============================================
+
+        else if (
+          parsedResult?.type ===
+          "calculator_open"
+        ) {
+          openUrl(
+            "https://www.google.com/search?q=calculator"
+          );
+        }
+
+        // ===============================================
+        // SHOW COMPLETE ANSWER
+        // ===============================================
+
+        setAiText(response);
+
+        setShowAIText(true);
+
+        await addHistory(
+          cleanedCommand,
+          response,
+          type
         );
+
+        // ===============================================
+        // ONLY VOICE INPUT SPEAKS
+        // ===============================================
+
+        if (shouldSpeak) {
+          speak(response);
+        }
+      } catch (error) {
+        console.error(
+          "COMMAND ERROR:",
+          error
+        );
+
+        const errorMessage =
+          "Sorry, I could not complete that request right now.";
+
+        setAiText(
+          errorMessage
+        );
+
+        setShowAIText(true);
+
+        if (shouldSpeak) {
+          speak(
+            errorMessage
+          );
+        }
+      } finally {
+        processingRef.current =
+          false;
+
+        setIsSending(false);
+
+        /*
+          Do not cancel speech here.
+          Speech is handled independently by speak().
+        */
+
+        if (
+          !speakingRef.current
+        ) {
+          setIsAIActive(false);
+        }
       }
-
-      // =================================================
-      // SHOW RESPONSE
-      // =================================================
-
-      setAiText(response);
-      setShowAIText(true);
-
-      addHistory(
-        cleanedCommand,
-        response,
-        type
-      );
-
-      if (shouldSpeak) {
-        speak(response);
-      }
-    } catch (error) {
-      console.error(
-        "COMMAND ERROR:",
-        error
-      );
-
-      const errorMessage =
-        "Sorry, I could not complete that request right now.";
-
-      setAiText(errorMessage);
-      setShowAIText(true);
-
-      if (shouldSpeak) {
-        speak(errorMessage);
-      }
-    } finally {
-      processingRef.current = false;
-      setIsSending(false);
-      setIsAIActive(false);
-    }
-  };
+    };
 
   // =====================================================
-  // SEND TEXT / IMAGE
+  // SEND TYPED MESSAGE
+  //
+  // IMPORTANT:
+  // shouldSpeak = false
+  //
+  // Therefore typed questions are NEVER spoken.
   // =====================================================
 
   const handleSend = async e => {
     e?.preventDefault();
 
-    // IMAGE MODE
+    // Image mode
     if (selectedImage) {
       await analyzeImage();
       return;
     }
 
-    // NORMAL TEXT MODE
     if (
       !typedText.trim() ||
       isSending
@@ -962,10 +1197,14 @@ function Home() {
 
     setTypedText("");
 
+    // ===============================================
+    // TYPED INPUT = SILENT
+    // ===============================================
+
     await processCommand(
       command,
       "text",
-      true
+      false
     );
   };
 
@@ -977,7 +1216,9 @@ function Home() {
     const file =
       e.target.files?.[0];
 
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     if (
       !file.type.startsWith(
@@ -987,6 +1228,7 @@ function Home() {
       alert(
         "Please select an image file."
       );
+
       return;
     }
 
@@ -997,6 +1239,7 @@ function Home() {
       alert(
         "Image must be smaller than 10 MB."
       );
+
       return;
     }
 
@@ -1025,18 +1268,17 @@ function Home() {
     }
 
     setSelectedImage(null);
+
     setImagePreview("");
 
-    if (
-      imageInputRef.current
-    ) {
+    if (imageInputRef.current) {
       imageInputRef.current.value =
         "";
     }
   };
 
   // =====================================================
-  // ANALYZE IMAGE
+  // IMAGE ANALYSIS
   // =====================================================
 
   const analyzeImage = async () => {
@@ -1086,6 +1328,7 @@ function Home() {
 
       const answer =
         response.data?.response ||
+        response.data?.answer ||
         "I could not analyze the image.";
 
       setAiText(answer);
@@ -1098,31 +1341,38 @@ function Home() {
         "image"
       );
 
-      speak(answer);
-
-      setTypedText("");
+      /*
+        Image questions typed into the text box
+        should remain silent.
+      */
 
       removeImage();
+
+      setTypedText("");
     } catch (error) {
       console.error(
         "IMAGE ANALYSIS ERROR:",
         error.response?.data ||
-        error.message
+          error.message
       );
 
       const errorMessage =
         error.response?.data?.message ||
         "Unable to analyze the image.";
 
-      setAiText(errorMessage);
+      setAiText(
+        errorMessage
+      );
 
       setShowAIText(true);
-
-      speak(errorMessage);
     } finally {
       setIsImageAnalyzing(false);
 
-      setIsAIActive(false);
+      if (
+        !speakingRef.current
+      ) {
+        setIsAIActive(false);
+      }
     }
   };
 
@@ -1139,6 +1389,7 @@ function Home() {
       console.warn(
         "Speech recognition is not supported."
       );
+
       return;
     }
 
@@ -1147,20 +1398,32 @@ function Home() {
 
     recognition.continuous = true;
 
-    recognition.lang = "en-US";
+    recognition.lang =
+      "en-US";
 
-    recognition.interimResults = false;
+    recognition.interimResults =
+      false;
 
-    recognition.maxAlternatives = 1;
+    recognition.maxAlternatives =
+      1;
 
     recognitionRef.current =
       recognition;
 
+    // ===============================================
+    // START
+    // ===============================================
+
     recognition.onstart = () => {
-      listeningRef.current = true;
+      listeningRef.current =
+        true;
 
       setIsListening(true);
     };
+
+    // ===============================================
+    // RESULT
+    // ===============================================
 
     recognition.onresult =
       async event => {
@@ -1172,7 +1435,7 @@ function Home() {
 
         const lastResult =
           event.results[
-          event.results.length - 1
+            event.results.length - 1
           ];
 
         if (!lastResult) {
@@ -1191,6 +1454,10 @@ function Home() {
         const lowerTranscript =
           transcript.toLowerCase();
 
+        // =============================================
+        // STOP COMMANDS
+        // =============================================
+
         const stopCommands = [
           "thank you",
           "thanks",
@@ -1208,10 +1475,6 @@ function Home() {
         ) {
           stopListening();
 
-          speak(
-            "You're welcome. Goodbye."
-          );
-
           return;
         }
 
@@ -1219,12 +1482,24 @@ function Home() {
           transcript
         );
 
+        /*
+          IMPORTANT:
+          Voice input = true
+
+          Therefore the complete answer will
+          be spoken by speak().
+        */
+
         await processCommand(
           transcript,
           "voice",
           true
         );
       };
+
+    // ===============================================
+    // END
+    // ===============================================
 
     recognition.onend = () => {
       if (
@@ -1240,7 +1515,7 @@ function Home() {
           setTimeout(() => {
             try {
               recognition.start();
-            } catch { }
+            } catch {}
           }, 400);
       } else if (
         !listeningRef.current
@@ -1248,6 +1523,10 @@ function Home() {
         setIsListening(false);
       }
     };
+
+    // ===============================================
+    // ERROR
+    // ===============================================
 
     recognition.onerror =
       event => {
@@ -1258,9 +1537,9 @@ function Home() {
 
         if (
           event.error ===
-          "not-allowed" ||
+            "not-allowed" ||
           event.error ===
-          "audio-capture"
+            "audio-capture"
         ) {
           listeningRef.current =
             false;
@@ -1270,17 +1549,23 @@ function Home() {
       };
 
     return () => {
-      listeningRef.current = false;
+      listeningRef.current =
+        false;
 
-      processingRef.current = false;
+      processingRef.current =
+        false;
 
       clearTimeout(
         restartTimeoutRef.current
       );
 
+      clearTimeout(
+        speechTimeoutRef.current
+      );
+
       try {
         recognition.stop();
-      } catch { }
+      } catch {}
 
       window.speechSynthesis.cancel();
 
@@ -1300,13 +1585,18 @@ function Home() {
       alert(
         "Speech recognition is not supported in this browser."
       );
+
       return;
     }
 
     try {
       window.speechSynthesis.cancel();
 
-      listeningRef.current = true;
+      speakingRef.current =
+        false;
+
+      listeningRef.current =
+        true;
 
       setIsListening(true);
 
@@ -1323,7 +1613,8 @@ function Home() {
   // =====================================================
 
   const stopListening = () => {
-    listeningRef.current = false;
+    listeningRef.current =
+      false;
 
     setIsListening(false);
 
@@ -1336,7 +1627,7 @@ function Home() {
     ) {
       try {
         recognitionRef.current.stop();
-      } catch { }
+      } catch {}
     }
   };
 
@@ -1344,26 +1635,27 @@ function Home() {
   // LOGOUT
   // =====================================================
 
-  const handleLogout = async () => {
-    try {
-      await axios.post(
-        `${serverUrl}/api/auth/logout`,
-        {},
-        {
-          withCredentials: true
-        }
-      );
-    } catch (error) {
-      console.error(
-        "LOGOUT ERROR:",
-        error
-      );
-    }
+  const handleLogout =
+    async () => {
+      try {
+        await axios.post(
+          `${serverUrl}/api/auth/logout`,
+          {},
+          {
+            withCredentials: true
+          }
+        );
+      } catch (error) {
+        console.error(
+          "LOGOUT ERROR:",
+          error
+        );
+      }
 
-    setUserData(null);
+      setUserData(null);
 
-    navigate("/signin");
-  };
+      navigate("/signin");
+    };
 
   // =====================================================
   // FILTER HISTORY
@@ -1400,7 +1692,7 @@ function Home() {
     });
 
   // =====================================================
-  // HISTORY CLICK
+  // OPEN HISTORY
   // =====================================================
 
   const openHistory = item => {
@@ -1443,15 +1735,6 @@ function Home() {
   };
 
   // =====================================================
-  // CLOSE ALL MENUS
-  // =====================================================
-
-  const closeMenus = () => {
-    setShowHistory(false);
-    setShowProfileMenu(false);
-  };
-
-  // =====================================================
   // UI
   // =====================================================
 
@@ -1487,10 +1770,7 @@ function Home() {
           md:px-6
         "
       >
-        {/* =================================================
-            LEFT SIDE
-            HAMBURGER + ASSISTANT
-        ================================================= */}
+        {/* LEFT SIDE */}
 
         <div
           className="
@@ -1506,10 +1786,13 @@ function Home() {
           <button
             onClick={() => {
               setShowHistory(
-                previous => !previous
+                previous =>
+                  !previous
               );
 
-              setShowProfileMenu(false);
+              setShowProfileMenu(
+                false
+              );
             }}
             className="
               flex
@@ -1540,7 +1823,7 @@ function Home() {
             )}
           </button>
 
-          {/* ASSISTANT */}
+          {/* ASSISTANT IMAGE */}
 
           <img
             src={
@@ -1561,6 +1844,8 @@ function Home() {
             "
           />
 
+          {/* ASSISTANT NAME */}
+
           <div className="min-w-0">
             <p
               className="
@@ -1579,7 +1864,6 @@ function Home() {
                 hidden
                 text-xs
                 text-gray-500
-                xs:block
                 sm:block
               "
             >
@@ -1588,10 +1872,7 @@ function Home() {
           </div>
         </div>
 
-        {/* =================================================
-            RIGHT SIDE
-            PROFILE / SETTINGS
-        ================================================= */}
+        {/* RIGHT SIDE */}
 
         <div
           className="
@@ -1605,7 +1886,9 @@ function Home() {
 
           <button
             onClick={() =>
-              navigate("/customize2")
+              navigate(
+                "/customize2"
+              )
             }
             className="
               hidden
@@ -1629,7 +1912,8 @@ function Home() {
           <button
             onClick={() => {
               setShowProfileMenu(
-                previous => !previous
+                previous =>
+                  !previous
               );
 
               setShowHistory(false);
@@ -1653,7 +1937,7 @@ function Home() {
               hover:text-cyan-300
               active:scale-95
             "
-            title="Assistant settings"
+            title="Account and settings"
           >
             {userData?.assistantImage ? (
               <img
@@ -1693,7 +1977,7 @@ function Home() {
                 shadow-black/50
               "
             >
-              {/* PROFILE HEADER */}
+              {/* USER INFO */}
 
               <div
                 className="
@@ -1798,7 +2082,9 @@ function Home() {
                   disabled:opacity-40
                 "
               >
-                <FiTrash2 size={17} />
+                <FiTrash2
+                  size={17}
+                />
 
                 <span>
                   Clear All History
@@ -1885,7 +2171,6 @@ function Home() {
 
       {/* =================================================
           HISTORY DRAWER
-          ONLY HISTORY IS HERE
       ================================================= */}
 
       {showHistory && (
@@ -1924,7 +2209,7 @@ function Home() {
               shadow-2xl
             "
           >
-            {/* DRAWER HEADER */}
+            {/* HEADER */}
 
             <div
               className="
@@ -2041,7 +2326,7 @@ function Home() {
               "
             >
               {filteredHistory.length >
-                0 ? (
+              0 ? (
                 filteredHistory.map(
                   item => (
                     <div
@@ -2055,10 +2340,12 @@ function Home() {
                         rounded-xl
                         border
                         border-white/5
-bg-white/2.5                        p-3
+                        bg-white/2.5
+                        p-3
                         transition
                         hover:border-cyan-400/20
-hover:bg-white/4                      "
+                        hover:bg-white/4
+                      "
                     >
                       <button
                         onClick={() =>
@@ -2121,7 +2408,7 @@ hover:bg-white/4                      "
                         <p
                           className="
                             line-clamp-2
-                           wrap-break-word
+                            wrap-break-word
                             text-sm
                             text-gray-300
                           "
@@ -2134,7 +2421,8 @@ hover:bg-white/4                      "
                             className="
                               mt-2
                               line-clamp-2
-wrap-break-word                              text-xs
+                              wrap-break-word
+                              text-xs
                               leading-relaxed
                               text-gray-600
                             "
@@ -2144,7 +2432,7 @@ wrap-break-word                              text-xs
                         )}
                       </button>
 
-                      {/* DELETE INDIVIDUAL HISTORY */}
+                      {/* DELETE ONE */}
 
                       {item._id &&
                         !String(
@@ -2277,9 +2565,10 @@ wrap-break-word                              text-xs
                 p-1
                 transition
                 sm:mb-6
-                ${isAIActive
-                  ? "ring-4 ring-cyan-400/30"
-                  : ""
+                ${
+                  isAIActive
+                    ? "ring-4 ring-cyan-400/30"
+                    : ""
                 }
               `}
             >
@@ -2309,7 +2598,8 @@ wrap-break-word                              text-xs
             <h1
               className="
                 max-w-full
-wrap-break-word                text-center
+                wrap-break-word
+                text-center
                 text-xl
                 font-semibold
                 text-white
@@ -2335,11 +2625,13 @@ wrap-break-word                text-center
               {isListening
                 ? "Listening..."
                 : isImageAnalyzing
-                  ? "Analyzing image..."
-                  : "How can I help you?"}
+                ? "Analyzing image..."
+                : speakingRef.current
+                ? "Speaking..."
+                : "How can I help you?"}
             </p>
 
-            {/* USER TEXT */}
+            {/* USER QUESTION */}
 
             {userText && (
               <div
@@ -2347,7 +2639,8 @@ wrap-break-word                text-center
                   mt-6
                   w-full
                   max-w-xl
-wrap-break-word                  rounded-2xl
+                  wrap-break-word
+                  rounded-2xl
                   border
                   border-cyan-400/10
                   bg-cyan-400/5
@@ -2364,7 +2657,7 @@ wrap-break-word                  rounded-2xl
               </div>
             )}
 
-            {/* AI TEXT */}
+            {/* AI ANSWER */}
 
             {showAIText &&
               aiText && (
@@ -2373,10 +2666,11 @@ wrap-break-word                  rounded-2xl
                     mt-4
                     w-full
                     max-w-2xl
-wrap-break-word                    rounded-2xl
+                    wrap-break-word
+                    rounded-2xl
                     border
                     border-white/10
-                 bg-white/3
+                    bg-white/3
                     px-4
                     py-4
                     text-center
@@ -2486,7 +2780,7 @@ wrap-break-word                    rounded-2xl
           )}
 
           {/* =================================================
-              INPUT AREA
+              INPUT
           ================================================= */}
 
           <div
@@ -2549,7 +2843,7 @@ wrap-break-word                    rounded-2xl
                 className="hidden"
               />
 
-              {/* TEXT */}
+              {/* TEXT INPUT */}
 
               <input
                 value={typedText}
@@ -2576,7 +2870,7 @@ wrap-break-word                    rounded-2xl
                 "
               />
 
-              {/* MIC */}
+              {/* MICROPHONE */}
 
               <button
                 type="button"
@@ -2596,9 +2890,10 @@ wrap-break-word                    rounded-2xl
                   transition
                   sm:h-11
                   sm:w-11
-                  ${isListening
-                    ? "bg-red-400/10 text-red-400"
-                    : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
+                  ${
+                    isListening
+                      ? "bg-red-400/10 text-red-400"
+                      : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
                   }
                 `}
                 title={
@@ -2621,9 +2916,9 @@ wrap-break-word                    rounded-2xl
                 disabled={
                   imagePreview
                     ? isImageAnalyzing ||
-                    !selectedImage
+                      !selectedImage
                     : isSending ||
-                    !typedText.trim()
+                      !typedText.trim()
                 }
                 className="
                   flex
