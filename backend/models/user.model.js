@@ -1,4 +1,3 @@
-
 import mongoose from "mongoose";
 
 const historySchema = new mongoose.Schema(
@@ -6,42 +5,29 @@ const historySchema = new mongoose.Schema(
     command: {
       type: String,
       required: true,
+      trim: true
     },
 
     answer: {
       type: String,
       required: true,
+      trim: true
     },
 
     type: {
       type: String,
-      enum: ["text", "voice", "image", "pdf", "document"],
-      default: "text",
+      enum: ["text", "voice", "image"],
+      default: "text"
     },
 
-    // Public or authenticated storage URL.
-    fileUrl: {
+    // Saved compressed image for image-analysis history
+    image: {
       type: String,
-      default: "",
-    },
-
-    fileName: {
-      type: String,
-      default: "",
-    },
-
-    fileMimeType: {
-      type: String,
-      default: "",
-    },
-
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
+      default: ""
+    }
   },
   {
-    _id: true,
+    timestamps: true
   }
 );
 
@@ -50,36 +36,38 @@ const userSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
+      trim: true
     },
 
     email: {
       type: String,
       required: true,
       unique: true,
+      trim: true,
+      lowercase: true
     },
 
     password: {
       type: String,
-      required: true,
+      required: true
     },
 
     assistantName: {
       type: String,
-      default: "Assistant",
+      trim: true
     },
 
     assistantImage: {
-      type: String,
-      default: "",
+      type: String
     },
 
     history: {
       type: [historySchema],
-      default: [],
-    },
+      default: []
+    }
   },
   {
-    timestamps: true,
+    timestamps: true
   }
 );
 

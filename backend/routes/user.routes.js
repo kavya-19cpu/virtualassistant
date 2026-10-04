@@ -1,4 +1,3 @@
-
 import express from "express";
 import multer from "multer";
 
@@ -9,43 +8,54 @@ import {
   saveHistory,
   deleteHistory,
   clearHistory,
-  analyzeImage,
-  analyzePdf,
-  analyzeDocument,
+  analyzeImage
 } from "../controllers/user.controllers.js";
 
 import isAuth from "../middlewares/isAuth.js";
 
 const userRouter = express.Router();
 
-const allowedMimeTypes = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "application/pdf",
-  "text/plain",
-  "text/csv",
-  "text/markdown",
-  "application/json",
-]);
+/*
+=====================================================
+ASSISTANT IMAGE UPLOAD
+=====================================================
+*/
 
-const upload = multer({
+const assistantUpload = multer({
+  dest: "uploads/"
+});
+
+/*
+=====================================================
+IMAGE ANALYSIS UPLOAD
+=====================================================
+*/
+
+const imageUpload = multer({
   storage: multer.memoryStorage(),
+
   limits: {
-    fileSize: 50 * 1024 * 1024,
-    files: 1,
+    fileSize: 10 * 1024 * 1024
   },
-  fileFilter: (req, file, callback) => {
-    if (!allowedMimeTypes.has(file.mimetype)) {
-      return callback(
-        new Error("Unsupported file type.")
+
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(
+        new Error(
+          "Only image files are allowed"
+        )
       );
     }
-
-    callback(null, true);
-  },
+  }
 });
+
+/*
+=====================================================
+CURRENT USER
+=====================================================
+*/
 
 userRouter.get(
   "/current",
@@ -53,75 +63,78 @@ userRouter.get(
   getCurrentUser
 );
 
-userRouter.put(
-  "/update-assistant",
-  isAuth,
-  updateAssistant
-);
+/*
+=====================================================
+NORMAL AI QUESTION
+=====================================================
+*/
 
 userRouter.post(
-  "/ask",
+  "/asktoassistant",
   isAuth,
   askToAssistant
 );
 
-userRouter.post(
-  "/save-history",
-  isAuth,
-  saveHistory
-);
-
-userRouter.delete(
-  "/delete-history/:historyId",
-  isAuth,
-  deleteHistory
-);
-
-userRouter.delete(
-  "/clear-history",
-  isAuth,
-  clearHistory
-);
+/*
+=====================================================
+IMAGE ANALYSIS
+=====================================================
+*/
 
 userRouter.post(
   "/analyze-image",
   isAuth,
-  upload.single("file"),
+  imageUpload.single("image"),
   analyzeImage
 );
 
-userRouter.post(
-  "/analyze-pdf",
-  isAuth,
-  upload.single("pdf"),
-  analyzePdf
-);
+/*
+=====================================================
+SAVE HISTORY
+=====================================================
+*/
 
 userRouter.post(
-  "/analyze-document",
+  "/savehistory",
   isAuth,
-  upload.single("file"),
-  analyzeDocument
+  saveHistory
 );
 
-// Handle Multer validation and size errors.
-userRouter.use((err, req, res, next) => {
-  if (err instanceof multer.MulterError) {
-    return res.status(400).json({
-      message:
-        err.code === "LIMIT_FILE_SIZE"
-          ? "File must be 50 MB or smaller."
-          : err.message,
-    });
-  }
+/*
+=====================================================
+DELETE ONE HISTORY ITEM
+=====================================================
+*/
 
-  if (err) {
-    return res.status(400).json({
-      message: err.message || "Upload failed.",
-    });
-  }
+userRouter.delete(
+  "/history/:historyId",
+  isAuth,
+  deleteHistory
+);
 
-  next();
-});
+/*
+=====================================================
+CLEAR ALL HISTORY
+=====================================================
+*/
+
+userRouter.delete(
+  "/history",
+  isAuth,
+  clearHistory
+);
+
+/*
+=====================================================
+UPDATE ASSISTANT
+=====================================================
+*/
+
+userRouter.put(
+  "/updateassistant",
+  isAuth,
+  assistantUpload.single("assistantImage"),
+  updateAssistant
+);
 
 export default userRouter;
