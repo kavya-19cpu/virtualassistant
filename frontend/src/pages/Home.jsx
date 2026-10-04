@@ -392,7 +392,7 @@ function Home() {
 
 
   // =====================================================
-  // IMAGE -> COMPRESSED DATA URL
+  // IMAGE -> DATA URL
   // =====================================================
 
   const imageFileToDataUrl = file => {
@@ -489,11 +489,12 @@ function Home() {
 
               reject(
                 new Error(
-                  "Could not create image canvas"
+                  "Could not create canvas"
                 )
               );
 
               return;
+
             }
 
 
@@ -506,15 +507,11 @@ function Home() {
             );
 
 
-            const compressed =
+            resolve(
               canvas.toDataURL(
                 "image/jpeg",
                 0.72
-              );
-
-
-            resolve(
-              compressed
+              )
             );
 
           };
@@ -574,13 +571,9 @@ function Home() {
         `temp-${Date.now()}`,
 
       command,
-
       answer,
-
       type,
-
       image,
-
       fileName,
 
       createdAt:
@@ -627,10 +620,10 @@ function Home() {
           response.data.history
         );
 
+
         setUserData(
           previous => ({
             ...previous,
-
             history:
               response.data.history
           })
@@ -678,7 +671,8 @@ function Home() {
 
 
         const updatedHistory =
-          response.data.history || [];
+          response.data?.history ||
+          [];
 
 
         setHistoryItems(
@@ -689,7 +683,6 @@ function Home() {
         setUserData(
           previous => ({
             ...previous,
-
             history:
               updatedHistory
           })
@@ -720,6 +713,7 @@ function Home() {
     ) {
 
       return;
+
     }
 
 
@@ -763,7 +757,6 @@ function Home() {
       setUserData(
         previous => ({
           ...previous,
-
           history: []
         })
       );
@@ -831,18 +824,15 @@ function Home() {
     }
 
 
-    // Cancel previous speech
     clearTimeout(
       speechTimeoutRef.current
     );
 
+
     window.speechSynthesis.cancel();
 
 
-    // =================================================
-    // CREATE SMALL SPEECH CHUNKS
-    // =================================================
-
+    // Split response into sentences first.
     const sentences =
       speechText.match(
         /[^.!?]+[.!?]+|[^.!?]+$/g
@@ -866,11 +856,75 @@ function Home() {
         }
 
 
+        // If an individual sentence is too long,
+        // split it into words.
+        if (
+          cleanSentence.length > 160
+        ) {
+
+          const words =
+            cleanSentence.split(
+              /\s+/
+            );
+
+
+          let wordChunk = "";
+
+
+          words.forEach(word => {
+
+            const combined =
+              `${wordChunk} ${word}`.trim();
+
+
+            if (
+              combined.length > 160
+            ) {
+
+              if (
+                wordChunk.trim()
+              ) {
+
+                chunks.push(
+                  wordChunk.trim()
+                );
+
+              }
+
+
+              wordChunk =
+                word;
+
+            } else {
+
+              wordChunk =
+                combined;
+
+            }
+
+          });
+
+
+          if (
+            wordChunk.trim()
+          ) {
+
+            chunks.push(
+              wordChunk.trim()
+            );
+
+          }
+
+
+          return;
+
+        }
+
+
         const combined =
           `${currentChunk} ${cleanSentence}`.trim();
 
 
-        // Keep speech chunks reasonably short
         if (
           combined.length > 160
         ) {
@@ -925,10 +979,6 @@ function Home() {
     let currentIndex = 0;
 
 
-    // =================================================
-    // SPEAKING START
-    // =================================================
-
     speakingRef.current =
       true;
 
@@ -937,22 +987,19 @@ function Home() {
     setIsAIActive(true);
 
 
-    // =================================================
-    // SPEAK NEXT CHUNK
-    // =================================================
-
     const speakNextChunk = () => {
 
-      // User stopped speaking
+      // USER PRESSED STOP
       if (
         !speakingRef.current
       ) {
 
         return;
+
       }
 
 
-      // All chunks completed
+      // ALL CHUNKS FINISHED
       if (
         currentIndex >=
         chunks.length
@@ -973,27 +1020,42 @@ function Home() {
         }
 
 
-        // Restart listening after answer
+        // Start microphone again
         if (
           listeningRef.current &&
           !processingRef.current &&
           recognitionRef.current
         ) {
 
-          try {
+          setTimeout(() => {
 
-            recognitionRef.current.start();
+            if (
+              listeningRef.current &&
+              !processingRef.current &&
+              !speakingRef.current
+            ) {
 
-          } catch {
+              try {
 
-            // Already running
+                recognitionRef.current.start();
 
-          }
+                setIsListening(true);
+
+              } catch {
+
+                // Already running
+
+              }
+
+            }
+
+          }, 400);
 
         }
 
 
         return;
+
       }
 
 
@@ -1025,6 +1087,7 @@ function Home() {
           window.speechSynthesis.cancel();
 
           return;
+
         }
 
 
@@ -1042,6 +1105,7 @@ function Home() {
         ) {
 
           return;
+
         }
 
 
@@ -1049,14 +1113,11 @@ function Home() {
 
 
         speechTimeoutRef.current =
-          setTimeout(
-            () => {
+          setTimeout(() => {
 
-              speakNextChunk();
+            speakNextChunk();
 
-            },
-            50
-          );
+          }, 80);
 
       };
 
@@ -1064,17 +1125,18 @@ function Home() {
       utterance.onerror = event => {
 
         console.error(
-          "SPEECH ERROR:",
-          event
+          "Speech synthesis error:",
+          event.error
         );
 
 
-        // If user intentionally stopped
+        // Don't continue if the user stopped it.
         if (
           !speakingRef.current
         ) {
 
           return;
+
         }
 
 
@@ -1082,16 +1144,21 @@ function Home() {
 
 
         speechTimeoutRef.current =
-          setTimeout(
-            () => {
+          setTimeout(() => {
 
-              speakNextChunk();
+            speakNextChunk();
 
-            },
-            50
-          );
+          }, 80);
 
       };
+
+
+      // Chrome speech synthesis sometimes pauses.
+      try {
+
+        window.speechSynthesis.resume();
+
+      } catch {}
 
 
       window.speechSynthesis.speak(
@@ -1256,78 +1323,49 @@ function Home() {
     switch (site) {
 
       case "google":
-
         return `https://www.google.com/search?q=${encodedQuery}`;
 
-
       case "youtube":
-
         return `https://www.youtube.com/results?search_query=${encodedQuery}`;
 
-
       case "yahoo":
-
         return `https://search.yahoo.com/search?p=${encodedQuery}`;
 
-
       case "amazon":
-
         return `https://www.amazon.in/s?k=${encodedQuery}`;
 
-
       case "flipkart":
-
         return `https://www.flipkart.com/search?q=${encodedQuery}`;
 
-
       case "wikipedia":
-
         return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
 
-
       case "reddit":
-
         return `https://www.reddit.com/search/?q=${encodedQuery}`;
 
-
       case "github":
-
         return `https://github.com/search?q=${encodedQuery}`;
 
-
       case "linkedin":
-
         return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
 
-
       case "spotify":
-
         return `https://open.spotify.com/search/${encodedQuery}`;
 
-
       case "pinterest":
-
         return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
 
-
       case "facebook":
-
         return `https://www.facebook.com/search/top?q=${encodedQuery}`;
-
 
       case "x":
       case "twitter":
-
         return `https://x.com/search?q=${encodedQuery}`;
 
-
       case "instagram":
-
         return `https://www.instagram.com/explore/search/keyword/?q=${encodedQuery}`;
 
-
       default:
-
         return null;
 
     }
@@ -1336,7 +1374,7 @@ function Home() {
 
 
   // =====================================================
-  // EXTRACT SEARCH COMMAND
+  // SEARCH COMMAND PARSER
   // =====================================================
 
   const extractSearchCommand =
@@ -1364,10 +1402,6 @@ function Home() {
         return null;
       }
 
-
-      // =================================================
-      // WEBSITE ALIASES
-      // =================================================
 
       const siteAliases = {
 
@@ -1430,19 +1464,13 @@ function Home() {
       let match;
 
 
-      // =================================================
-      // 1. SEARCH QUERY ON/IN/USING SITE
-      // =================================================
-
+      // search cats on google
       match =
         text.match(
 
           new RegExp(
-
             `^(?:search|find|look\\s+up)\\s+(?:for\\s+)?(.+?)\\s+(?:on|in|using)\\s+(${siteNames})$`,
-
             "i"
-
           )
 
         );
@@ -1474,19 +1502,13 @@ function Home() {
       }
 
 
-      // =================================================
-      // 2. SEARCH SITE FOR QUERY
-      // =================================================
-
+      // search google for cats
       match =
         text.match(
 
           new RegExp(
-
             `^(?:search|find|look\\s+up)\\s+(${siteNames})\\s+(?:for|about)\\s+(.+)$`,
-
             "i"
-
           )
 
         );
@@ -1518,19 +1540,13 @@ function Home() {
       }
 
 
-      // =================================================
-      // 3. SEARCH SITE QUERY
-      // =================================================
-
+      // search google cats
       match =
         text.match(
 
           new RegExp(
-
             `^(?:search|find|look\\s+up)\\s+(${siteNames})\\s+(.+)$`,
-
             "i"
-
           )
 
         );
@@ -1562,54 +1578,7 @@ function Home() {
       }
 
 
-      // =================================================
-      // 4. OPEN SITE AND SEARCH
-      // =================================================
-
-      match =
-        text.match(
-
-          new RegExp(
-
-            `^(?:open|launch|visit|go\\s+to|take\\s+me\\s+to)\\s+(${siteNames})(?:\\s+(?:website|site))?\\s+(?:and\\s+)?(?:search|find|look\\s+up)\\s+(?:for\\s+)?(.+)$`,
-
-            "i"
-
-          )
-
-        );
-
-
-      if (match) {
-
-        const site =
-          siteAliases[
-            match[1].toLowerCase()
-          ];
-
-        const query =
-          match[2].trim();
-
-
-        if (
-          site &&
-          query
-        ) {
-
-          return {
-            site,
-            query
-          };
-
-        }
-
-      }
-
-
-      // =================================================
-      // 5. NORMAL SEARCH WITHOUT SITE
-      // =================================================
-
+      // search cats
       match =
         text.match(
           /^(?:search|find|look\s+up)\s+(?:for\s+)?(.+)$/i
@@ -1644,34 +1613,6 @@ function Home() {
 
 
       return null;
-
-    };
-
-
-  // =====================================================
-  // YOUTUBE QUERY
-  // =====================================================
-
-  const getYouTubeQuery =
-    command => {
-
-      const result =
-        extractSearchCommand(
-          command
-        );
-
-
-      if (
-        result?.site ===
-        "youtube"
-      ) {
-
-        return result.query;
-
-      }
-
-
-      return "";
 
     };
 
@@ -1719,7 +1660,7 @@ function Home() {
       try {
 
         // =================================================
-        // EXPLICIT SEARCH
+        // SEARCH COMMAND
         // =================================================
 
         const searchCommand =
@@ -1790,19 +1731,19 @@ function Home() {
 
 
         // =================================================
-        // SIMPLE GOOGLE SEARCH
+        // GOOGLE
         // =================================================
 
-        const googleSearchMatch =
+        const googleMatch =
           cleanedCommand.match(
             /^(?:google)\s+(.+)$/i
           );
 
 
-        if (googleSearchMatch) {
+        if (googleMatch) {
 
           const query =
-            googleSearchMatch[1].trim();
+            googleMatch[1].trim();
 
 
           const answer =
@@ -1837,19 +1778,19 @@ function Home() {
 
 
         // =================================================
-        // SIMPLE YOUTUBE SEARCH
+        // YOUTUBE
         // =================================================
 
-        const youtubeSearchMatch =
+        const youtubeMatch =
           cleanedCommand.match(
             /^(?:youtube|yt)\s+(.+)$/i
           );
 
 
-        if (youtubeSearchMatch) {
+        if (youtubeMatch) {
 
           const query =
-            youtubeSearchMatch[1].trim();
+            youtubeMatch[1].trim();
 
 
           const answer =
@@ -1884,7 +1825,7 @@ function Home() {
 
 
         // =================================================
-        // DIRECT WEBSITE
+        // OPEN WEBSITE
         // =================================================
 
         const directMatch =
@@ -2021,7 +1962,7 @@ function Home() {
 
 
         // =================================================
-        // GOOGLE
+        // GOOGLE ACTION
         // =================================================
 
         if (
@@ -2040,16 +1981,12 @@ function Home() {
           "google_search"
         ) {
 
-          const query =
-            parsedResult?.query;
-
-
           if (
-            query?.trim()
+            parsedResult?.query?.trim()
           ) {
 
             googleSearch(
-              query
+              parsedResult.query
             );
 
           }
@@ -2058,7 +1995,7 @@ function Home() {
 
 
         // =================================================
-        // YOUTUBE
+        // YOUTUBE ACTION
         // =================================================
 
         else if (
@@ -2079,16 +2016,12 @@ function Home() {
             "youtube_play"
         ) {
 
-          const query =
-            parsedResult?.query;
-
-
           if (
-            query?.trim()
+            parsedResult?.query?.trim()
           ) {
 
             youtubeSearch(
-              query
+              parsedResult.query
             );
 
           }
@@ -2113,7 +2046,7 @@ function Home() {
 
 
         // =================================================
-        // SHOW ANSWER
+        // DISPLAY ANSWER
         // =================================================
 
         setAiText(response);
@@ -2127,6 +2060,10 @@ function Home() {
           type
         );
 
+
+        // =================================================
+        // SPEAK VOICE RESPONSE
+        // =================================================
 
         if (shouldSpeak) {
 
@@ -2174,6 +2111,57 @@ function Home() {
         ) {
 
           setIsAIActive(false);
+
+        }
+
+
+        // =================================================
+        // IMPORTANT:
+        // START LISTENING AGAIN AFTER GEMINI
+        // =================================================
+
+        if (
+          listeningRef.current &&
+          !speakingRef.current &&
+          recognitionRef.current
+        ) {
+
+          clearTimeout(
+            restartTimeoutRef.current
+          );
+
+
+          restartTimeoutRef.current =
+            setTimeout(() => {
+
+              if (
+                listeningRef.current &&
+                !speakingRef.current &&
+                recognitionRef.current
+              ) {
+
+                try {
+
+                  recognitionRef.current.start();
+
+                  setIsListening(true);
+
+                  console.log(
+                    "Listening again..."
+                  );
+
+                } catch (error) {
+
+                  console.log(
+                    "Recognition already active:",
+                    error.message
+                  );
+
+                }
+
+              }
+
+            }, 500);
 
         }
 
@@ -2225,10 +2213,6 @@ function Home() {
 
 
       setTypedText("");
-
-      setHistoryImage("");
-
-      setHistoryFileName("");
 
 
       await processCommand(
@@ -2294,10 +2278,6 @@ function Home() {
       }
 
 
-      setHistoryImage("");
-
-      setHistoryFileName("");
-
       setSelectedPdf(null);
 
       setPdfPreviewName("");
@@ -2307,6 +2287,10 @@ function Home() {
       setImagePreview(
         URL.createObjectURL(file)
       );
+
+      setHistoryImage("");
+
+      setHistoryFileName("");
 
     };
 
@@ -2355,10 +2339,6 @@ function Home() {
       }
 
 
-      setHistoryImage("");
-
-      setHistoryFileName("");
-
       removeImage();
 
       setSelectedPdf(file);
@@ -2366,6 +2346,10 @@ function Home() {
       setPdfPreviewName(
         file.name
       );
+
+      setHistoryImage("");
+
+      setHistoryFileName("");
 
     };
 
@@ -2424,10 +2408,6 @@ function Home() {
           }
 
 
-          setHistoryImage("");
-
-          setHistoryFileName("");
-
           setSelectedPdf(null);
 
           setPdfPreviewName("");
@@ -2438,6 +2418,9 @@ function Home() {
             URL.createObjectURL(file)
           );
 
+          setHistoryImage("");
+
+          setHistoryFileName("");
 
           return;
 
@@ -2504,7 +2487,7 @@ function Home() {
 
 
   // =====================================================
-  // PDF ANALYSIS
+  // ANALYZE PDF
   // =====================================================
 
   const analyzePdf =
@@ -2524,10 +2507,6 @@ function Home() {
         typedText.trim() ||
         "Analyze this PDF and explain its important contents.";
 
-
-      setHistoryImage("");
-
-      setHistoryFileName("");
 
       setIsPdfAnalyzing(true);
 
@@ -2602,7 +2581,6 @@ function Home() {
 
         setTypedText("");
 
-
       } catch (error) {
 
         console.error(
@@ -2627,9 +2605,7 @@ function Home() {
 
       } finally {
 
-        setIsPdfAnalyzing(
-          false
-        );
+        setIsPdfAnalyzing(false);
 
 
         if (
@@ -2646,7 +2622,7 @@ function Home() {
 
 
   // =====================================================
-  // IMAGE ANALYSIS
+  // ANALYZE IMAGE
   // =====================================================
 
   const analyzeImage =
@@ -2666,10 +2642,6 @@ function Home() {
         typedText.trim() ||
         "Analyze this image and explain what you see.";
 
-
-      setHistoryImage("");
-
-      setHistoryFileName("");
 
       setIsImageAnalyzing(true);
 
@@ -2742,11 +2714,11 @@ function Home() {
               selectedImage
             );
 
-        } catch (imageError) {
+        } catch (error) {
 
           console.error(
-            "IMAGE HISTORY CONVERSION ERROR:",
-            imageError
+            "IMAGE HISTORY ERROR:",
+            error
           );
 
         }
@@ -2763,7 +2735,6 @@ function Home() {
         removeImage();
 
         setTypedText("");
-
 
       } catch (error) {
 
@@ -2789,9 +2760,7 @@ function Home() {
 
       } finally {
 
-        setIsImageAnalyzing(
-          false
-        );
+        setIsImageAnalyzing(false);
 
 
         if (
@@ -2821,7 +2790,7 @@ function Home() {
     if (!SpeechRecognition) {
 
       console.warn(
-        "Speech recognition is not supported."
+        "Speech recognition is not supported in this browser."
       );
 
       return;
@@ -2833,14 +2802,21 @@ function Home() {
       new SpeechRecognition();
 
 
+    // IMPORTANT:
+    // false allows us to get a clean final sentence
+    // and then restart recognition after processing.
     recognition.continuous =
+      false;
+
+
+    // true allows the text to appear while you speak.
+    recognition.interimResults =
       true;
+
 
     recognition.lang =
       "en-US";
 
-    recognition.interimResults =
-      false;
 
     recognition.maxAlternatives =
       1;
@@ -2850,22 +2826,98 @@ function Home() {
       recognition;
 
 
+    // ===================================================
+    // ON START
+    // ===================================================
+
     recognition.onstart =
       () => {
 
+        console.log(
+          "Microphone started"
+        );
+
+
         listeningRef.current =
           true;
+
 
         setIsListening(true);
 
       };
 
 
+    // ===================================================
+    // ON RESULT
+    // ===================================================
+
     recognition.onresult =
       async event => {
 
+        let finalTranscript =
+          "";
+
+        let interimTranscript =
+          "";
+
+
+        for (
+          let i =
+            event.resultIndex;
+
+          i <
+          event.results.length;
+
+          i++
+        ) {
+
+          const result =
+            event.results[i];
+
+
+          if (
+            result.isFinal
+          ) {
+
+            finalTranscript +=
+              result[0]?.transcript ||
+              "";
+
+          } else {
+
+            interimTranscript +=
+              result[0]?.transcript ||
+              "";
+
+          }
+
+        }
+
+
+        // =================================================
+        // SHOW LIVE SPEECH AS TEXT
+        // =================================================
+
+        const liveText =
+          `${finalTranscript} ${interimTranscript}`
+            .trim();
+
+
+        if (liveText) {
+
+          setUserText(
+            liveText
+          );
+
+        }
+
+
+        // =================================================
+        // WAIT FOR FINAL SPEECH
+        // =================================================
+
         if (
-          processingRef.current
+          !finalTranscript.trim()
         ) {
 
           return;
@@ -2873,41 +2925,36 @@ function Home() {
         }
 
 
-        const lastResult =
-          event.results[
-            event.results.length - 1
-          ];
-
-
-        if (!lastResult) {
-          return;
-        }
-
-
         const transcript =
-          lastResult[0]
-            ?.transcript
-            ?.trim();
+          finalTranscript.trim();
 
 
-        if (!transcript) {
-          return;
-        }
+        console.log(
+          "Recognized speech:",
+          transcript
+        );
 
 
         const lowerTranscript =
-          transcript.toLowerCase();
+          transcript
+            .toLowerCase()
+            .trim();
 
+
+        // =================================================
+        // STOP COMMANDS
+        // =================================================
 
         const stopCommands = [
 
-          "thank you",
-          "thanks",
-          "stop",
-          "bye",
-          "goodbye",
           "stop listening",
-          "cancel"
+          "stop microphone",
+          "turn off microphone",
+          "cancel microphone",
+          "stop",
+          "cancel",
+          "goodbye",
+          "bye"
 
         ];
 
@@ -2925,10 +2972,9 @@ function Home() {
         }
 
 
-        setUserText(
-          transcript
-        );
-
+        // =================================================
+        // SEND TO GEMINI
+        // =================================================
 
         await processCommand(
           transcript,
@@ -2939,50 +2985,100 @@ function Home() {
       };
 
 
+    // ===================================================
+    // ON END
+    // ===================================================
+
     recognition.onend =
       () => {
 
+        console.log(
+          "Microphone ended"
+        );
+
+
+        // User clicked microphone OFF.
         if (
-          listeningRef.current &&
-          !speakingRef.current &&
-          !processingRef.current
-        ) {
-
-          clearTimeout(
-            restartTimeoutRef.current
-          );
-
-
-          restartTimeoutRef.current =
-            setTimeout(
-              () => {
-
-                try {
-
-                  recognition.start();
-
-                } catch {
-
-                  // Already running
-
-                }
-
-              },
-              400
-            );
-
-        }
-
-        else if (
           !listeningRef.current
         ) {
 
           setIsListening(false);
 
+          return;
+
         }
+
+
+        setIsListening(false);
+
+
+        // If Gemini is processing the command,
+        // processCommand finally{} will restart it.
+        if (
+          processingRef.current
+        ) {
+
+          return;
+
+        }
+
+
+        // If assistant is speaking,
+        // don't start microphone yet.
+        if (
+          speakingRef.current
+        ) {
+
+          return;
+
+        }
+
+
+        // Otherwise restart listening.
+        clearTimeout(
+          restartTimeoutRef.current
+        );
+
+
+        restartTimeoutRef.current =
+          setTimeout(() => {
+
+            if (
+              listeningRef.current &&
+              !processingRef.current &&
+              !speakingRef.current &&
+              recognitionRef.current
+            ) {
+
+              try {
+
+                recognitionRef.current.start();
+
+                setIsListening(true);
+
+                console.log(
+                  "Listening again..."
+                );
+
+              } catch (error) {
+
+                console.log(
+                  "Recognition restart:",
+                  error.message
+                );
+
+              }
+
+            }
+
+          }, 400);
 
       };
 
+
+    // ===================================================
+    // ON ERROR
+    // ===================================================
 
     recognition.onerror =
       event => {
@@ -2997,31 +3093,78 @@ function Home() {
           event.error ===
             "not-allowed" ||
           event.error ===
-            "audio-capture"
+            "service-not-allowed"
         ) {
 
           listeningRef.current =
             false;
 
+
           setIsListening(false);
+
+
+          alert(
+            "Microphone permission is blocked. Please allow microphone access in Chrome."
+          );
+
+
+          return;
+
+        }
+
+
+        if (
+          event.error ===
+          "audio-capture"
+        ) {
+
+          listeningRef.current =
+            false;
+
+
+          setIsListening(false);
+
+
+          alert(
+            "No microphone was detected. Please check your microphone."
+          );
+
+
+          return;
+
+        }
+
+
+        // no-speech and aborted can happen
+        // normally when recognition ends.
+        if (
+          event.error ===
+            "no-speech" ||
+          event.error ===
+            "aborted"
+        ) {
+
+          return;
 
         }
 
       };
 
 
+    // ===================================================
+    // CLEANUP
+    // ===================================================
+
     return () => {
 
       listeningRef.current =
-        false;
-
-      processingRef.current =
         false;
 
 
       clearTimeout(
         restartTimeoutRef.current
       );
+
 
       clearTimeout(
         speechTimeoutRef.current
@@ -3032,18 +3175,7 @@ function Home() {
 
         recognition.stop();
 
-      } catch {
-
-        // Nothing to stop
-
-      }
-
-
-      window.speechSynthesis.cancel();
-
-
-      speakingRef.current =
-        false;
+      } catch {}
 
 
       recognitionRef.current =
@@ -3074,8 +3206,7 @@ function Home() {
       }
 
 
-      // If assistant is speaking,
-      // stop him before starting microphone
+      // Stop assistant speech first.
       if (
         speakingRef.current ||
         window.speechSynthesis.speaking
@@ -3086,32 +3217,36 @@ function Home() {
       }
 
 
+      clearTimeout(
+        restartTimeoutRef.current
+      );
+
+
+      listeningRef.current =
+        true;
+
+
+      setIsListening(true);
+
+
       try {
-
-        window.speechSynthesis.cancel();
-
-
-        speakingRef.current =
-          false;
-
-
-        setIsSpeaking(false);
-
-
-        listeningRef.current =
-          true;
-
-
-        setIsListening(true);
-
 
         recognitionRef.current.start();
 
-      } catch {
+        console.log(
+          "Listening for your voice..."
+        );
+
+      } catch (error) {
 
         console.log(
-          "Microphone already running."
+          "Recognition start:",
+          error.message
         );
+
+
+        // Already running is okay.
+        setIsListening(true);
 
       }
 
@@ -3145,26 +3280,30 @@ function Home() {
 
           recognitionRef.current.stop();
 
-        } catch {
-
-          // Nothing to stop
-
-        }
+        } catch {}
 
       }
+
+
+      console.log(
+        "Microphone stopped"
+      );
 
     };
 
 
   // =====================================================
-  // MIC BUTTON HANDLER
+  // MIC BUTTON
   // =====================================================
 
   const handleMicClick =
     () => {
 
-      // If assistant is speaking,
-      // mic button becomes STOP
+      // -----------------------------------------------
+      // If assistant is speaking:
+      // MIC BUTTON = STOP SPEAKING
+      // -----------------------------------------------
+
       if (
         isSpeaking ||
         speakingRef.current ||
@@ -3178,7 +3317,10 @@ function Home() {
       }
 
 
-      // Otherwise microphone works normally
+      // -----------------------------------------------
+      // Normal microphone behavior
+      // -----------------------------------------------
+
       if (isListening) {
 
         stopListening();
@@ -3198,6 +3340,11 @@ function Home() {
 
   const handleLogout =
     async () => {
+
+      stopSpeaking();
+
+      stopListening();
+
 
       try {
 
@@ -3240,15 +3387,11 @@ function Home() {
 
         const command =
           item?.command ||
-          item?.text ||
-          item?.query ||
           "";
-
 
         const answer =
           item?.answer ||
           "";
-
 
         const fileName =
           item?.fileName ||
@@ -3293,16 +3436,16 @@ function Home() {
   const openHistory =
     item => {
 
-      // Stop speech when opening history
       stopSpeaking();
 
 
       const command =
-        item?.command || "";
-
+        item?.command ||
+        "";
 
       const answer =
-        item?.answer || "";
+        item?.answer ||
+        "";
 
 
       setUserText(
@@ -3317,7 +3460,9 @@ function Home() {
       );
 
 
-      setShowAIText(true);
+      setShowAIText(
+        true
+      );
 
 
       if (
@@ -3352,7 +3497,9 @@ function Home() {
       }
 
 
-      setShowHistory(false);
+      setShowHistory(
+        false
+      );
 
     };
 
@@ -3369,18 +3516,26 @@ function Home() {
       }
 
 
-      return new Date(
-        date
-      ).toLocaleString(
-        "en-IN",
-        {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit"
-        }
-      );
+      try {
+
+        return new Date(
+          date
+        ).toLocaleString(
+          "en-IN",
+          {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          }
+        );
+
+      } catch {
+
+        return "";
+
+      }
 
     };
 
@@ -3392,7 +3547,9 @@ function Home() {
   return (
 
     <div
-      onPaste={handlePaste}
+      onPaste={
+        handlePaste
+      }
       className="
         relative
         min-h-screen
@@ -3425,8 +3582,6 @@ function Home() {
           md:px-6
         "
       >
-
-        {/* LEFT */}
 
         <div
           className="
@@ -3546,8 +3701,6 @@ function Home() {
         </div>
 
 
-        {/* RIGHT */}
-
         <div
           className="
             relative
@@ -3575,9 +3728,7 @@ function Home() {
               sm:block
             "
           >
-
             Customize
-
           </button>
 
 
@@ -3639,8 +3790,6 @@ function Home() {
           </button>
 
 
-          {/* PROFILE MENU */}
-
           {showProfileMenu && (
 
             <div
@@ -3658,7 +3807,6 @@ function Home() {
                 bg-[#0B1222]
                 p-2
                 shadow-2xl
-                shadow-black/50
               "
             >
 
@@ -3677,7 +3825,6 @@ function Home() {
                     truncate
                     text-sm
                     font-semibold
-                    text-white
                   "
                 >
 
@@ -3726,9 +3873,7 @@ function Home() {
                   text-left
                   text-sm
                   text-gray-300
-                  transition
                   hover:bg-white/5
-                  hover:text-white
                 "
               >
 
@@ -3737,9 +3882,7 @@ function Home() {
                   className="text-cyan-400"
                 />
 
-                <span>
-                  Customize Assistant
-                </span>
+                Customize Assistant
 
               </button>
 
@@ -3768,10 +3911,8 @@ function Home() {
                   text-left
                   text-sm
                   text-gray-300
-                  transition
                   hover:bg-red-400/10
                   hover:text-red-400
-                  disabled:cursor-not-allowed
                   disabled:opacity-40
                 "
               >
@@ -3780,9 +3921,7 @@ function Home() {
                   size={17}
                 />
 
-                <span>
-                  Clear All History
-                </span>
+                Clear All History
 
               </button>
 
@@ -3810,9 +3949,7 @@ function Home() {
                   text-left
                   text-sm
                   text-gray-300
-                  transition
                   hover:bg-white/5
-                  hover:text-white
                 "
               >
 
@@ -3821,9 +3958,7 @@ function Home() {
                   className="text-cyan-400"
                 />
 
-                <span>
-                  Change Password
-                </span>
+                Change Password
 
               </button>
 
@@ -3852,7 +3987,6 @@ function Home() {
                   text-left
                   text-sm
                   text-red-400
-                  transition
                   hover:bg-red-400/10
                 "
               >
@@ -3861,9 +3995,7 @@ function Home() {
                   size={17}
                 />
 
-                <span>
-                  Logout
-                </span>
+                Logout
 
               </button>
 
@@ -3877,7 +4009,7 @@ function Home() {
 
 
       {/* =================================================
-          HISTORY DRAWER
+          HISTORY
       ================================================= */}
 
       {showHistory && (
@@ -3934,7 +4066,6 @@ function Home() {
                 <h2
                   className="
                     font-semibold
-                    text-white
                   "
                 >
                   History
@@ -4040,11 +4171,9 @@ function Home() {
 
             <div
               className="
-                custom-scrollbar
                 min-h-0
                 flex-1
                 overflow-y-auto
-                overscroll-contain
                 p-3
               "
             >
@@ -4067,9 +4196,7 @@ function Home() {
                         border-white/5
                         bg-white/2.5
                         p-3
-                        transition
                         hover:border-cyan-400/20
-                        hover:bg-white/4
                       "
                     >
 
@@ -4097,14 +4224,12 @@ function Home() {
 
                           <span
                             className="
-                              shrink-0
                               rounded-full
                               bg-cyan-400/10
                               px-2
                               py-1
                               text-[10px]
                               uppercase
-                              tracking-wide
                               text-cyan-300
                             "
                           >
@@ -4118,7 +4243,6 @@ function Home() {
                           <span
                             className="
                               flex
-                              min-w-0
                               items-center
                               gap-1
                               text-[10px]
@@ -4130,15 +4254,9 @@ function Home() {
                               size={10}
                             />
 
-                            <span
-                              className="truncate"
-                            >
-
-                              {formatDate(
-                                item.createdAt
-                              )}
-
-                            </span>
+                            {formatDate(
+                              item.createdAt
+                            )}
 
                           </span>
 
@@ -4153,15 +4271,12 @@ function Home() {
                               src={
                                 item.image
                               }
-                              alt="Previous question"
+                              alt="Previous"
                               className="
                                 mb-3
                                 h-28
                                 w-full
                                 rounded-xl
-                                border
-                                border-white/10
-                                bg-black/20
                                 object-cover
                               "
                             />
@@ -4176,12 +4291,9 @@ function Home() {
                               className="
                                 mb-3
                                 flex
-                                min-w-0
                                 items-center
                                 gap-3
                                 rounded-xl
-                                border
-                                border-cyan-400/10
                                 bg-cyan-400/3
                                 p-3
                               "
@@ -4189,16 +4301,11 @@ function Home() {
 
                               <FiFileText
                                 size={22}
-                                className="
-                                  shrink-0
-                                  text-cyan-400
-                                "
+                                className="text-cyan-400"
                               />
-
 
                               <span
                                 className="
-                                  min-w-0
                                   truncate
                                   text-xs
                                   text-gray-400
@@ -4218,7 +4325,6 @@ function Home() {
                         <p
                           className="
                             line-clamp-2
-                            wrap-break-word
                             text-sm
                             text-gray-300
                           "
@@ -4235,9 +4341,7 @@ function Home() {
                             className="
                               mt-2
                               line-clamp-2
-                              wrap-break-word
                               text-xs
-                              leading-relaxed
                               text-gray-600
                             "
                           >
@@ -4271,7 +4375,6 @@ function Home() {
                               gap-1
                               text-xs
                               text-gray-600
-                              transition
                               hover:text-red-400
                             "
                           >
@@ -4298,41 +4401,14 @@ function Home() {
                   className="
                     flex
                     h-full
-                    flex-col
                     items-center
                     justify-center
-                    px-5
-                    text-center
+                    text-sm
+                    text-gray-500
                   "
                 >
 
-                  <div
-                    className="
-                      mb-3
-                      flex
-                      h-12
-                      w-12
-                      items-center
-                      justify-center
-                      rounded-full
-                      border
-                      border-white/10
-                      bg-white/5
-                      text-gray-600
-                    "
-                  >
-                    ✦
-                  </div>
-
-
-                  <p
-                    className="
-                      text-sm
-                      text-gray-500
-                    "
-                  >
-                    No history found
-                  </p>
+                  No history found
 
                 </div>
 
@@ -4365,7 +4441,6 @@ function Home() {
           className="
             flex
             h-full
-            min-w-0
             w-full
             max-w-6xl
             flex-col
@@ -4379,19 +4454,17 @@ function Home() {
         >
 
           {/* =================================================
-              CONVERSATION
+              CHAT
           ================================================= */}
 
           <div
             className="
-              custom-scrollbar
               flex
               min-h-0
               w-full
               flex-1
               justify-center
               overflow-y-auto
-              overscroll-contain
               px-1
               pb-5
             "
@@ -4406,11 +4479,10 @@ function Home() {
                 items-center
                 pt-2
                 sm:pt-5
-                md:pt-7
               "
             >
 
-              {/* ASSISTANT */}
+              {/* AI IMAGE */}
 
               <div
                 className={`
@@ -4418,7 +4490,6 @@ function Home() {
                   rounded-full
                   p-1
                   transition
-                  sm:mb-5
                   ${
                     isAIActive
                       ? "ring-4 ring-cyan-400/30"
@@ -4438,8 +4509,6 @@ function Home() {
                     w-20
                     rounded-full
                     object-cover
-                    shadow-2xl
-                    shadow-cyan-950/30
                     sm:h-28
                     sm:w-28
                     md:h-32
@@ -4454,13 +4523,10 @@ function Home() {
 
               <h1
                 className="
-                  max-w-full
-                  wrap-break-word
                   px-3
                   text-center
                   text-xl
                   font-semibold
-                  text-white
                   sm:text-2xl
                   md:text-3xl
                 "
@@ -4505,7 +4571,7 @@ function Home() {
               </p>
 
 
-              {/* OLD IMAGE */}
+              {/* HISTORY IMAGE */}
 
               {historyImage && (
 
@@ -4514,19 +4580,16 @@ function Home() {
                     mt-5
                     w-full
                     max-w-2xl
-                    overflow-hidden
                     rounded-2xl
                     border
                     border-cyan-400/10
-                    bg-black/20
                     p-2
-                    sm:mt-7
                   "
                 >
 
                   <img
                     src={historyImage}
-                    alt="Previous image question"
+                    alt="Previous"
                     className="
                       mx-auto
                       max-h-[45vh]
@@ -4536,24 +4599,12 @@ function Home() {
                     "
                   />
 
-
-                  <p
-                    className="
-                      mt-2
-                      text-center
-                      text-[10px]
-                      text-gray-600
-                    "
-                  >
-                    Previous image from history
-                  </p>
-
                 </div>
 
               )}
 
 
-              {/* OLD PDF */}
+              {/* HISTORY PDF */}
 
               {historyFileName && (
 
@@ -4563,7 +4614,6 @@ function Home() {
                     flex
                     w-full
                     max-w-2xl
-                    min-w-0
                     items-center
                     gap-3
                     rounded-2xl
@@ -4571,29 +4621,13 @@ function Home() {
                     border-cyan-400/10
                     bg-cyan-400/3
                     p-4
-                    sm:mt-7
                   "
                 >
 
-                  <div
-                    className="
-                      flex
-                      h-11
-                      w-11
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-xl
-                      bg-cyan-400/10
-                    "
-                  >
-
-                    <FiFileText
-                      size={21}
-                      className="text-cyan-400"
-                    />
-
-                  </div>
+                  <FiFileText
+                    size={25}
+                    className="text-cyan-400"
+                  />
 
 
                   <div
@@ -4632,7 +4666,7 @@ function Home() {
               )}
 
 
-              {/* USER QUESTION */}
+              {/* USER TEXT */}
 
               {userText && (
 
@@ -4648,12 +4682,9 @@ function Home() {
                     bg-cyan-400/5
                     px-4
                     py-3
-                    text-left
                     text-sm
                     leading-relaxed
                     text-gray-300
-                    sm:mt-7
-                    sm:px-5
                   "
                 >
 
@@ -4664,7 +4695,7 @@ function Home() {
               )}
 
 
-              {/* AI ANSWER */}
+              {/* AI TEXT */}
 
               {showAIText &&
                 aiText && (
@@ -4682,7 +4713,6 @@ function Home() {
                       bg-white/3
                       px-4
                       py-4
-                      text-left
                       text-sm
                       leading-7
                       whitespace-pre-wrap
@@ -4715,7 +4745,6 @@ function Home() {
                 mb-3
                 w-full
                 max-w-3xl
-                shrink-0
                 rounded-2xl
                 border
                 border-cyan-400/20
@@ -4727,7 +4756,6 @@ function Home() {
               <div
                 className="
                   flex
-                  min-w-0
                   items-center
                   gap-3
                 "
@@ -4742,8 +4770,6 @@ function Home() {
                     shrink-0
                     rounded-xl
                     object-cover
-                    sm:h-16
-                    sm:w-16
                   "
                 />
 
@@ -4757,9 +4783,7 @@ function Home() {
 
                   <p
                     className="
-                      truncate
                       text-sm
-                      font-medium
                       text-white
                     "
                   >
@@ -4769,14 +4793,11 @@ function Home() {
 
                   <p
                     className="
-                      mt-1
-                      hidden
                       text-xs
                       text-gray-500
-                      sm:block
                     "
                   >
-                    Type your question below and press Send.
+                    Ask your question below.
                   </p>
 
                 </div>
@@ -4791,12 +4812,10 @@ function Home() {
                     flex
                     h-8
                     w-8
-                    shrink-0
                     items-center
                     justify-center
                     rounded-lg
                     text-gray-500
-                    hover:bg-white/5
                     hover:text-red-400
                   "
                 >
@@ -4825,7 +4844,6 @@ function Home() {
                 mb-3
                 w-full
                 max-w-3xl
-                shrink-0
                 rounded-2xl
                 border
                 border-cyan-400/20
@@ -4837,7 +4855,6 @@ function Home() {
               <div
                 className="
                   flex
-                  min-w-0
                   items-center
                   gap-3
                 "
@@ -4853,14 +4870,12 @@ function Home() {
                     justify-center
                     rounded-xl
                     bg-red-400/10
-                    text-red-400
-                    sm:h-16
-                    sm:w-16
                   "
                 >
 
                   <FiFileText
                     size={25}
+                    className="text-red-400"
                   />
 
                 </div>
@@ -4887,26 +4902,12 @@ function Home() {
                     className="
                       truncate
                       text-sm
-                      font-medium
                       text-white
                     "
                   >
 
                     {pdfPreviewName}
 
-                  </p>
-
-
-                  <p
-                    className="
-                      mt-1
-                      hidden
-                      text-xs
-                      text-gray-500
-                      sm:block
-                    "
-                  >
-                    Type your question below and press Send.
                   </p>
 
                 </div>
@@ -4921,12 +4922,10 @@ function Home() {
                     flex
                     h-8
                     w-8
-                    shrink-0
                     items-center
                     justify-center
                     rounded-lg
                     text-gray-500
-                    hover:bg-white/5
                     hover:text-red-400
                   "
                 >
@@ -4945,7 +4944,7 @@ function Home() {
 
 
           {/* =================================================
-              INPUT
+              INPUT AREA
           ================================================= */}
 
           <div
@@ -4956,9 +4955,7 @@ function Home() {
             "
           >
 
-            {/* =================================================
-                STOP SPEAKING BUTTON
-            ================================================= */}
+            {/* STOP SPEAKING */}
 
             {isSpeaking && (
 
@@ -4986,9 +4983,7 @@ function Home() {
                     px-4
                     py-2
                     text-xs
-                    font-medium
                     text-red-400
-                    transition
                     hover:bg-red-400/20
                     active:scale-95
                   "
@@ -5010,7 +5005,9 @@ function Home() {
 
 
             <form
-              onSubmit={handleSend}
+              onSubmit={
+                handleSend
+              }
               className="
                 flex
                 min-w-0
@@ -5027,7 +5024,7 @@ function Home() {
               "
             >
 
-              {/* IMAGE */}
+              {/* IMAGE BUTTON */}
 
               <button
                 type="button"
@@ -5043,11 +5040,8 @@ function Home() {
                   justify-center
                   rounded-xl
                   text-gray-400
-                  transition
                   hover:bg-white/5
                   hover:text-cyan-300
-                  sm:h-11
-                  sm:w-11
                 "
                 title="Analyze image"
               >
@@ -5060,7 +5054,9 @@ function Home() {
 
 
               <input
-                ref={imageInputRef}
+                ref={
+                  imageInputRef
+                }
                 type="file"
                 accept="image/*"
                 onChange={
@@ -5070,7 +5066,7 @@ function Home() {
               />
 
 
-              {/* PDF */}
+              {/* PDF BUTTON */}
 
               <button
                 type="button"
@@ -5086,11 +5082,8 @@ function Home() {
                   justify-center
                   rounded-xl
                   text-gray-400
-                  transition
                   hover:bg-white/5
                   hover:text-cyan-300
-                  sm:h-11
-                  sm:w-11
                 "
                 title="Upload PDF"
               >
@@ -5103,7 +5096,9 @@ function Home() {
 
 
               <input
-                ref={pdfInputRef}
+                ref={
+                  pdfInputRef
+                }
                 type="file"
                 accept="application/pdf,.pdf"
                 onChange={
@@ -5113,22 +5108,28 @@ function Home() {
               />
 
 
-              {/* TEXT */}
+              {/* TEXT INPUT */}
 
               <input
-                value={typedText}
+                value={
+                  typedText
+                }
                 onChange={e =>
                   setTypedText(
                     e.target.value
                   )
                 }
-                onPaste={handlePaste}
+                onPaste={
+                  handlePaste
+                }
                 placeholder={
                   imagePreview
                     ? "Ask about the image..."
                     : pdfPreviewName
                       ? "Ask about the PDF..."
-                      : "Ask me anything..."
+                      : isListening
+                        ? "Listening..."
+                        : "Ask me anything..."
                 }
                 className="
                   min-w-0
@@ -5145,7 +5146,7 @@ function Home() {
 
 
               {/* =================================================
-                  MICROPHONE / STOP SPEAKING
+                  MIC BUTTON
               ================================================= */}
 
               <button
@@ -5170,7 +5171,7 @@ function Home() {
                       ? "bg-red-400/15 text-red-400 hover:bg-red-400/25"
 
                       : isListening
-                        ? "bg-red-400/10 text-red-400"
+                        ? "bg-red-400/10 text-red-400 hover:bg-red-400/20"
 
                         : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
                   }
@@ -5208,18 +5209,16 @@ function Home() {
               </button>
 
 
-              {/* SEND */}
+              {/* SEND BUTTON */}
 
               <button
                 type="submit"
                 disabled={
-                  imagePreview
-                    ? isImageAnalyzing ||
-                      !selectedImage
+                  selectedImage
+                    ? isImageAnalyzing
 
-                    : pdfPreviewName
-                      ? isPdfAnalyzing ||
-                        !selectedPdf
+                    : selectedPdf
+                      ? isPdfAnalyzing
 
                       : isSending ||
                         !typedText.trim()
@@ -5241,15 +5240,7 @@ function Home() {
                   sm:h-11
                   sm:w-11
                 "
-                title={
-                  imagePreview
-                    ? "Analyze image"
-
-                    : pdfPreviewName
-                      ? "Analyze PDF"
-
-                      : "Send"
-                }
+                title="Send"
               >
 
                 <FiSend
@@ -5267,7 +5258,6 @@ function Home() {
                 text-center
                 text-[10px]
                 text-gray-700
-                sm:mt-3
                 sm:text-[11px]
               "
             >
