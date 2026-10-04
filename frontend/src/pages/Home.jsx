@@ -5,17 +5,10 @@ import React, {
   useState
 } from "react";
 
-import {
-  userDataContext
-} from "../context/UserContext";
-
-import {
-  useNavigate
-} from "react-router-dom";
-
+import { userDataContext } from "../context/UserContext";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
-import userImg from "../assets/user.gif";
 import aiImg from "../assets/ai.gif";
 
 import {
@@ -44,92 +37,58 @@ function Home() {
     getGeminiResponse
   } = useContext(userDataContext);
 
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
 
-  /*
-  ===================================================
-  STATE
-  ===================================================
-  */
+  // =====================================================
+  // STATE
+  // =====================================================
 
-  const [
-    isListening,
-    setIsListening
-  ] = useState(false);
+  const [isListening, setIsListening] =
+    useState(false);
 
-  const [
-    isAIActive,
-    setIsAIActive
-  ] = useState(false);
+  const [isAIActive, setIsAIActive] =
+    useState(false);
 
-  const [
-    userText,
-    setUserText
-  ] = useState("");
+  const [userText, setUserText] =
+    useState("");
 
-  const [
-    aiText,
-    setAiText
-  ] = useState("");
+  const [aiText, setAiText] =
+    useState("");
 
-  const [
-    showAIText,
-    setShowAIText
-  ] = useState(false);
+  const [showAIText, setShowAIText] =
+    useState(false);
 
-  const [
-    showMenu,
-    setShowMenu
-  ] = useState(false);
+  // IMPORTANT:
+  // This now controls the HISTORY drawer.
+  const [showMenu, setShowMenu] =
+    useState(false);
 
-  const [
-    historyItems,
-    setHistoryItems
-  ] = useState([]);
+  const [historyItems, setHistoryItems] =
+    useState([]);
 
-  const [
-    typedText,
-    setTypedText
-  ] = useState("");
+  const [typedText, setTypedText] =
+    useState("");
 
-  const [
-    isSending,
-    setIsSending
-  ] = useState(false);
+  const [isSending, setIsSending] =
+    useState(false);
 
-  const [
-    historySearch,
-    setHistorySearch
-  ] = useState("");
+  const [historySearch, setHistorySearch] =
+    useState("");
 
-  const [
-    selectedImage,
-    setSelectedImage
-  ] = useState(null);
+  const [selectedImage, setSelectedImage] =
+    useState(null);
 
-  const [
-    imagePreview,
-    setImagePreview
-  ] = useState("");
+  const [imagePreview, setImagePreview] =
+    useState("");
 
-  const [
-    imageQuestion,
-    setImageQuestion
-  ] = useState("");
-
-  const [
-    isImageAnalyzing,
-    setIsImageAnalyzing
-  ] = useState(false);
+  const [isImageAnalyzing, setIsImageAnalyzing] =
+    useState(false);
 
 
-  /*
-  ===================================================
-  REFS
-  ===================================================
-  */
+  // =====================================================
+  // REFS
+  // =====================================================
 
   const imageInputRef =
     useRef(null);
@@ -153,11 +112,9 @@ function Home() {
     useRef("");
 
 
-  /*
-  ===================================================
-  ASSISTANT NAME
-  ===================================================
-  */
+  // =====================================================
+  // ASSISTANT NAME
+  // =====================================================
 
   useEffect(() => {
 
@@ -165,37 +122,27 @@ function Home() {
       userData?.assistantName ||
       "Assistant";
 
-  }, [
-    userData?.assistantName
-  ]);
+  }, [userData?.assistantName]);
 
 
-  /*
-  ===================================================
-  LOAD HISTORY
-  ===================================================
-  */
+  // =====================================================
+  // LOAD HISTORY
+  // =====================================================
 
   useEffect(() => {
 
     setHistoryItems(
-      Array.isArray(
-        userData?.history
-      )
+      Array.isArray(userData?.history)
         ? userData.history
         : []
     );
 
-  }, [
-    userData?.history
-  ]);
+  }, [userData?.history]);
 
 
-  /*
-  ===================================================
-  SAVE HISTORY
-  ===================================================
-  */
+  // =====================================================
+  // SAVE HISTORY
+  // =====================================================
 
   const addHistory = async (
     command,
@@ -204,55 +151,43 @@ function Home() {
   ) => {
 
     const temporaryItem = {
-      _id:
-        `temp-${Date.now()}`,
-
+      _id: `temp-${Date.now()}`,
       command,
       answer,
       type,
-      createdAt:
-        new Date().toISOString()
+      createdAt: new Date().toISOString()
     };
 
-    setHistoryItems(
-      previous => [
-        temporaryItem,
-        ...previous
-      ]
-    );
-
+    setHistoryItems(previous => [
+      temporaryItem,
+      ...previous
+    ]);
 
     try {
 
-      const response =
-        await axios.post(
-          `${serverUrl}/api/user/savehistory`,
-          {
-            command,
-            answer,
-            type
-          },
-          {
-            withCredentials: true
-          }
-        );
+      const response = await axios.post(
+        `${serverUrl}/api/user/savehistory`,
+        {
+          command,
+          answer,
+          type
+        },
+        {
+          withCredentials: true
+        }
+      );
 
-
-      if (
-        response.data?.history
-      ) {
+      if (response.data?.history) {
 
         setHistoryItems(
           response.data.history
         );
 
-        setUserData(
-          previous => ({
-            ...previous,
-            history:
-              response.data.history
-          })
-        );
+        setUserData(previous => ({
+          ...previous,
+          history:
+            response.data.history
+        }));
       }
 
     } catch (error) {
@@ -262,118 +197,98 @@ function Home() {
         error.response?.data ||
         error.message
       );
-
     }
   };
 
 
-  /*
-  ===================================================
-  DELETE HISTORY
-  ===================================================
-  */
+  // =====================================================
+  // DELETE HISTORY
+  // =====================================================
 
-  const deleteHistory =
-    async historyId => {
+  const deleteHistory = async historyId => {
 
-      if (!historyId) return;
+    if (!historyId) return;
 
-      try {
+    try {
 
-        const response =
-          await axios.delete(
-            `${serverUrl}/api/user/history/${historyId}`,
-            {
-              withCredentials: true
-            }
-          );
-
-
-        setHistoryItems(
-          response.data.history ||
-          []
-        );
-
-
-        setUserData(
-          previous => ({
-            ...previous,
-            history:
-              response.data.history ||
-              []
-          })
-        );
-
-      } catch (error) {
-
-        console.error(
-          "DELETE HISTORY ERROR:",
-          error.response?.data ||
-          error.message
-        );
-      }
-    };
-
-
-  /*
-  ===================================================
-  CLEAR HISTORY
-  ===================================================
-  */
-
-  const clearHistory =
-    async () => {
-
-      if (
-        historyItems.length === 0
-      ) {
-        return;
-      }
-
-      const confirmed =
-        window.confirm(
-          "Clear all history?"
-        );
-
-      if (!confirmed) {
-        return;
-      }
-
-      try {
-
+      const response =
         await axios.delete(
-          `${serverUrl}/api/user/history`,
+          `${serverUrl}/api/user/history/${historyId}`,
           {
             withCredentials: true
           }
         );
 
+      setHistoryItems(
+        response.data.history || []
+      );
 
-        setHistoryItems([]);
+      setUserData(previous => ({
+        ...previous,
+        history:
+          response.data.history || []
+      }));
 
-        setUserData(
-          previous => ({
-            ...previous,
-            history: []
-          })
-        );
+    } catch (error) {
 
-      } catch (error) {
-
-        console.error(
-          "CLEAR HISTORY ERROR:",
-          error.response?.data ||
-          error.message
-        );
-      }
-    };
+      console.error(
+        "DELETE HISTORY ERROR:",
+        error.response?.data ||
+        error.message
+      );
+    }
+  };
 
 
-  /*
-  ===================================================
-  SPEAK
-  ===================================================
-  */
+  // =====================================================
+  // CLEAR HISTORY
+  // =====================================================
+
+  const clearHistory = async () => {
+
+    if (historyItems.length === 0) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        "Clear all history?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+
+      await axios.delete(
+        `${serverUrl}/api/user/history`,
+        {
+          withCredentials: true
+        }
+      );
+
+      setHistoryItems([]);
+
+      setUserData(previous => ({
+        ...previous,
+        history: []
+      }));
+
+    } catch (error) {
+
+      console.error(
+        "CLEAR HISTORY ERROR:",
+        error.response?.data ||
+        error.message
+      );
+    }
+  };
+
+
+  // =====================================================
+  // SPEAK
+  // =====================================================
 
   const speak = text => {
 
@@ -391,20 +306,15 @@ function Home() {
     utterance.volume = 1;
     utterance.lang = "en-US";
 
-
     utterance.onstart = () => {
 
       speakingRef.current = true;
-
       setIsAIActive(true);
-
     };
-
 
     utterance.onend = () => {
 
       speakingRef.current = false;
-
       setIsAIActive(false);
 
       if (
@@ -414,22 +324,16 @@ function Home() {
       ) {
 
         try {
-
           recognitionRef.current.start();
-
         } catch {}
       }
     };
 
-
     utterance.onerror = () => {
 
       speakingRef.current = false;
-
       setIsAIActive(false);
-
     };
-
 
     window.speechSynthesis.speak(
       utterance
@@ -437,11 +341,9 @@ function Home() {
   };
 
 
-  /*
-  ===================================================
-  OPEN URL
-  ===================================================
-  */
+  // =====================================================
+  // OPEN URL
+  // =====================================================
 
   const openUrl = url => {
 
@@ -455,555 +357,600 @@ function Home() {
   };
 
 
-  /*
-  ===================================================
-  PROCESS COMMAND
-  ===================================================
-  */
+  // =====================================================
+  // EXTRACT YOUTUBE SEARCH QUERY
+  // =====================================================
 
-  const processCommand =
-    async (
-      command,
-      type = "text",
-      shouldSpeak = true
-    ) => {
+  const getYouTubeQuery = command => {
 
-      const cleanedCommand =
-        command.trim();
+    if (!command) {
+      return "";
+    }
 
-      if (!cleanedCommand) {
-        return;
-      }
+    const text =
+      command.trim();
 
-
-      setUserText(
-        cleanedCommand
+    // Search mitochondria on YouTube
+    let match =
+      text.match(
+        /^(?:search|find|look up|play)\s+(.+?)\s+(?:on|in)\s+youtube$/i
       );
 
-      setAiText("");
+    if (match) {
+      return match[1].trim();
+    }
 
-      setShowAIText(false);
+    // Search YouTube for mitochondria
+    match =
+      text.match(
+        /^(?:search|find|look up|play)\s+(?:youtube\s+for)\s+(.+)$/i
+      );
 
-      setIsAIActive(true);
+    if (match) {
+      return match[1].trim();
+    }
 
-      setIsSending(true);
+    // YouTube mitochondria
+    match =
+      text.match(
+        /^youtube\s+(.+)$/i
+      );
 
-      processingRef.current =
-        true;
+    if (match) {
+      return match[1].trim();
+    }
 
+    return "";
+  };
 
-      try {
 
-        /*
-        =============================================
-        GOOGLE
-        =============================================
-        */
+  // =====================================================
+  // PROCESS COMMAND
+  // =====================================================
 
-        const googleMatch =
-          cleanedCommand.match(
-            /^(?:search|find|look up)\s+(.+?)(?:\s+on|\s+in|\s+at)?\s+google$/i
-          );
+  const processCommand = async (
+    command,
+    type = "text",
+    shouldSpeak = true
+  ) => {
 
+    const cleanedCommand =
+      command.trim();
 
-        if (googleMatch) {
+    if (!cleanedCommand) {
+      return;
+    }
 
-          const query =
-            googleMatch[1].trim();
+    setUserText(cleanedCommand);
+    setAiText("");
+    setShowAIText(false);
+    setIsAIActive(true);
+    setIsSending(true);
 
-          const answer =
-            `Searching Google for ${query}.`;
+    processingRef.current = true;
 
-          setAiText(answer);
+    try {
 
-          setShowAIText(true);
+      // =================================================
+      // GOOGLE SEARCH
+      // =================================================
 
-          addHistory(
-            cleanedCommand,
-            answer,
-            type
-          );
+      const googleMatch =
+        cleanedCommand.match(
+          /^(?:search|find|look up)\s+(.+?)(?:\s+on|\s+in|\s+at)?\s+google$/i
+        );
 
-          openUrl(
-            `https://www.google.com/search?q=${encodeURIComponent(
-              query
-            )}`
-          );
+      if (googleMatch) {
 
-          if (shouldSpeak) {
-            speak(answer);
-          }
+        const query =
+          googleMatch[1].trim();
 
-          return;
-        }
+        const answer =
+          `Searching Google for ${query}.`;
 
-
-        /*
-        =============================================
-        DIRECT GOOGLE SEARCH
-        =============================================
-        */
-
-        const googleSearch =
-          cleanedCommand.match(
-            /^(?:search|google)\s+(.+)$/i
-          );
-
-
-        if (googleSearch) {
-
-          const query =
-            googleSearch[1].trim();
-
-          const answer =
-            `Searching Google for ${query}.`;
-
-          setAiText(answer);
-
-          setShowAIText(true);
-
-          addHistory(
-            cleanedCommand,
-            answer,
-            type
-          );
-
-          openUrl(
-            `https://www.google.com/search?q=${encodeURIComponent(
-              query
-            )}`
-          );
-
-          if (shouldSpeak) {
-            speak(answer);
-          }
-
-          return;
-        }
-
-
-        /*
-        =============================================
-        YOUTUBE
-        =============================================
-        */
-
-        const youtubeMatch =
-          cleanedCommand.match(
-            /^(?:search|find|play)\s+(.+?)\s+(?:on|in)\s+youtube$/i
-          );
-
-
-        if (youtubeMatch) {
-
-          const query =
-            youtubeMatch[1].trim();
-
-          const answer =
-            `Searching YouTube for ${query}.`;
-
-          setAiText(answer);
-
-          setShowAIText(true);
-
-          addHistory(
-            cleanedCommand,
-            answer,
-            type
-          );
-
-          openUrl(
-            `https://www.youtube.com/results?search_query=${encodeURIComponent(
-              query
-            )}`
-          );
-
-          if (shouldSpeak) {
-            speak(answer);
-          }
-
-          return;
-        }
-
-
-        /*
-        =============================================
-        DIRECT WEBSITE
-        =============================================
-        */
-
-        const websites = {
-          google:
-            "https://www.google.com",
-
-          youtube:
-            "https://www.youtube.com",
-
-          instagram:
-            "https://www.instagram.com",
-
-          facebook:
-            "https://www.facebook.com",
-
-          github:
-            "https://github.com",
-
-          linkedin:
-            "https://www.linkedin.com",
-
-          whatsapp:
-            "https://web.whatsapp.com",
-
-          gmail:
-            "https://mail.google.com",
-
-          amazon:
-            "https://www.amazon.in",
-
-          flipkart:
-            "https://www.flipkart.com",
-
-          spotify:
-            "https://open.spotify.com",
-
-          netflix:
-            "https://www.netflix.com",
-
-          wikipedia:
-            "https://www.wikipedia.org",
-
-          reddit:
-            "https://www.reddit.com",
-
-          discord:
-            "https://discord.com",
-
-          canva:
-            "https://www.canva.com",
-
-          pinterest:
-            "https://www.pinterest.com",
-
-          twitter:
-            "https://x.com",
-
-          x:
-            "https://x.com",
-
-          telegram:
-            "https://web.telegram.org"
-        };
-
-
-        const directMatch =
-          cleanedCommand.match(
-            /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
-          );
-
-
-        if (directMatch) {
-
-          const site =
-            directMatch[1]
-              .trim()
-              .toLowerCase()
-              .replace(
-                /\s+(website|site)$/i,
-                ""
-              );
-
-
-          if (websites[site]) {
-
-            const answer =
-              `Opening ${site}.`;
-
-            setAiText(answer);
-
-            setShowAIText(true);
-
-            addHistory(
-              cleanedCommand,
-              answer,
-              type
-            );
-
-            openUrl(
-              websites[site]
-            );
-
-            if (shouldSpeak) {
-              speak(answer);
-            }
-
-            return;
-          }
-        }
-
-
-        /*
-        =============================================
-        GEMINI
-        =============================================
-        */
-
-        const result =
-          await getGeminiResponse(
-            cleanedCommand
-          );
-
-
-        let parsedResult =
-          result;
-
-
-        if (
-          typeof result ===
-          "string"
-        ) {
-
-          const cleanResult =
-            result
-              .replace(
-                /```json/gi,
-                ""
-              )
-              .replace(
-                /```/g,
-                ""
-              )
-              .trim();
-
-
-          try {
-
-            parsedResult =
-              JSON.parse(
-                cleanResult
-              );
-
-          } catch {
-
-            parsedResult = {
-              type: "general",
-              response:
-                cleanResult
-            };
-          }
-        }
-
-
-        const response =
-          parsedResult?.response ||
-          parsedResult?.answer ||
-          "Sorry, I could not understand that.";
-
-
-        /*
-        =============================================
-        GEMINI COMMAND TYPES
-        =============================================
-        */
-
-        if (
-          parsedResult.type ===
-          "google_open"
-        ) {
-
-          openUrl(
-            "https://www.google.com"
-          );
-
-        } else if (
-          parsedResult.type ===
-          "google_search"
-        ) {
-
-          openUrl(
-            `https://www.google.com/search?q=${encodeURIComponent(
-              parsedResult.query ||
-              cleanedCommand
-            )}`
-          );
-
-        } else if (
-          parsedResult.type ===
-          "youtube_open"
-        ) {
-
-          openUrl(
-            "https://www.youtube.com"
-          );
-
-        } else if (
-          parsedResult.type ===
-          "youtube_search" ||
-          parsedResult.type ===
-          "youtube_play"
-        ) {
-
-          openUrl(
-            `https://www.youtube.com/results?search_query=${encodeURIComponent(
-              parsedResult.query ||
-              cleanedCommand
-            )}`
-          );
-
-        } else if (
-          parsedResult.type ===
-          "calculator_open"
-        ) {
-
-          openUrl(
-            "https://www.google.com/search?q=calculator"
-          );
-        }
-
-
-        setAiText(response);
-
+        setAiText(answer);
         setShowAIText(true);
 
         addHistory(
           cleanedCommand,
-          response,
+          answer,
           type
         );
 
+        openUrl(
+          `https://www.google.com/search?q=${encodeURIComponent(
+            query
+          )}`
+        );
 
         if (shouldSpeak) {
-          speak(response);
+          speak(answer);
         }
 
-      } catch (error) {
+        return;
+      }
 
-        console.error(
-          "COMMAND ERROR:",
-          error
+
+      // =================================================
+      // DIRECT GOOGLE SEARCH
+      // =================================================
+
+      const googleSearch =
+        cleanedCommand.match(
+          /^(?:search|google)\s+(.+)$/i
         );
 
-        const errorMessage =
-          "Sorry, I could not complete that request right now.";
+      if (googleSearch) {
 
-        setAiText(
-          errorMessage
-        );
+        const query =
+          googleSearch[1].trim();
 
+        const answer =
+          `Searching Google for ${query}.`;
+
+        setAiText(answer);
         setShowAIText(true);
 
+        addHistory(
+          cleanedCommand,
+          answer,
+          type
+        );
+
+        openUrl(
+          `https://www.google.com/search?q=${encodeURIComponent(
+            query
+          )}`
+        );
+
         if (shouldSpeak) {
-          speak(errorMessage);
+          speak(answer);
         }
 
-      } finally {
-
-        processingRef.current =
-          false;
-
-        setIsSending(false);
-
-        setIsAIActive(false);
-      }
-    };
-
-
-  /*
-  ===================================================
-  SEND TEXT
-  ===================================================
-  */
-
-  const handleSend =
-    async e => {
-
-      e?.preventDefault();
-
-      if (
-        !typedText.trim() ||
-        isSending
-      ) {
         return;
       }
 
-      const command =
-        typedText.trim();
 
-      setTypedText("");
+      // =================================================
+      // YOUTUBE SEARCH
+      // =================================================
 
-      await processCommand(
-        command,
-        "text",
-        true
-      );
-    };
-
-
-  /*
-  ===================================================
-  IMAGE SELECT
-  ===================================================
-  */
-
-  const handleImageSelect =
-    e => {
-
-      const file =
-        e.target.files?.[0];
-
-      if (!file) return;
-
-
-      if (
-        !file.type.startsWith(
-          "image/"
-        )
-      ) {
-
-        alert(
-          "Please select an image file."
+      const youtubeQuery =
+        getYouTubeQuery(
+          cleanedCommand
         );
 
-        return;
-      }
+      if (youtubeQuery) {
 
+        const answer =
+          `Searching YouTube for ${youtubeQuery}.`;
 
-      if (
-        file.size >
-        10 * 1024 * 1024
-      ) {
+        setAiText(answer);
+        setShowAIText(true);
 
-        alert(
-          "Image must be smaller than 10 MB."
+        addHistory(
+          cleanedCommand,
+          answer,
+          type
         );
 
+        // IMPORTANT:
+        // Only the extracted query goes to YouTube.
+        openUrl(
+          `https://www.youtube.com/results?search_query=${encodeURIComponent(
+            youtubeQuery
+          )}`
+        );
+
+        if (shouldSpeak) {
+          speak(answer);
+        }
+
         return;
       }
 
 
-      setSelectedImage(
-        file
+      // =================================================
+      // DIRECT WEBSITE
+      // =================================================
+
+      const websites = {
+
+        google:
+          "https://www.google.com",
+
+        youtube:
+          "https://www.youtube.com",
+
+        instagram:
+          "https://www.instagram.com",
+
+        facebook:
+          "https://www.facebook.com",
+
+        github:
+          "https://github.com",
+
+        linkedin:
+          "https://www.linkedin.com",
+
+        whatsapp:
+          "https://web.whatsapp.com",
+
+        gmail:
+          "https://mail.google.com",
+
+        amazon:
+          "https://www.amazon.in",
+
+        flipkart:
+          "https://www.flipkart.com",
+
+        spotify:
+          "https://open.spotify.com",
+
+        netflix:
+          "https://www.netflix.com",
+
+        wikipedia:
+          "https://www.wikipedia.org",
+
+        reddit:
+          "https://www.reddit.com",
+
+        discord:
+          "https://discord.com",
+
+        canva:
+          "https://www.canva.com",
+
+        pinterest:
+          "https://www.pinterest.com",
+
+        twitter:
+          "https://x.com",
+
+        x:
+          "https://x.com",
+
+        telegram:
+          "https://web.telegram.org"
+      };
+
+
+      const directMatch =
+        cleanedCommand.match(
+          /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
+        );
+
+      if (directMatch) {
+
+        const site =
+          directMatch[1]
+            .trim()
+            .toLowerCase()
+            .replace(
+              /\s+(website|site)$/i,
+              ""
+            );
+
+        if (websites[site]) {
+
+          const answer =
+            `Opening ${site}.`;
+
+          setAiText(answer);
+          setShowAIText(true);
+
+          addHistory(
+            cleanedCommand,
+            answer,
+            type
+          );
+
+          openUrl(
+            websites[site]
+          );
+
+          if (shouldSpeak) {
+            speak(answer);
+          }
+
+          return;
+        }
+      }
+
+
+      // =================================================
+      // GEMINI
+      // =================================================
+
+      const result =
+        await getGeminiResponse(
+          cleanedCommand
+        );
+
+      let parsedResult = result;
+
+      if (
+        typeof result ===
+        "string"
+      ) {
+
+        const cleanResult =
+          result
+            .replace(
+              /```json/gi,
+              ""
+            )
+            .replace(
+              /```/g,
+              ""
+            )
+            .trim();
+
+        try {
+
+          parsedResult =
+            JSON.parse(
+              cleanResult
+            );
+
+        } catch {
+
+          parsedResult = {
+            type: "general",
+            response:
+              cleanResult
+          };
+        }
+      }
+
+
+      const response =
+        parsedResult?.response ||
+        parsedResult?.answer ||
+        "Sorry, I could not understand that.";
+
+
+      // =================================================
+      // GEMINI COMMAND TYPES
+      // =================================================
+
+      if (
+        parsedResult.type ===
+        "google_open"
+      ) {
+
+        openUrl(
+          "https://www.google.com"
+        );
+
+      } else if (
+        parsedResult.type ===
+        "google_search"
+      ) {
+
+        const query =
+          parsedResult.query ||
+          cleanedCommand;
+
+        openUrl(
+          `https://www.google.com/search?q=${encodeURIComponent(
+            query
+          )}`
+        );
+
+      } else if (
+        parsedResult.type ===
+        "youtube_open"
+      ) {
+
+        openUrl(
+          "https://www.youtube.com"
+        );
+
+      } else if (
+        parsedResult.type ===
+          "youtube_search" ||
+        parsedResult.type ===
+          "youtube_play"
+      ) {
+
+        // IMPORTANT:
+        // Never use cleanedCommand directly
+        // if we can extract the actual query.
+
+        const extractedQuery =
+          getYouTubeQuery(
+            cleanedCommand
+          );
+
+        const query =
+          extractedQuery ||
+          parsedResult.query ||
+          cleanedCommand
+            .replace(
+              /^(?:search|find|look up|play)\s+/i,
+              ""
+            )
+            .replace(
+              /\s+(?:on|in)\s+youtube$/i,
+              ""
+            )
+            .trim();
+
+        openUrl(
+          `https://www.youtube.com/results?search_query=${encodeURIComponent(
+            query
+          )}`
+        );
+
+      } else if (
+        parsedResult.type ===
+        "calculator_open"
+      ) {
+
+        openUrl(
+          "https://www.google.com/search?q=calculator"
+        );
+      }
+
+
+      setAiText(response);
+      setShowAIText(true);
+
+      addHistory(
+        cleanedCommand,
+        response,
+        type
       );
 
-      setImagePreview(
-        URL.createObjectURL(
-          file
-        )
+      if (shouldSpeak) {
+        speak(response);
+      }
+
+    } catch (error) {
+
+      console.error(
+        "COMMAND ERROR:",
+        error
       );
 
-      setImageQuestion("");
-    };
+      const errorMessage =
+        "Sorry, I could not complete that request right now.";
+
+      setAiText(
+        errorMessage
+      );
+
+      setShowAIText(true);
+
+      if (shouldSpeak) {
+        speak(errorMessage);
+      }
+
+    } finally {
+
+      processingRef.current =
+        false;
+
+      setIsSending(false);
+      setIsAIActive(false);
+    }
+  };
 
 
-  /*
-  ===================================================
-  REMOVE IMAGE
-  ===================================================
-  */
+  // =====================================================
+  // SEND TEXT / IMAGE
+  // =====================================================
+
+  const handleSend = async e => {
+
+    e?.preventDefault();
+
+    // IMAGE MODE
+    if (selectedImage) {
+
+      await analyzeImage();
+
+      return;
+    }
+
+    // NORMAL TEXT MODE
+    if (
+      !typedText.trim() ||
+      isSending
+    ) {
+      return;
+    }
+
+    const command =
+      typedText.trim();
+
+    setTypedText("");
+
+    await processCommand(
+      command,
+      "text",
+      true
+    );
+  };
+
+
+  // =====================================================
+  // IMAGE SELECT
+  // =====================================================
+
+  const handleImageSelect = e => {
+
+    const file =
+      e.target.files?.[0];
+
+    if (!file) return;
+
+
+    if (
+      !file.type.startsWith(
+        "image/"
+      )
+    ) {
+
+      alert(
+        "Please select an image file."
+      );
+
+      return;
+    }
+
+
+    if (
+      file.size >
+      10 * 1024 * 1024
+    ) {
+
+      alert(
+        "Image must be smaller than 10 MB."
+      );
+
+      return;
+    }
+
+
+    // Clean previous preview URL
+    if (imagePreview) {
+      URL.revokeObjectURL(
+        imagePreview
+      );
+    }
+
+
+    setSelectedImage(file);
+
+    setImagePreview(
+      URL.createObjectURL(file)
+    );
+
+    // Do NOT clear typedText.
+    // The user can type the question
+    // in the main input below.
+  };
+
+
+  // =====================================================
+  // REMOVE IMAGE
+  // =====================================================
 
   const removeImage = () => {
 
-    setSelectedImage(null);
+    if (imagePreview) {
 
+      URL.revokeObjectURL(
+        imagePreview
+      );
+    }
+
+    setSelectedImage(null);
     setImagePreview("");
 
     if (
@@ -1016,140 +963,135 @@ function Home() {
   };
 
 
-  /*
-  ===================================================
-  ANALYZE IMAGE
-  ===================================================
-  */
+  // =====================================================
+  // ANALYZE IMAGE
+  // =====================================================
 
-  const analyzeImage =
-    async () => {
+  const analyzeImage = async () => {
 
-      if (
-        !selectedImage ||
-        isImageAnalyzing
-      ) {
-        return;
-      }
+    if (
+      !selectedImage ||
+      isImageAnalyzing
+    ) {
+      return;
+    }
 
 
-      const question =
-        imageQuestion.trim() ||
-        "Analyze this image and explain what you see.";
+    // IMPORTANT:
+    // Use the MAIN input text.
+    const question =
+      typedText.trim() ||
+      "Analyze this image and explain what you see.";
 
 
-      setIsImageAnalyzing(
-        true
+    setIsImageAnalyzing(true);
+
+    setUserText(question);
+
+    setAiText("");
+
+    setShowAIText(false);
+
+    setIsAIActive(true);
+
+
+    try {
+
+      const formData =
+        new FormData();
+
+      formData.append(
+        "image",
+        selectedImage
       );
 
-      setUserText(
+      formData.append(
+        "command",
         question
       );
 
-      setAiText("");
 
-      setShowAIText(false);
-
-      setIsAIActive(true);
-
-
-      try {
-
-        const formData =
-          new FormData();
-
-        formData.append(
-          "image",
-          selectedImage
-        );
-
-        formData.append(
-          "command",
-          question
+      const response =
+        await axios.post(
+          `${serverUrl}/api/user/analyze-image`,
+          formData,
+          {
+            withCredentials: true
+          }
         );
 
 
-        const response =
-          await axios.post(
-            `${serverUrl}/api/user/analyze-image`,
-            formData,
-            {
-              withCredentials: true
-            }
-          );
+      const answer =
+        response.data?.response ||
+        "I could not analyze the image.";
 
 
-        const answer =
-          response.data?.response ||
-          "I could not analyze the image.";
+      setAiText(answer);
+      setShowAIText(true);
 
 
-        setAiText(answer);
-
-        setShowAIText(true);
-
-
-        await addHistory(
-          question,
-          answer,
-          "image"
-        );
+      await addHistory(
+        question,
+        answer,
+        "image"
+      );
 
 
-        speak(answer);
-
-        removeImage();
-
-        setImageQuestion("");
-
-      } catch (error) {
-
-        console.error(
-          "IMAGE ANALYSIS ERROR:",
-          error.response?.data ||
-          error.message
-        );
+      speak(answer);
 
 
-        const errorMessage =
-          error.response?.data?.message ||
-          "Unable to analyze the image.";
+      // Clear the input after successful analysis
+      setTypedText("");
 
-        setAiText(
-          errorMessage
-        );
-
-        setShowAIText(true);
-
-        speak(
-          errorMessage
-        );
-
-      } finally {
-
-        setIsImageAnalyzing(
-          false
-        );
-
-        setIsAIActive(
-          false
-        );
-      }
-    };
+      removeImage();
 
 
-  /*
-  ===================================================
-  SPEECH RECOGNITION
-  ===================================================
-  */
+    } catch (error) {
+
+      console.error(
+        "IMAGE ANALYSIS ERROR:",
+        error.response?.data ||
+        error.message
+      );
+
+
+      const errorMessage =
+        error.response?.data?.message ||
+        "Unable to analyze the image.";
+
+
+      setAiText(
+        errorMessage
+      );
+
+      setShowAIText(true);
+
+      speak(
+        errorMessage
+      );
+
+    } finally {
+
+      setIsImageAnalyzing(
+        false
+      );
+
+      setIsAIActive(
+        false
+      );
+    }
+  };
+
+
+  // =====================================================
+  // SPEECH RECOGNITION
+  // =====================================================
 
   useEffect(() => {
 
     const SpeechRecognition =
       window.SpeechRecognition ||
       window.webkitSpeechRecognition;
-
 
     if (!SpeechRecognition) {
 
@@ -1165,7 +1107,9 @@ function Home() {
       new SpeechRecognition();
 
     recognition.continuous = true;
+
     recognition.lang = "en-US";
+
     recognition.interimResults =
       false;
 
@@ -1203,7 +1147,6 @@ function Home() {
             event.results.length - 1
           ];
 
-
         if (!lastResult) {
           return;
         }
@@ -1214,7 +1157,6 @@ function Home() {
             ?.transcript
             ?.trim();
 
-
         if (!transcript) {
           return;
         }
@@ -1223,10 +1165,6 @@ function Home() {
         const lowerTranscript =
           transcript.toLowerCase();
 
-
-        /*
-        STOP COMMANDS
-        */
 
         const stopCommands = [
           "thank you",
@@ -1285,9 +1223,7 @@ function Home() {
           setTimeout(() => {
 
             try {
-
               recognition.start();
-
             } catch {}
 
           }, 400);
@@ -1343,9 +1279,7 @@ function Home() {
 
 
       try {
-
         recognition.stop();
-
       } catch {}
 
 
@@ -1355,93 +1289,81 @@ function Home() {
         null;
     };
 
-  }, [
-    getGeminiResponse
-  ]);
+  }, [getGeminiResponse]);
 
 
-  /*
-  ===================================================
-  START LISTENING
-  ===================================================
-  */
+  // =====================================================
+  // START LISTENING
+  // =====================================================
 
-  const startListening =
-    () => {
+  const startListening = () => {
 
-      if (
-        !recognitionRef.current
-      ) {
+    if (
+      !recognitionRef.current
+    ) {
 
-        alert(
-          "Speech recognition is not supported in this browser."
-        );
+      alert(
+        "Speech recognition is not supported in this browser."
+      );
 
-        return;
-      }
+      return;
+    }
 
 
-      try {
+    try {
 
-        window.speechSynthesis.cancel();
-
-        listeningRef.current =
-          true;
-
-        setIsListening(
-          true
-        );
-
-        recognitionRef.current.start();
-
-      } catch (error) {
-
-        console.log(
-          "Microphone already running."
-        );
-      }
-    };
-
-
-  /*
-  ===================================================
-  STOP LISTENING
-  ===================================================
-  */
-
-  const stopListening =
-    () => {
+      window.speechSynthesis.cancel();
 
       listeningRef.current =
-        false;
+        true;
 
       setIsListening(
-        false
+        true
       );
 
-      clearTimeout(
-        restartTimeoutRef.current
+      recognitionRef.current.start();
+
+    } catch {
+
+      console.log(
+        "Microphone already running."
       );
+    }
+  };
 
 
-      if (
-        recognitionRef.current
-      ) {
+  // =====================================================
+  // STOP LISTENING
+  // =====================================================
 
-        try {
+  const stopListening = () => {
 
-          recognitionRef.current.stop();
+    listeningRef.current =
+      false;
 
-        } catch {}
-      }
-    };
+    setIsListening(
+      false
+    );
+
+    clearTimeout(
+      restartTimeoutRef.current
+    );
 
 
-  /*
-  ===================================================
-  LOGOUT
-  ===================================================
-  */
+    if (
+      recognitionRef.current
+    ) {
+
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+    }
+  };
+
+
+  // =====================================================
+  // LOGOUT
+  // =====================================================
 
   const handleLogout =
     async () => {
@@ -1473,11 +1395,9 @@ function Home() {
     };
 
 
-  /*
-  ===================================================
-  FILTER HISTORY
-  ===================================================
-  */
+  // =====================================================
+  // FILTER HISTORY
+  // =====================================================
 
   const filteredHistory =
     historyItems.filter(
@@ -1514,88 +1434,86 @@ function Home() {
     );
 
 
-  /*
-  ===================================================
-  HISTORY CLICK
-  ===================================================
-  */
+  // =====================================================
+  // HISTORY CLICK
+  // =====================================================
 
-  const openHistory =
-    item => {
+  const openHistory = item => {
 
-      const command =
-        item?.command || "";
+    const command =
+      item?.command || "";
 
-      const answer =
-        item?.answer || "";
+    const answer =
+      item?.answer || "";
 
 
-      setUserText(
-        command
-      );
+    setUserText(
+      command
+    );
 
-      setAiText(
-        answer
-      );
+    setAiText(
+      answer
+    );
 
-      setShowAIText(
-        true
-      );
-    };
+    setShowAIText(
+      true
+    );
+
+    // Close history after selecting an item
+    setShowMenu(false);
+  };
 
 
-  /*
-  ===================================================
-  FORMAT DATE
-  ===================================================
-  */
+  // =====================================================
+  // FORMAT DATE
+  // =====================================================
 
-  const formatDate =
-    date => {
+  const formatDate = date => {
 
-      if (!date) {
-        return "";
+    if (!date) {
+      return "";
+    }
+
+    return new Date(
+      date
+    ).toLocaleString(
+      "en-IN",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
       }
-
-      return new Date(
-        date
-      ).toLocaleString(
-        "en-IN",
-        {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit"
-        }
-      );
-    };
+    );
+  };
 
 
-  /*
-  ===================================================
-  UI
-  ===================================================
-  */
+  // =====================================================
+  // UI
+  // =====================================================
 
   return (
 
     <div
       className="
+        relative
         min-h-screen
         w-full
+        overflow-hidden
         bg-[#070B14]
         text-white
-        overflow-hidden
       "
     >
 
-      {/* ========================================= */}
-      {/* HEADER */}
-      {/* ========================================= */}
+      {/* =================================================
+          HEADER
+      ================================================= */}
 
       <header
         className="
+          relative
+          z-40
           flex
           h-16
           items-center
@@ -1627,9 +1545,9 @@ function Home() {
               h-10
               w-10
               rounded-full
-              object-cover
               border
               border-cyan-400/30
+              object-cover
             "
           />
 
@@ -1692,6 +1610,8 @@ function Home() {
           </button>
 
 
+          {/* HISTORY HAMBURGER */}
+
           <button
             onClick={() =>
               setShowMenu(
@@ -1709,18 +1629,28 @@ function Home() {
               border
               border-white/10
               text-gray-300
+              transition
               hover:bg-white/5
+              hover:text-cyan-300
             "
+            title={
+              showMenu
+                ? "Close history"
+                : "Open history"
+            }
           >
 
             {showMenu
-              ? <IoMdClose
+              ? (
+                <IoMdClose
                   size={22}
                 />
-              : <IoMdMenu
+              )
+              : (
+                <IoMdMenu
                   size={22}
                 />
-            }
+              )}
 
           </button>
 
@@ -1729,148 +1659,397 @@ function Home() {
       </header>
 
 
-      {/* ========================================= */}
-      {/* MENU */}
-      {/* ========================================= */}
+      {/* =================================================
+          HISTORY DRAWER
+      ================================================= */}
 
       {showMenu && (
 
-        <div
-          className="
-            absolute
-            right-4
-            top-18
-            z-50
-            w-48
-            rounded-xl
-            border
-            border-white/10
-            bg-[#0A1020]
-            p-2
-            shadow-2xl
-          "
-        >
-
-          <button
-            onClick={() => {
-              navigate(
-                "/customize2"
-              );
-              setShowMenu(false);
-            }}
-            className="
-              w-full
-              rounded-lg
-              px-4
-              py-3
-              text-left
-              text-sm
-              text-gray-300
-              hover:bg-white/5
-            "
-          >
-            Customize Assistant
-          </button>
-
-
-          <button
-            onClick={() => {
-              navigate(
-                "/change-password"
-              );
-              setShowMenu(false);
-            }}
-            className="
-              w-full
-              rounded-lg
-              px-4
-              py-3
-              text-left
-              text-sm
-              text-gray-300
-              hover:bg-white/5
-            "
-          >
-            Change Password
-          </button>
-
-
-          <button
-            onClick={
-              handleLogout
-            }
-            className="
-              w-full
-              rounded-lg
-              px-4
-              py-3
-              text-left
-              text-sm
-              text-red-400
-              hover:bg-red-400/10
-            "
-          >
-            Logout
-          </button>
-
-        </div>
-      )}
-
-
-      {/* ========================================= */}
-      {/* MAIN */}
-      {/* ========================================= */}
-
-      <main
-        className="
-          flex
-          h-[calc(100vh-4rem)]
-          w-full
-        "
-      >
-
-        {/* ======================================= */}
-        {/* HISTORY */}
-        {/* ======================================= */}
-
-        <aside
-          className="
-            hidden
-            w-80
-            shrink-0
-            border-r
-            border-white/10
-            bg-[#090E1A]
-            lg:flex
-            lg:flex-col
-          "
-        >
+        <>
+          {/* Mobile overlay */}
 
           <div
+            onClick={() =>
+              setShowMenu(false)
+            }
             className="
-              border-b
+              fixed
+              inset-0
+              z-40
+              bg-black/50
+              backdrop-blur-sm
+            "
+          />
+
+
+          {/* Drawer */}
+
+          <aside
+            className="
+              fixed
+              left-0
+              top-0
+              z-50
+              flex
+              h-full
+              w-[85%]
+              max-w-sm
+              flex-col
+              border-r
               border-white/10
-              p-4
+              bg-[#090E1A]
+              shadow-2xl
             "
           >
+
+            {/* Drawer header */}
 
             <div
               className="
-                mb-3
                 flex
+                h-16
+                shrink-0
                 items-center
                 justify-between
+                border-b
+                border-white/10
+                px-4
               "
             >
 
-              <h2
+              <div>
+
+                <h2
+                  className="
+                    font-semibold
+                    text-white
+                  "
+                >
+                  History
+                </h2>
+
+                <p
+                  className="
+                    text-xs
+                    text-gray-500
+                  "
+                >
+                  Your previous conversations
+                </p>
+
+              </div>
+
+
+              <button
+                onClick={() =>
+                  setShowMenu(false)
+                }
                 className="
-                  font-semibold
+                  flex
+                  h-9
+                  w-9
+                  items-center
+                  justify-center
+                  rounded-lg
+                  text-gray-400
+                  hover:bg-white/5
+                  hover:text-white
                 "
               >
-                History
-              </h2>
 
+                <IoMdClose
+                  size={21}
+                />
+
+              </button>
+
+            </div>
+
+
+            {/* Search */}
+
+            <div
+              className="
+                border-b
+                border-white/10
+                p-4
+              "
+            >
+
+              <div
+                className="
+                  relative
+                "
+              >
+
+                <FiSearch
+                  className="
+                    absolute
+                    left-3
+                    top-1/2
+                    -translate-y-1/2
+                    text-gray-500
+                  "
+                  size={16}
+                />
+
+                <input
+                  value={
+                    historySearch
+                  }
+                  onChange={e =>
+                    setHistorySearch(
+                      e.target.value
+                    )
+                  }
+                  placeholder="
+                    Search history...
+                  "
+                  className="
+                    h-10
+                    w-full
+                    rounded-lg
+                    border
+                    border-white/10
+                    bg-white/5
+                    pl-9
+                    pr-3
+                    text-sm
+                    text-white
+                    outline-none
+                    placeholder:text-gray-600
+                    focus:border-cyan-400/30
+                  "
+                />
+
+              </div>
+
+            </div>
+
+
+            {/* History list */}
+
+            <div
+              className="
+                flex-1
+                overflow-y-auto
+                p-3
+              "
+            >
+
+              {filteredHistory.length >
+              0 ? (
+
+                filteredHistory.map(
+                  item => (
+
+                    <div
+                      key={
+                        item._id ||
+                        `${item.command}-${item.createdAt}`
+                      }
+                      className="
+                        group
+                        mb-2
+                        rounded-xl
+                        border
+                        border-white/5
+                        bg-white/[0.025]
+                        p-3
+                        transition
+                        hover:border-cyan-400/20
+                        hover:bg-white/[0.04]
+                      "
+                    >
+
+                      <button
+                        onClick={() =>
+                          openHistory(
+                            item
+                          )
+                        }
+                        className="
+                          w-full
+                          text-left
+                        "
+                      >
+
+                        <div
+                          className="
+                            mb-2
+                            flex
+                            items-center
+                            justify-between
+                            gap-2
+                          "
+                        >
+
+                          <span
+                            className="
+                              rounded-full
+                              bg-cyan-400/10
+                              px-2
+                              py-1
+                              text-[10px]
+                              uppercase
+                              tracking-wide
+                              text-cyan-300
+                            "
+                          >
+                            {item.type ||
+                              "text"}
+                          </span>
+
+                          <span
+                            className="
+                              flex
+                              items-center
+                              gap-1
+                              text-[10px]
+                              text-gray-600
+                            "
+                          >
+
+                            <FiClock
+                              size={10}
+                            />
+
+                            {formatDate(
+                              item.createdAt
+                            )}
+
+                          </span>
+
+                        </div>
+
+
+                        <p
+                          className="
+                            line-clamp-2
+                            text-sm
+                            text-gray-300
+                          "
+                        >
+                          {item.command}
+                        </p>
+
+
+                        {item.answer && (
+
+                          <p
+                            className="
+                              mt-2
+                              line-clamp-2
+                              text-xs
+                              leading-relaxed
+                              text-gray-600
+                            "
+                          >
+                            {item.answer}
+                          </p>
+
+                        )}
+
+                      </button>
+
+
+                      {item._id &&
+                        !String(
+                          item._id
+                        ).startsWith(
+                          "temp-"
+                        ) && (
+
+                          <button
+                            onClick={() =>
+                              deleteHistory(
+                                item._id
+                              )
+                            }
+                            className="
+                              mt-2
+                              flex
+                              items-center
+                              gap-1
+                              text-xs
+                              text-gray-600
+                              transition
+                              hover:text-red-400
+                            "
+                          >
+
+                            <FiTrash2
+                              size={12}
+                            />
+
+                            Delete
+
+                          </button>
+
+                        )}
+
+                    </div>
+
+                  )
+                )
+
+              ) : (
+
+                <div
+                  className="
+                    flex
+                    h-full
+                    flex-col
+                    items-center
+                    justify-center
+                    text-center
+                  "
+                >
+
+                  <div
+                    className="
+                      mb-3
+                      flex
+                      h-12
+                      w-12
+                      items-center
+                      justify-center
+                      rounded-full
+                      border
+                      border-white/10
+                      bg-white/5
+                      text-gray-600
+                    "
+                  >
+                    ✦
+                  </div>
+
+                  <p
+                    className="
+                      text-sm
+                      text-gray-500
+                    "
+                  >
+                    No history found
+                  </p>
+
+                </div>
+
+              )}
+
+            </div>
+
+
+            {/* Drawer bottom */}
+
+            <div
+              className="
+                shrink-0
+                border-t
+                border-white/10
+                p-3
+              "
+            >
 
               {historyItems.length >
                 0 && (
@@ -1880,285 +2059,107 @@ function Home() {
                     clearHistory
                   }
                   className="
-                    text-xs
+                    mb-2
+                    w-full
+                    rounded-lg
+                    px-3
+                    py-2
+                    text-left
+                    text-sm
                     text-red-400
-                    hover:text-red-300
+                    transition
+                    hover:bg-red-400/10
                   "
                 >
-                  Clear all
+                  Clear all history
                 </button>
 
               )}
 
-            </div>
 
-
-            <div
-              className="
-                relative
-              "
-            >
-
-              <FiSearch
+              <button
+                onClick={() => {
+                  navigate(
+                    "/customize2"
+                  );
+                  setShowMenu(false);
+                }}
                 className="
-                  absolute
-                  left-3
-                  top-1/2
-                  -translate-y-1/2
-                  text-gray-500
-                "
-                size={16}
-              />
-
-              <input
-                value={
-                  historySearch
-                }
-                onChange={e =>
-                  setHistorySearch(
-                    e.target.value
-                  )
-                }
-                placeholder="
-                  Search history...
-                "
-                className="
-                  h-10
                   w-full
                   rounded-lg
-                  border
-                  border-white/10
-                  bg-white/5
-                  pl-9
-                  pr-3
+                  px-3
+                  py-2
+                  text-left
                   text-sm
-                  text-white
-                  outline-none
-                  placeholder:text-gray-600
-                  focus:border-cyan-400/30
+                  text-gray-400
+                  hover:bg-white/5
+                  hover:text-white
                 "
-              />
+              >
+                Customize Assistant
+              </button>
+
+
+              <button
+                onClick={() => {
+                  navigate(
+                    "/change-password"
+                  );
+                  setShowMenu(false);
+                }}
+                className="
+                  w-full
+                  rounded-lg
+                  px-3
+                  py-2
+                  text-left
+                  text-sm
+                  text-gray-400
+                  hover:bg-white/5
+                  hover:text-white
+                "
+              >
+                Change Password
+              </button>
+
+
+              <button
+                onClick={
+                  handleLogout
+                }
+                className="
+                  w-full
+                  rounded-lg
+                  px-3
+                  py-2
+                  text-left
+                  text-sm
+                  text-red-400
+                  hover:bg-red-400/10
+                "
+              >
+                Logout
+              </button>
 
             </div>
 
-          </div>
+          </aside>
+        </>
+
+      )}
 
 
-          <div
-            className="
-              flex-1
-              overflow-y-auto
-              p-3
-            "
-          >
+      {/* =================================================
+          MAIN
+      ================================================= */}
 
-            {filteredHistory.length >
-            0 ? (
-
-              filteredHistory.map(
-                item => (
-
-                  <div
-                    key={
-                      item._id ||
-                      `${item.command}-${item.createdAt}`
-                    }
-                    className="
-                      group
-                      mb-2
-                      rounded-xl
-                      border
-                      border-white/5
-                      bg-white/2.5
-                      p-3
-                      transition
-                      hover:border-cyan-400/20
-                      hover:bg-white/4
-                    "
-                  >
-
-                    <button
-                      onClick={() =>
-                        openHistory(
-                          item
-                        )
-                      }
-                      className="
-                        w-full
-                        text-left
-                      "
-                    >
-
-                      <div
-                        className="
-                          mb-2
-                          flex
-                          items-center
-                          justify-between
-                        "
-                      >
-
-                        <span
-                          className="
-                            rounded-full
-                            bg-cyan-400/10
-                            px-2
-                            py-1
-                            text-[10px]
-                            uppercase
-                            tracking-wide
-                            text-cyan-300
-                          "
-                        >
-                          {item.type ||
-                            "text"}
-                        </span>
-
-                        <span
-                          className="
-                            flex
-                            items-center
-                            gap-1
-                            text-[10px]
-                            text-gray-600
-                          "
-                        >
-                          <FiClock
-                            size={10}
-                          />
-
-                          {formatDate(
-                            item.createdAt
-                          )}
-                        </span>
-
-                      </div>
-
-
-                      <p
-                        className="
-                          line-clamp-2
-                          text-sm
-                          text-gray-300
-                        "
-                      >
-                        {item.command}
-                      </p>
-
-
-                      {item.answer && (
-
-                        <p
-                          className="
-                            mt-2
-                            line-clamp-2
-                            text-xs
-                            leading-relaxed
-                            text-gray-600
-                          "
-                        >
-                          {item.answer}
-                        </p>
-
-                      )}
-
-                    </button>
-
-
-                    {item._id &&
-                      !String(
-                        item._id
-                      ).startsWith(
-                        "temp-"
-                      ) && (
-
-                      <button
-                        onClick={() =>
-                          deleteHistory(
-                            item._id
-                          )
-                        }
-                        className="
-                          mt-2
-                          flex
-                          items-center
-                          gap-1
-                          text-xs
-                          text-gray-600
-                          opacity-0
-                          transition
-                          group-hover:opacity-100
-                          hover:text-red-400
-                        "
-                      >
-
-                        <FiTrash2
-                          size={12}
-                        />
-
-                        Delete
-
-                      </button>
-
-                    )}
-
-                  </div>
-
-                )
-              )
-
-            ) : (
-
-              <div
-                className="
-                  flex
-                  h-full
-                  flex-col
-                  items-center
-                  justify-center
-                  text-center
-                "
-              >
-
-                <div
-                  className="
-                    mb-3
-                    flex
-                    h-12
-                    w-12
-                    items-center
-                    justify-center
-                    rounded-full
-                    border
-                    border-white/10
-                    bg-white/5
-                    text-gray-600
-                  "
-                >
-                  ✦
-                </div>
-
-                <p
-                  className="
-                    text-sm
-                    text-gray-500
-                  "
-                >
-                  No history found
-                </p>
-
-              </div>
-
-            )}
-
-          </div>
-
-        </aside>
-
-
-        {/* ======================================= */}
-        {/* ASSISTANT AREA */}
-        {/* ======================================= */}
+      <main
+        className="
+          flex
+          h-[calc(100vh-4rem)]
+          w-full
+        "
+      >
 
         <section
           className="
@@ -2173,6 +2174,10 @@ function Home() {
             sm:px-6
           "
         >
+
+          {/* =================================================
+              ASSISTANT CONTENT
+          ================================================= */}
 
           <div
             className="
@@ -2284,34 +2289,34 @@ function Home() {
             {showAIText &&
               aiText && (
 
-              <div
-                className="
-                  mt-4
-                  max-w-2xl
-                  rounded-2xl
-                  border
-                  border-white/10
-                  bg-white/3
-                  px-5
-                  py-4
-                  text-center
-                  text-sm
-                  leading-relaxed
-                  text-gray-300
-                  whitespace-pre-wrap
-                "
-              >
-                {aiText}
-              </div>
+                <div
+                  className="
+                    mt-4
+                    max-w-2xl
+                    rounded-2xl
+                    border
+                    border-white/10
+                    bg-white/[0.03]
+                    px-5
+                    py-4
+                    text-center
+                    text-sm
+                    leading-relaxed
+                    whitespace-pre-wrap
+                    text-gray-300
+                  "
+                >
+                  {aiText}
+                </div>
 
-            )}
+              )}
 
           </div>
 
 
-          {/* ===================================== */}
-          {/* IMAGE PREVIEW */}
-          {/* ===================================== */}
+          {/* =================================================
+              IMAGE PREVIEW
+          ================================================= */}
 
           {imagePreview && (
 
@@ -2331,7 +2336,7 @@ function Home() {
               <div
                 className="
                   flex
-                  items-start
+                  items-center
                   gap-3
                 "
               >
@@ -2340,8 +2345,9 @@ function Home() {
                   src={imagePreview}
                   alt="Selected"
                   className="
-                    h-20
-                    w-20
+                    h-16
+                    w-16
+                    shrink-0
                     rounded-xl
                     object-cover
                   "
@@ -2350,6 +2356,7 @@ function Home() {
 
                 <div
                   className="
+                    min-w-0
                     flex-1
                   "
                 >
@@ -2371,51 +2378,35 @@ function Home() {
                       text-gray-500
                     "
                   >
-                    Ask a question about this image.
+                    Type your question below and press Send.
                   </p>
-
-
-                  <input
-                    value={
-                      imageQuestion
-                    }
-                    onChange={e =>
-                      setImageQuestion(
-                        e.target.value
-                      )
-                    }
-                    placeholder="
-                      e.g. Solve this problem
-                    "
-                    className="
-                      mt-2
-                      h-9
-                      w-full
-                      rounded-lg
-                      border
-                      border-white/10
-                      bg-white/5
-                      px-3
-                      text-xs
-                      text-white
-                      outline-none
-                      placeholder:text-gray-600
-                    "
-                  />
 
                 </div>
 
 
                 <button
+                  type="button"
                   onClick={
                     removeImage
                   }
                   className="
+                    flex
+                    h-8
+                    w-8
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-lg
                     text-gray-500
+                    hover:bg-white/5
                     hover:text-red-400
                   "
                 >
-                  <FiX />
+
+                  <FiX
+                    size={18}
+                  />
+
                 </button>
 
               </div>
@@ -2425,9 +2416,9 @@ function Home() {
           )}
 
 
-          {/* ===================================== */}
-          {/* INPUT AREA */}
-          {/* ===================================== */}
+          {/* =================================================
+              INPUT AREA
+          ================================================= */}
 
           <div
             className="
@@ -2438,12 +2429,7 @@ function Home() {
 
             <form
               onSubmit={
-                imagePreview
-                  ? e => {
-                      e.preventDefault();
-                      analyzeImage();
-                    }
-                  : handleSend
+                handleSend
               }
               className="
                 flex
@@ -2562,13 +2548,16 @@ function Home() {
               >
 
                 {isListening
-                  ? <FiMicOff
+                  ? (
+                    <FiMicOff
                       size={19}
                     />
-                  : <FiMic
+                  )
+                  : (
+                    <FiMic
                       size={19}
                     />
-                }
+                  )}
 
               </button>
 
@@ -2579,7 +2568,8 @@ function Home() {
                 type="submit"
                 disabled={
                   imagePreview
-                    ? isImageAnalyzing
+                    ? isImageAnalyzing ||
+                      !selectedImage
                     : isSending ||
                       !typedText.trim()
                 }

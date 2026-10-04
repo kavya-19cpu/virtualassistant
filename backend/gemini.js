@@ -71,10 +71,9 @@ USER COMMAND:
 ${command}
 `;
 
-    const apiUrl =
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
-
-    const result = await axios.post(
+   const apiUrl =
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
+  const result = await axios.post(
       apiUrl,
       {
         contents: [
@@ -198,9 +197,8 @@ Do not invent information that cannot be seen.
 Answer the user's question directly.
 `;
 
-    const apiUrl =
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
-
+   const apiUrl =
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
     const result = await axios.post(
       apiUrl,
       {
