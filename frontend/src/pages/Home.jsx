@@ -35,7 +35,8 @@ import {
   FiLogOut,
   FiLock,
   FiEdit3,
-  FiFileText
+  FiFileText,
+  FiSquare
 } from "react-icons/fi";
 
 
@@ -59,6 +60,9 @@ function Home() {
     useState(false);
 
   const [isAIActive, setIsAIActive] =
+    useState(false);
+
+  const [isSpeaking, setIsSpeaking] =
     useState(false);
 
   const [userText, setUserText] =
@@ -89,7 +93,9 @@ function Home() {
     useState("");
 
 
+  // =====================================================
   // IMAGE
+  // =====================================================
 
   const [selectedImage, setSelectedImage] =
     useState(null);
@@ -104,7 +110,9 @@ function Home() {
     useState("");
 
 
+  // =====================================================
   // PDF
+  // =====================================================
 
   const [selectedPdf, setSelectedPdf] =
     useState(null);
@@ -272,14 +280,11 @@ function Home() {
 
 
     cleaned = cleaned
-
       .replace(/\\pi\b/g, "π")
-
       .replace(
         /\\sqrt\{([^{}]+)\}/g,
         "√($1)"
       )
-
       .replace(/\\sin\b/g, "sin")
       .replace(/\\cos\b/g, "cos")
       .replace(/\\tan\b/g, "tan")
@@ -310,22 +315,18 @@ function Home() {
 
 
     cleaned = cleaned
-
       .replace(
         /\\text\{([^{}]*)\}/g,
         "$1"
       )
-
       .replace(
         /\\mathrm\{([^{}]*)\}/g,
         "$1"
       )
-
       .replace(
         /\\mathbf\{([^{}]*)\}/g,
         "$1"
       )
-
       .replace(
         /\\displaystyle/g,
         ""
@@ -333,22 +334,18 @@ function Home() {
 
 
     cleaned = cleaned
-
       .replace(
         /\^\{2\}/g,
         "²"
       )
-
       .replace(
         /\^\{3\}/g,
         "³"
       )
-
       .replace(
         /\^2/g,
         "²"
       )
-
       .replace(
         /\^3/g,
         "³"
@@ -356,17 +353,14 @@ function Home() {
 
 
     cleaned = cleaned
-
       .replace(
         /sin\^\{-1\}/g,
         "sin⁻¹"
       )
-
       .replace(
         /cos\^\{-1\}/g,
         "cos⁻¹"
       )
-
       .replace(
         /tan\^\{-1\}/g,
         "tan⁻¹"
@@ -558,6 +552,7 @@ function Home() {
 
       }
     );
+
   };
 
 
@@ -700,6 +695,7 @@ function Home() {
           })
         );
 
+
       } catch (error) {
 
         console.error(
@@ -722,6 +718,7 @@ function Home() {
     if (
       historyItems.length === 0
     ) {
+
       return;
     }
 
@@ -771,6 +768,7 @@ function Home() {
         })
       );
 
+
     } catch (error) {
 
       console.error(
@@ -785,7 +783,36 @@ function Home() {
 
 
   // =====================================================
-  // SPEECH
+  // STOP SPEAKING
+  // =====================================================
+
+  const stopSpeaking = () => {
+
+    clearTimeout(
+      speechTimeoutRef.current
+    );
+
+    window.speechSynthesis.cancel();
+
+    speakingRef.current =
+      false;
+
+    setIsSpeaking(false);
+
+
+    if (
+      !processingRef.current
+    ) {
+
+      setIsAIActive(false);
+
+    }
+
+  };
+
+
+  // =====================================================
+  // SPEAK COMPLETE RESPONSE
   // =====================================================
 
   const speak = text => {
@@ -804,13 +831,17 @@ function Home() {
     }
 
 
-    window.speechSynthesis.cancel();
-
-
+    // Cancel previous speech
     clearTimeout(
       speechTimeoutRef.current
     );
 
+    window.speechSynthesis.cancel();
+
+
+    // =================================================
+    // CREATE SMALL SPEECH CHUNKS
+    // =================================================
 
     const sentences =
       speechText.match(
@@ -839,8 +870,9 @@ function Home() {
           `${currentChunk} ${cleanSentence}`.trim();
 
 
+        // Keep speech chunks reasonably short
         if (
-          combined.length > 180
+          combined.length > 160
         ) {
 
           if (
@@ -893,14 +925,34 @@ function Home() {
     let currentIndex = 0;
 
 
+    // =================================================
+    // SPEAKING START
+    // =================================================
+
     speakingRef.current =
       true;
+
+    setIsSpeaking(true);
 
     setIsAIActive(true);
 
 
+    // =================================================
+    // SPEAK NEXT CHUNK
+    // =================================================
+
     const speakNextChunk = () => {
 
+      // User stopped speaking
+      if (
+        !speakingRef.current
+      ) {
+
+        return;
+      }
+
+
+      // All chunks completed
       if (
         currentIndex >=
         chunks.length
@@ -909,9 +961,19 @@ function Home() {
         speakingRef.current =
           false;
 
-        setIsAIActive(false);
+        setIsSpeaking(false);
 
 
+        if (
+          !processingRef.current
+        ) {
+
+          setIsAIActive(false);
+
+        }
+
+
+        // Restart listening after answer
         if (
           listeningRef.current &&
           !processingRef.current &&
@@ -919,8 +981,14 @@ function Home() {
         ) {
 
           try {
+
             recognitionRef.current.start();
-          } catch { }
+
+          } catch {
+
+            // Already running
+
+          }
 
         }
 
@@ -950,8 +1018,17 @@ function Home() {
 
       utterance.onstart = () => {
 
-        speakingRef.current =
-          true;
+        if (
+          !speakingRef.current
+        ) {
+
+          window.speechSynthesis.cancel();
+
+          return;
+        }
+
+
+        setIsSpeaking(true);
 
         setIsAIActive(true);
 
@@ -960,21 +1037,46 @@ function Home() {
 
       utterance.onend = () => {
 
+        if (
+          !speakingRef.current
+        ) {
+
+          return;
+        }
+
+
         currentIndex++;
 
 
         speechTimeoutRef.current =
           setTimeout(
             () => {
+
               speakNextChunk();
+
             },
-            80
+            50
           );
 
       };
 
 
-      utterance.onerror = () => {
+      utterance.onerror = event => {
+
+        console.error(
+          "SPEECH ERROR:",
+          event
+        );
+
+
+        // If user intentionally stopped
+        if (
+          !speakingRef.current
+        ) {
+
+          return;
+        }
+
 
         currentIndex++;
 
@@ -982,9 +1084,11 @@ function Home() {
         speechTimeoutRef.current =
           setTimeout(
             () => {
+
               speakNextChunk();
+
             },
-            80
+            50
           );
 
       };
@@ -1261,11 +1365,9 @@ function Home() {
       }
 
 
-      /*
-      -----------------------------------------------------
-      WEBSITE ALIASES
-      -----------------------------------------------------
-      */
+      // =================================================
+      // WEBSITE ALIASES
+      // =================================================
 
       const siteAliases = {
 
@@ -1328,28 +1430,21 @@ function Home() {
       let match;
 
 
-      /*
-      =====================================================
-      1. SEARCH QUERY ON/IN/USING SITE
-      =====================================================
-
-      search apple on youtube
-      search apple in youtube
-      search apple using youtube
-
-      search for apple on youtube
-      search for apple in youtube
-
-      find apple on google
-      look up apple in yahoo
-      */
+      // =================================================
+      // 1. SEARCH QUERY ON/IN/USING SITE
+      // =================================================
 
       match =
         text.match(
+
           new RegExp(
-            `^(?:search|find|look\\s*up)\\s+(?:for\\s+)?(.+?)\\s+(?:on|in|using)\\s+(${siteNames})$`,
+
+            `^(?:search|find|look\\s+up)\\s+(?:for\\s+)?(.+?)\\s+(?:on|in|using)\\s+(${siteNames})$`,
+
             "i"
+
           )
+
         );
 
 
@@ -1360,7 +1455,7 @@ function Home() {
 
         const site =
           siteAliases[
-          match[2].toLowerCase()
+            match[2].toLowerCase()
           ];
 
 
@@ -1379,25 +1474,21 @@ function Home() {
       }
 
 
-      /*
-      =====================================================
-      2. SEARCH SITE FOR QUERY
-      =====================================================
-
-      search youtube for apple
-      search google for apple
-      search yahoo for apple
-
-      find youtube for apple
-      look up google for apple
-      */
+      // =================================================
+      // 2. SEARCH SITE FOR QUERY
+      // =================================================
 
       match =
         text.match(
+
           new RegExp(
-            `^(?:search|find|look\\s*up)\\s+(${siteNames})\\s+(?:for|about)\\s+(.+)$`,
+
+            `^(?:search|find|look\\s+up)\\s+(${siteNames})\\s+(?:for|about)\\s+(.+)$`,
+
             "i"
+
           )
+
         );
 
 
@@ -1405,7 +1496,7 @@ function Home() {
 
         const site =
           siteAliases[
-          match[1].toLowerCase()
+            match[1].toLowerCase()
           ];
 
         const query =
@@ -1427,22 +1518,21 @@ function Home() {
       }
 
 
-      /*
-      =====================================================
-      3. SEARCH SITE QUERY
-      =====================================================
-
-      search youtube apple
-      search google apple
-      search yahoo apple
-      */
+      // =================================================
+      // 3. SEARCH SITE QUERY
+      // =================================================
 
       match =
         text.match(
+
           new RegExp(
-            `^(?:search|find|look\\s*up)\\s+(${siteNames})\\s+(.+)$`,
+
+            `^(?:search|find|look\\s+up)\\s+(${siteNames})\\s+(.+)$`,
+
             "i"
+
           )
+
         );
 
 
@@ -1450,7 +1540,7 @@ function Home() {
 
         const site =
           siteAliases[
-          match[1].toLowerCase()
+            match[1].toLowerCase()
           ];
 
         const query =
@@ -1472,22 +1562,21 @@ function Home() {
       }
 
 
-      /*
-      =====================================================
-      4. OPEN SITE AND SEARCH
-      =====================================================
-
-      open youtube and search apple
-      open youtube website and search apple
-      visit google and search apple
-      */
+      // =================================================
+      // 4. OPEN SITE AND SEARCH
+      // =================================================
 
       match =
         text.match(
+
           new RegExp(
-            `^(?:open|launch|visit|go\\s+to|take\\s+me\\s+to)\\s+(${siteNames})(?:\\s+(?:website|site))?\\s+(?:and\\s+)?(?:search|find|look\\s*up)\\s+(?:for\\s+)?(.+)$`,
+
+            `^(?:open|launch|visit|go\\s+to|take\\s+me\\s+to)\\s+(${siteNames})(?:\\s+(?:website|site))?\\s+(?:and\\s+)?(?:search|find|look\\s+up)\\s+(?:for\\s+)?(.+)$`,
+
             "i"
+
           )
+
         );
 
 
@@ -1495,7 +1584,7 @@ function Home() {
 
         const site =
           siteAliases[
-          match[1].toLowerCase()
+            match[1].toLowerCase()
           ];
 
         const query =
@@ -1517,22 +1606,13 @@ function Home() {
       }
 
 
-      /*
-      =====================================================
-      5. NORMAL SEARCH WITHOUT SITE
-      =====================================================
-
-      search apple
-      search for apple
-      find apple
-      look up apple
-
-      These go to Google.
-      */
+      // =================================================
+      // 5. NORMAL SEARCH WITHOUT SITE
+      // =================================================
 
       match =
         text.match(
-          /^(?:search|find|look\s*up)\s+(?:for\s+)?(.+)$/i
+          /^(?:search|find|look\s+up)\s+(?:for\s+)?(.+)$/i
         );
 
 
@@ -1542,20 +1622,9 @@ function Home() {
           match[1].trim();
 
 
-        /*
-        Don't treat:
-
-        search youtube
-        search google
-
-        as Google searches.
-
-        Those are handled as website commands.
-        */
-
         const possibleSite =
           siteAliases[
-          query.toLowerCase()
+            query.toLowerCase()
           ];
 
 
@@ -1756,7 +1825,9 @@ function Home() {
 
 
           if (shouldSpeak) {
+
             speak(answer);
+
           }
 
 
@@ -1801,7 +1872,9 @@ function Home() {
 
 
           if (shouldSpeak) {
+
             speak(answer);
+
           }
 
 
@@ -1831,16 +1904,6 @@ function Home() {
                 ""
               );
 
-
-          /*
-          If user says:
-
-          open youtube
-
-          open google
-
-          open yahoo
-          */
 
           if (websites[site]) {
 
@@ -1875,7 +1938,9 @@ function Home() {
 
 
             if (shouldSpeak) {
+
               speak(answer);
+
             }
 
 
@@ -1970,7 +2035,6 @@ function Home() {
 
         }
 
-
         else if (
           parsedResult?.type ===
           "google_search"
@@ -2008,12 +2072,11 @@ function Home() {
 
         }
 
-
         else if (
           parsedResult?.type ===
-          "youtube_search" ||
+            "youtube_search" ||
           parsedResult?.type ===
-          "youtube_play"
+            "youtube_play"
         ) {
 
           const query =
@@ -2066,9 +2129,10 @@ function Home() {
 
 
         if (shouldSpeak) {
-          speak(response);
-        }
 
+          speak(response);
+
+        }
 
       } catch (error) {
 
@@ -2090,9 +2154,12 @@ function Home() {
 
 
         if (shouldSpeak) {
-          speak(errorMessage);
-        }
 
+          speak(
+            errorMessage
+          );
+
+        }
 
       } finally {
 
@@ -2556,7 +2623,6 @@ function Home() {
           )
         );
 
-
         setShowAIText(true);
 
       } finally {
@@ -2719,7 +2785,6 @@ function Home() {
           )
         );
 
-
         setShowAIText(true);
 
       } finally {
@@ -2810,7 +2875,7 @@ function Home() {
 
         const lastResult =
           event.results[
-          event.results.length - 1
+            event.results.length - 1
           ];
 
 
@@ -2837,17 +2902,11 @@ function Home() {
         const stopCommands = [
 
           "thank you",
-
           "thanks",
-
           "stop",
-
           "bye",
-
           "goodbye",
-
           "stop listening",
-
           "cancel"
 
         ];
@@ -2902,7 +2961,11 @@ function Home() {
 
                   recognition.start();
 
-                } catch { }
+                } catch {
+
+                  // Already running
+
+                }
 
               },
               400
@@ -2932,9 +2995,9 @@ function Home() {
 
         if (
           event.error ===
-          "not-allowed" ||
+            "not-allowed" ||
           event.error ===
-          "audio-capture"
+            "audio-capture"
         ) {
 
           listeningRef.current =
@@ -2960,7 +3023,6 @@ function Home() {
         restartTimeoutRef.current
       );
 
-
       clearTimeout(
         speechTimeoutRef.current
       );
@@ -2970,10 +3032,18 @@ function Home() {
 
         recognition.stop();
 
-      } catch { }
+      } catch {
+
+        // Nothing to stop
+
+      }
 
 
       window.speechSynthesis.cancel();
+
+
+      speakingRef.current =
+        false;
 
 
       recognitionRef.current =
@@ -3004,15 +3074,33 @@ function Home() {
       }
 
 
+      // If assistant is speaking,
+      // stop him before starting microphone
+      if (
+        speakingRef.current ||
+        window.speechSynthesis.speaking
+      ) {
+
+        stopSpeaking();
+
+      }
+
+
       try {
 
         window.speechSynthesis.cancel();
 
+
         speakingRef.current =
           false;
 
+
+        setIsSpeaking(false);
+
+
         listeningRef.current =
           true;
+
 
         setIsListening(true);
 
@@ -3040,6 +3128,7 @@ function Home() {
       listeningRef.current =
         false;
 
+
       setIsListening(false);
 
 
@@ -3056,7 +3145,47 @@ function Home() {
 
           recognitionRef.current.stop();
 
-        } catch { }
+        } catch {
+
+          // Nothing to stop
+
+        }
+
+      }
+
+    };
+
+
+  // =====================================================
+  // MIC BUTTON HANDLER
+  // =====================================================
+
+  const handleMicClick =
+    () => {
+
+      // If assistant is speaking,
+      // mic button becomes STOP
+      if (
+        isSpeaking ||
+        speakingRef.current ||
+        window.speechSynthesis.speaking
+      ) {
+
+        stopSpeaking();
+
+        return;
+
+      }
+
+
+      // Otherwise microphone works normally
+      if (isListening) {
+
+        stopListening();
+
+      } else {
+
+        startListening();
 
       }
 
@@ -3163,6 +3292,10 @@ function Home() {
 
   const openHistory =
     item => {
+
+      // Stop speech when opening history
+      stopSpeaking();
+
 
       const command =
         item?.command || "";
@@ -3343,11 +3476,15 @@ function Home() {
 
             {showHistory ? (
 
-              <IoMdClose size={22} />
+              <IoMdClose
+                size={22}
+              />
 
             ) : (
 
-              <IoMdMenu size={22} />
+              <IoMdMenu
+                size={22}
+              />
 
             )}
 
@@ -3493,7 +3630,9 @@ function Home() {
 
             ) : (
 
-              <FiSettings size={19} />
+              <FiSettings
+                size={19}
+              />
 
             )}
 
@@ -3637,7 +3776,9 @@ function Home() {
                 "
               >
 
-                <FiTrash2 size={17} />
+                <FiTrash2
+                  size={17}
+                />
 
                 <span>
                   Clear All History
@@ -3716,7 +3857,9 @@ function Home() {
                 "
               >
 
-                <FiLogOut size={17} />
+                <FiLogOut
+                  size={17}
+                />
 
                 <span>
                   Logout
@@ -3827,7 +3970,9 @@ function Home() {
                 "
               >
 
-                <IoMdClose size={21} />
+                <IoMdClose
+                  size={21}
+                />
 
               </button>
 
@@ -3985,7 +4130,9 @@ function Home() {
                               size={10}
                             />
 
-                            <span className="truncate">
+                            <span
+                              className="truncate"
+                            >
 
                               {formatDate(
                                 item.createdAt
@@ -4071,7 +4218,8 @@ function Home() {
                         <p
                           className="
                             line-clamp-2
-wrap-break-word                                      text-sm
+                            wrap-break-word
+                            text-sm
                             text-gray-300
                           "
                         >
@@ -4087,7 +4235,8 @@ wrap-break-word                                      text-sm
                             className="
                               mt-2
                               line-clamp-2
-wrap-break-word                              text-xs
+                              wrap-break-word
+                              text-xs
                               leading-relaxed
                               text-gray-600
                             "
@@ -4270,9 +4419,10 @@ wrap-break-word                              text-xs
                   p-1
                   transition
                   sm:mb-5
-                  ${isAIActive
-                    ? "ring-4 ring-cyan-400/30"
-                    : ""
+                  ${
+                    isAIActive
+                      ? "ring-4 ring-cyan-400/30"
+                      : ""
                   }
                 `}
               >
@@ -4305,7 +4455,8 @@ wrap-break-word                              text-xs
               <h1
                 className="
                   max-w-full
-wrap-break-word                            px-3
+                  wrap-break-word
+                  px-3
                   text-center
                   text-xl
                   font-semibold
@@ -4333,21 +4484,21 @@ wrap-break-word                            px-3
                 "
               >
 
-                {isListening
+                {isSpeaking
 
-                  ? "Listening..."
+                  ? "Speaking..."
 
-                  : isImageAnalyzing
+                  : isListening
 
-                    ? "Analyzing image..."
+                    ? "Listening..."
 
-                    : isPdfAnalyzing
+                    : isImageAnalyzing
 
-                      ? "Analyzing PDF..."
+                      ? "Analyzing image..."
 
-                      : speakingRef.current
+                      : isPdfAnalyzing
 
-                        ? "Speaking..."
+                        ? "Analyzing PDF..."
 
                         : "How can I help you?"}
 
@@ -4490,7 +4641,8 @@ wrap-break-word                            px-3
                     mt-5
                     w-full
                     max-w-2xl
-wrap-break-word                              rounded-2xl
+                    wrap-break-word
+                    rounded-2xl
                     border
                     border-cyan-400/10
                     bg-cyan-400/5
@@ -4523,7 +4675,8 @@ wrap-break-word                              rounded-2xl
                       mb-5
                       w-full
                       max-w-3xl
-wrap-break-word                                rounded-2xl
+                      wrap-break-word
+                      rounded-2xl
                       border
                       border-white/10
                       bg-white/3
@@ -4648,7 +4801,9 @@ wrap-break-word                                rounded-2xl
                   "
                 >
 
-                  <FiX size={18} />
+                  <FiX
+                    size={18}
+                  />
 
                 </button>
 
@@ -4776,7 +4931,9 @@ wrap-break-word                                rounded-2xl
                   "
                 >
 
-                  <FiX size={18} />
+                  <FiX
+                    size={18}
+                  />
 
                 </button>
 
@@ -4798,6 +4955,59 @@ wrap-break-word                                rounded-2xl
               shrink-0
             "
           >
+
+            {/* =================================================
+                STOP SPEAKING BUTTON
+            ================================================= */}
+
+            {isSpeaking && (
+
+              <div
+                className="
+                  mb-2
+                  flex
+                  justify-center
+                "
+              >
+
+                <button
+                  type="button"
+                  onClick={
+                    stopSpeaking
+                  }
+                  className="
+                    flex
+                    items-center
+                    gap-2
+                    rounded-full
+                    border
+                    border-red-400/30
+                    bg-red-400/10
+                    px-4
+                    py-2
+                    text-xs
+                    font-medium
+                    text-red-400
+                    transition
+                    hover:bg-red-400/20
+                    active:scale-95
+                  "
+                  title="Stop assistant speaking"
+                >
+
+                  <FiSquare
+                    size={13}
+                    fill="currentColor"
+                  />
+
+                  Stop Speaking
+
+                </button>
+
+              </div>
+
+            )}
+
 
             <form
               onSubmit={handleSend}
@@ -4842,7 +5052,9 @@ wrap-break-word                                rounded-2xl
                 title="Analyze image"
               >
 
-                <FiImage size={19} />
+                <FiImage
+                  size={19}
+                />
 
               </button>
 
@@ -4883,7 +5095,9 @@ wrap-break-word                                rounded-2xl
                 title="Upload PDF"
               >
 
-                <FiFileText size={19} />
+                <FiFileText
+                  size={19}
+                />
 
               </button>
 
@@ -4930,14 +5144,14 @@ wrap-break-word                                rounded-2xl
               />
 
 
-              {/* MICROPHONE */}
+              {/* =================================================
+                  MICROPHONE / STOP SPEAKING
+              ================================================= */}
 
               <button
                 type="button"
                 onClick={
-                  isListening
-                    ? stopListening
-                    : startListening
+                  handleMicClick
                 }
                 className={`
                   flex
@@ -4950,25 +5164,44 @@ wrap-break-word                                rounded-2xl
                   transition
                   sm:h-11
                   sm:w-11
-                  ${isListening
-                    ? "bg-red-400/10 text-red-400"
-                    : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
+
+                  ${
+                    isSpeaking
+                      ? "bg-red-400/15 text-red-400 hover:bg-red-400/25"
+
+                      : isListening
+                        ? "bg-red-400/10 text-red-400"
+
+                        : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
                   }
                 `}
                 title={
-                  isListening
-                    ? "Stop microphone"
-                    : "Start microphone"
+                  isSpeaking
+                    ? "Stop assistant speaking"
+                    : isListening
+                      ? "Stop microphone"
+                      : "Start microphone"
                 }
               >
 
-                {isListening ? (
+                {isSpeaking ? (
 
-                  <FiMicOff size={19} />
+                  <FiSquare
+                    size={17}
+                    fill="currentColor"
+                  />
+
+                ) : isListening ? (
+
+                  <FiMicOff
+                    size={19}
+                  />
 
                 ) : (
 
-                  <FiMic size={19} />
+                  <FiMic
+                    size={19}
+                  />
 
                 )}
 
@@ -4982,14 +5215,14 @@ wrap-break-word                                rounded-2xl
                 disabled={
                   imagePreview
                     ? isImageAnalyzing ||
-                    !selectedImage
+                      !selectedImage
 
                     : pdfPreviewName
                       ? isPdfAnalyzing ||
-                      !selectedPdf
+                        !selectedPdf
 
                       : isSending ||
-                      !typedText.trim()
+                        !typedText.trim()
                 }
                 className="
                   flex
@@ -5011,13 +5244,17 @@ wrap-break-word                                rounded-2xl
                 title={
                   imagePreview
                     ? "Analyze image"
+
                     : pdfPreviewName
                       ? "Analyze PDF"
+
                       : "Send"
                 }
               >
 
-                <FiSend size={18} />
+                <FiSend
+                  size={18}
+                />
 
               </button>
 
