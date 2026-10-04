@@ -89,40 +89,30 @@ const UserContext = ({
         };
 
 
-    const getGeminiResponse =
-        async (command) => {
+    const getGeminiResponse = async (command) => {
+  try {
+    const result = await axios.post(
+      `${serverUrl}/api/user/asktoassistant`,
+      {
+        command
+      },
+      {
+        withCredentials: true
+      }
+    );
 
-            try {
+    return result.data;
 
-                const result =
-                    await axios.post(
-                        `${serverUrl}/api/user/asktoassistant`,
-                        {
-                            command
-                        },
-                        {
-                            withCredentials: true
-                        }
-                    );
+  } catch (error) {
+    console.error(
+      "GET GEMINI RESPONSE ERROR:",
+      error.response?.data ||
+      error.message
+    );
 
-
-                return result.data;
-
-
-            } catch (error) {
-
-                console.error(
-                    "GEMINI RESPONSE ERROR:",
-                    error.response?.data ||
-                    error.message
-                );
-
-
-                return null;
-
-            }
-        };
-
+    throw error;
+  }
+};
 
     useEffect(() => {
 

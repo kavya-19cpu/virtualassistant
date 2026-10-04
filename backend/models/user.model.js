@@ -7,10 +7,17 @@ const historySchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+
     answer: {
       type: String,
       required: true,
       trim: true
+    },
+
+    type: {
+      type: String,
+      enum: ["text", "voice", "image"],
+      default: "text"
     }
   },
   {
@@ -22,23 +29,32 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
+
     email: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
+      trim: true,
+      lowercase: true
     },
+
     password: {
       type: String,
       required: true
     },
+
     assistantName: {
-      type: String
+      type: String,
+      trim: true
     },
+
     assistantImage: {
       type: String
     },
+
     history: {
       type: [historySchema],
       default: []

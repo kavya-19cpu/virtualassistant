@@ -1,40 +1,141 @@
-import express from "express"
-import dotenv from "dotenv"
-import mongoose from "mongoose"
-import authRouter from "./routes/auth.routes.js"
-import userRouter from "./routes/user.routes.js"
-import cookieParser from "cookie-parser"
-import cors from "cors"
-import dns from "dns"
+import express from "express";
+import dotenv from "dotenv";
+import mongoose from "mongoose";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import dns from "dns";
 
-dns.setDefaultResultOrder("ipv4first")
-dotenv.config()
+import authRouter from "./routes/auth.routes.js";
+import userRouter from "./routes/user.routes.js";
 
-const app=express()
 
-app.use(cors({
-    origin:"https://virtualassistant-frontend-pebc.onrender.com",
-    credentials:true
-}))
+dns.setDefaultResultOrder(
+  "ipv4first"
+);
 
-const port=process.env.PORT||6001
+dotenv.config();
 
-app.use(express.json())
-app.use(cookieParser())
 
-app.use("/api/auth",authRouter)
-app.use("/api/user",userRouter)
+const app = express();
 
-mongoose.connect(process.env.MONGODB_URL,{
-    family:4
-})
-.then(()=>{
-    console.log("MongoDB connected")
-})
-.catch((error)=>{
-    console.log("MongoDB connection error:",error)
-})
 
-app.listen(port,()=>{
-    console.log(`server started on ${port}`)
-})
+/*
+=====================================================
+CORS
+=====================================================
+*/
+
+app.use(
+  cors({
+    origin:
+      "https://virtualassistant-frontend-pebc.onrender.com",
+
+    credentials: true
+  })
+);
+
+
+/*
+=====================================================
+MIDDLEWARE
+=====================================================
+*/
+
+app.use(
+  express.json({
+    limit: "10mb"
+  })
+);
+
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "10mb"
+  })
+);
+
+app.use(
+  cookieParser()
+);
+
+
+/*
+=====================================================
+ROUTES
+=====================================================
+*/
+
+app.use(
+  "/api/auth",
+  authRouter
+);
+
+app.use(
+  "/api/user",
+  userRouter
+);
+
+
+/*
+=====================================================
+HEALTH CHECK
+=====================================================
+*/
+
+app.get(
+  "/",
+  (req, res) => {
+    res.status(200).json({
+      message:
+        "Virtual Assistant Backend is running"
+    });
+  }
+);
+
+
+/*
+=====================================================
+MONGODB
+=====================================================
+*/
+
+const port =
+  process.env.PORT || 6001;
+
+
+mongoose
+  .connect(
+    process.env.MONGODB_URL,
+    {
+      family: 4
+    }
+  )
+
+  .then(() => {
+    console.log(
+      "MongoDB connected"
+    );
+  })
+
+  .catch(error => {
+    console.error(
+      "MongoDB connection error:",
+      error
+    );
+  });
+
+
+/*
+=====================================================
+START SERVER
+=====================================================
+*/
+
+app.listen(
+  port,
+  () => {
+    console.log(
+      `Server started on ${port}`
+    );
+  }
+);
