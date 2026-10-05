@@ -560,87 +560,144 @@ export const askToAssistant = async (
             });
 
         }
-// ==========================================
-// TIME
-// ==========================================
-
-if (
-    lowerCommand.includes("what time") ||
-    lowerCommand === "time" ||
-    lowerCommand.includes("current time") ||
-    lowerCommand.includes("time now") ||
-    lowerCommand.includes("tell me the time")
-) {
-    return res.status(200).json({
-        type: "general",
-        userInput: command,
-        response:
-            `The current time is ${moment().format("h:mm A")}.`
-    });
-}
 
 
-// ==========================================
-// DATE
-// ==========================================
+        /*
+        =================================================
+        TIME
+        =================================================
+        */
 
-if (
-    lowerCommand.includes("what date") ||
-    lowerCommand.includes("what is the date") ||
-    lowerCommand.includes("today's date") ||
-    lowerCommand.includes("todays date") ||
-    lowerCommand.includes("current date") ||
-    lowerCommand === "date"
-) {
-    return res.status(200).json({
-        type: "general",
-        userInput: command,
-        response:
-            `Today's date is ${moment().format("MMMM Do, YYYY")}.`
-    });
-}
+        if (
+            lowerCommand.includes(
+                "what time is it"
+            ) ||
+            lowerCommand === "time" ||
+            lowerCommand.includes(
+                "current time"
+            )
+        ) {
 
+            return res.status(200).json({
 
-// ==========================================
-// DAY
-// ==========================================
+                type:
+                    "general",
 
-if (
-    lowerCommand.includes("what day") ||
-    lowerCommand.includes("which day") ||
-    lowerCommand.includes("what is the day") ||
-    lowerCommand.includes("what's the day") ||
-    lowerCommand.includes("day today") ||
-    lowerCommand.includes("today's day") ||
-    lowerCommand === "day"
-) {
-    return res.status(200).json({
-        type: "general",
-        userInput: command,
-        response:
-            `Today is ${moment().format("dddd")}.`
-    });
-}
+                userInput:
+                    command,
+
+                response:
+                    `The current time is ${moment().format(
+                        "hh:mm A"
+                    )}.`
+
+            });
+
+        }
 
 
-// ==========================================
-// MONTH
-// ==========================================
+        /*
+        =================================================
+        DATE
+        =================================================
+        */
 
-if (
-    lowerCommand.includes("what month") ||
-    lowerCommand.includes("which month") ||
-    lowerCommand.includes("current month") ||
-    lowerCommand.includes("month now") ||
-    lowerCommand === "month"
-) {
-    return res.status(200).json({
-        type: "general",
-        userInput: command,
-        response:
-            `The current month is ${moment().format("MMMM")}.`
-    });
-}
+        if (
+            lowerCommand.includes(
+                "what is today's date"
+            ) ||
+            lowerCommand.includes(
+                "what is the date"
+            ) ||
+            lowerCommand === "date" ||
+            lowerCommand.includes(
+                "today's date"
+            )
+        ) {
+
+            return res.status(200).json({
+
+                type:
+                    "general",
+
+                userInput:
+                    command,
+
+                response:
+                    `Today's date is ${moment().format(
+                        "DD MMMM YYYY"
+                    )}.`
+
+            });
+
+        }
+
+
+        /*
+        =================================================
+        DAY
+        =================================================
+        */
+
+        if (
+            lowerCommand.includes(
+                "what day is it"
+            ) ||
+            lowerCommand === "day" ||
+            lowerCommand.includes(
+                "today's day"
+            )
+        ) {
+
+            return res.status(200).json({
+
+                type:
+                    "general",
+
+                userInput:
+                    command,
+
+                response:
+                    `Today is ${moment().format(
+                        "dddd"
+                    )}.`
+
+            });
+
+        }
+
+
+        /*
+        =================================================
+        MONTH
+        =================================================
+        */
+
+        if (
+            lowerCommand.includes(
+                "what month is it"
+            ) ||
+            lowerCommand === "month"
+        ) {
+
+            return res.status(200).json({
+
+                type:
+                    "general",
+
+                userInput:
+                    command,
+
+                response:
+                    `This month is ${moment().format(
+                        "MMMM"
+                    )}.`
+
+            });
+
+        }
+
+
         /*
         =================================================
         GEMINI
