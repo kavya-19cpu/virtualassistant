@@ -561,7 +561,6 @@ export const askToAssistant = async (
 
         }
 
-
         // ==========================================
         // TIME
         // ==========================================
@@ -639,27 +638,6 @@ export const askToAssistant = async (
                 userInput: command,
                 response:
                     `The current month is ${moment().format("MMMM")}`
-            });
-        }
-
-
-        // ==========================================
-        // YEAR
-        // ==========================================
-
-        if (
-            lowerCommand.includes("what year") ||
-            lowerCommand.includes("which year") ||
-            lowerCommand.includes("current year") ||
-            lowerCommand.includes("year now") ||
-            lowerCommand === "year"
-        ) {
-
-            return res.status(200).json({
-                type: "get_year",
-                userInput: command,
-                response:
-                    `The current year is ${moment().format("YYYY")}`
             });
         }
 
