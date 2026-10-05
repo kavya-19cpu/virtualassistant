@@ -562,139 +562,105 @@ export const askToAssistant = async (
         }
 
 
-        /*
-        =================================================
-        TIME
-        =================================================
-        */
+        // ==========================================
+        // TIME
+        // ==========================================
 
         if (
-            lowerCommand.includes(
-                "what time is it"
-            ) ||
-            lowerCommand === "time" ||
-            lowerCommand.includes(
-                "current time"
-            )
+            lowerCommand.includes("what time") ||
+            lowerCommand.includes("current time") ||
+            lowerCommand.includes("time now") ||
+            lowerCommand.includes("tell me the time")
         ) {
 
             return res.status(200).json({
-
-                type:
-                    "general",
-
-                userInput:
-                    command,
-
+                type: "get_time",
+                userInput: command,
                 response:
-                    `The current time is ${moment().format(
-                        "hh:mm A"
-                    )}.`
-
+                    `Current time is ${moment().format("h:mm A")}`
             });
-
         }
 
 
-        /*
-        =================================================
-        DATE
-        =================================================
-        */
+        // ==========================================
+        // DATE
+        // ==========================================
 
         if (
-            lowerCommand.includes(
-                "what is today's date"
-            ) ||
-            lowerCommand.includes(
-                "what is the date"
-            ) ||
-            lowerCommand === "date" ||
-            lowerCommand.includes(
-                "today's date"
-            )
+            lowerCommand.includes("what date") ||
+            lowerCommand.includes("today's date") ||
+            lowerCommand.includes("todays date") ||
+            lowerCommand.includes("current date")
         ) {
 
             return res.status(200).json({
-
-                type:
-                    "general",
-
-                userInput:
-                    command,
-
+                type: "get_date",
+                userInput: command,
                 response:
-                    `Today's date is ${moment().format(
-                        "DD MMMM YYYY"
-                    )}.`
-
+                    `Today's date is ${moment().format("MMMM Do, YYYY")}`
             });
-
         }
 
 
-        /*
-        =================================================
-        DAY
-        =================================================
-        */
+        // ==========================================
+        // DAY
+        // ==========================================
 
         if (
-            lowerCommand.includes(
-                "what day is it"
-            ) ||
-            lowerCommand === "day" ||
-            lowerCommand.includes(
-                "today's day"
-            )
+            lowerCommand.includes("what day") ||
+            lowerCommand.includes("which day") ||
+            lowerCommand.includes("what is the day") ||
+            lowerCommand.includes("what's the day") ||
+            lowerCommand.includes("day today")
         ) {
 
             return res.status(200).json({
-
-                type:
-                    "general",
-
-                userInput:
-                    command,
-
+                type: "get_day",
+                userInput: command,
                 response:
-                    `Today is ${moment().format(
-                        "dddd"
-                    )}.`
-
+                    `Today is ${moment().format("dddd")}`
             });
-
         }
 
 
-        /*
-        =================================================
-        MONTH
-        =================================================
-        */
+        // ==========================================
+        // MONTH
+        // ==========================================
 
         if (
-            lowerCommand.includes(
-                "what month is it"
-            ) ||
-            lowerCommand === "month"
+            lowerCommand.includes("what month") ||
+            lowerCommand.includes("which month") ||
+            lowerCommand.includes("current month") ||
+            lowerCommand.includes("month now")
         ) {
 
             return res.status(200).json({
-
-                type:
-                    "general",
-
-                userInput:
-                    command,
-
+                type: "get_month",
+                userInput: command,
                 response:
-                    `This month is ${moment().format(
-                        "MMMM"
-                    )}.`
-
+                    `The current month is ${moment().format("MMMM")}`
             });
+        }
 
+
+        // ==========================================
+        // YEAR
+        // ==========================================
+
+        if (
+            lowerCommand.includes("what year") ||
+            lowerCommand.includes("which year") ||
+            lowerCommand.includes("current year") ||
+            lowerCommand.includes("year now") ||
+            lowerCommand === "year"
+        ) {
+
+            return res.status(200).json({
+                type: "get_year",
+                userInput: command,
+                response:
+                    `The current year is ${moment().format("YYYY")}`
+            });
         }
 
 
