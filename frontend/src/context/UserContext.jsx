@@ -16,7 +16,7 @@ const UserContext = ({
 }) => {
 
     const serverUrl =
-        "https://virtualassistant-backend-9mos.onrender.com";
+        "https://virtualassistant-backend-26od.onrender.com";
 
 
     const [
