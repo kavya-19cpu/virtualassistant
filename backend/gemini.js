@@ -55,6 +55,50 @@ const logGeminiError = (label, error) => {
 };
 
 // ============================================================
+// ANSWER-ONLY RESPONSE RULES
+// ============================================================
+
+const answerOnlyRules = `
+IMPORTANT RESPONSE RULES:
+
+- Return ONLY the answer to the user's question.
+- Start directly with the answer.
+- DO NOT greet the user.
+- DO NOT say "Hello".
+- DO NOT say "Hi".
+- DO NOT say "Hey".
+- DO NOT mention the user's name.
+- DO NOT mention the assistant's name.
+- DO NOT introduce yourself.
+- DO NOT say "I am your assistant".
+- DO NOT address the user by name.
+- DO NOT add conversational introductions.
+- DO NOT add unnecessary conversational filler.
+- DO NOT say "Sure".
+- DO NOT say "Of course".
+- DO NOT say "Certainly".
+- DO NOT say "Here is the answer".
+- DO NOT say "Let's solve this".
+- DO NOT repeat the user's question unless necessary.
+- Give the answer directly.
+
+If the user asks for an explanation:
+- Give the explanation directly.
+- Do not add a greeting or introduction.
+
+If the user asks for steps:
+- Give the steps directly.
+
+If the user asks for a short answer:
+- Be concise.
+
+If the user asks for only the final answer:
+- Give only the final answer.
+
+The response must sound like a direct answer, NOT like a conversation.
+`;
+
+// ============================================================
 // NORMAL GEMINI RESPONSE
 // USED BY askToAssistant
 // ============================================================
@@ -68,15 +112,13 @@ async function geminiResponse(
         const apiUrl = getGeminiApiUrl();
 
         const prompt = `
-You are ${assistantName}, a highly accurate AI virtual assistant.
-
-The user's name is ${userName}.
+You are an AI assistant that answers the user's question accurately.
 
 The user asked:
 
 "${command}"
 
-Answer the user's question accurately and directly.
+${answerOnlyRules}
 
 GENERAL ACCURACY RULES:
 
@@ -93,11 +135,12 @@ GENERAL ACCURACY RULES:
 - For programming, check syntax and logic carefully.
 - For MCQs, consider every option before selecting the answer.
 
-If the user asks for a short answer, be concise.
-
-If the user asks for an explanation, provide clear steps.
-
 Give the best accurate answer to the user.
+
+FINAL INSTRUCTION:
+
+Begin immediately with the answer.
+Never begin with a greeting, username, assistant name, introduction, or filler.
 `;
 
         const response = await axios.post(
@@ -229,15 +272,15 @@ async function geminiImageResponse(
         // ====================================================
 
         const solvePrompt = `
-You are ${assistantName}, a highly accurate AI virtual assistant.
-
-The user's name is ${userName}.
+You are an AI assistant that carefully analyzes the uploaded image.
 
 The user uploaded an image and asked:
 
 "${command}"
 
 The uploaded image is the PRIMARY SOURCE.
+
+${answerOnlyRules}
 
 Your job is to carefully read the image and solve the EXACT question asked by the user.
 
@@ -445,6 +488,17 @@ Answer the exact question asked.
 If the user asks for "correct answers only", provide concise final answers.
 
 If the user asks for steps, provide clear steps and the final answer.
+
+FINAL RESPONSE RULE:
+
+Return ONLY the answer.
+
+Do not greet the user.
+Do not mention the user's name.
+Do not mention the assistant's name.
+Do not introduce yourself.
+
+Start directly with the answer.
 `;
 
         console.log("=================================");
@@ -670,9 +724,11 @@ Clearly state what cannot be determined.
 FINAL RESPONSE
 ================================================
 
-Return ONLY the final verified answer to the user.
+${answerOnlyRules}
 
-Do NOT mention:
+Return ONLY the FINAL VERIFIED ANSWER.
+
+Do not mention:
 
 - Pass 1
 - Pass 2
@@ -690,6 +746,8 @@ If the user asked for explanation:
 Give concise steps followed by the final answer.
 
 Accuracy is more important than speed.
+
+START DIRECTLY WITH THE ANSWER.
 `;
 
         console.log("=================================");
@@ -820,6 +878,7 @@ async function geminiPdfResponse(
         console.log("=================================");
         console.log("PDF INPUT DEBUG");
         console.log("=================================");
+
         console.log(
             "PDF BUFFER SIZE:",
             pdfBuffer.length
@@ -835,15 +894,15 @@ async function geminiPdfResponse(
         // ====================================================
 
         const solvePrompt = `
-You are ${assistantName}, a highly accurate AI virtual assistant.
-
-The user's name is ${userName}.
+You are an AI assistant that carefully analyzes the uploaded PDF.
 
 The user uploaded a PDF and asked:
 
 "${command}"
 
 The uploaded PDF is the PRIMARY SOURCE.
+
+${answerOnlyRules}
 
 Read the relevant pages carefully and answer the EXACT question.
 
@@ -982,6 +1041,17 @@ Before answering, verify:
 If information is genuinely unreadable, do not guess.
 
 Give the answer requested by the user.
+
+FINAL RESPONSE:
+
+Return ONLY the answer.
+
+Do not greet the user.
+Do not mention the user's name.
+Do not mention the assistant's name.
+Do not introduce yourself.
+
+Start directly with the answer.
 `;
 
         console.log("=================================");
@@ -1170,13 +1240,18 @@ Select the option that actually matches the correct result.
 FINAL RESPONSE
 ================================================
 
+${answerOnlyRules}
+
 Return ONLY the FINAL VERIFIED ANSWER.
 
-Do not mention the verification process.
+Do not mention:
 
-Do not mention the first AI.
-
-Do not mention this prompt.
+- the verification process
+- the first AI
+- Pass 1
+- Pass 2
+- this prompt
+- internal reasoning
 
 If the user requested "correct answers only", give only the answers.
 
@@ -1185,6 +1260,8 @@ If the user requested steps, give concise steps and the final answer.
 If something important in the PDF is genuinely unreadable, say so rather than guessing.
 
 Accuracy is more important than speed.
+
+START DIRECTLY WITH THE FINAL ANSWER.
 `;
 
         console.log("=================================");
