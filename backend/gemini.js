@@ -14,7 +14,6 @@ const getGeminiApiUrl = () => {
     return `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 };
 
-
 // ============================================================
 // EXTRACT GEMINI TEXT
 // ============================================================
@@ -26,6 +25,34 @@ const extractGeminiText = (response) => {
         .trim();
 };
 
+// ============================================================
+// LOG GEMINI ERROR
+// ============================================================
+
+const logGeminiError = (label, error) => {
+    console.error("=================================");
+    console.error(label);
+    console.error("=================================");
+
+    console.error("MESSAGE:", error?.message);
+    console.error("CODE:", error?.code);
+    console.error("STATUS:", error?.response?.status);
+
+    console.error(
+        "GEMINI RESPONSE:",
+        JSON.stringify(
+            error?.response?.data || null,
+            null,
+            2
+        )
+    );
+
+    if (error?.request && !error?.response) {
+        console.error(
+            "REQUEST ERROR: Gemini did not return an HTTP response."
+        );
+    }
+};
 
 // ============================================================
 // NORMAL GEMINI RESPONSE
@@ -105,15 +132,15 @@ Give the best accurate answer to the user.
         return answer;
 
     } catch (error) {
-        console.error(
-            "GEMINI RESPONSE ERROR:",
-            error.response?.data || error.message
+
+        logGeminiError(
+            "GEMINI NORMAL RESPONSE ERROR",
+            error
         );
 
-        throw new Error("Assistant response failed");
+        throw error;
     }
 }
-
 
 // ============================================================
 // GEMINI IMAGE RESPONSE
@@ -132,11 +159,70 @@ async function geminiImageResponse(
     userName
 ) {
     try {
+
+        // ====================================================
+        // VALIDATE IMAGE
+        // ====================================================
+
+        if (!imageBuffer) {
+            throw new Error(
+                "Image buffer is missing"
+            );
+        }
+
+        if (!Buffer.isBuffer(imageBuffer)) {
+            throw new Error(
+                "Image data is not a valid buffer"
+            );
+        }
+
+        if (imageBuffer.length === 0) {
+            throw new Error(
+                "Image buffer is empty"
+            );
+        }
+
+        if (!mimeType) {
+            throw new Error(
+                "Image MIME type is missing"
+            );
+        }
+
+        console.log("=================================");
+        console.log("IMAGE INPUT DEBUG");
+        console.log("=================================");
+        console.log("MIME TYPE:", mimeType);
+        console.log("BUFFER SIZE:", imageBuffer.length);
+
+        const supportedMimeTypes = [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/heic",
+            "image/heif"
+        ];
+
+        if (!supportedMimeTypes.includes(mimeType)) {
+            throw new Error(
+                `Unsupported image MIME type: ${mimeType}`
+            );
+        }
+
         const apiUrl = getGeminiApiUrl();
 
         const base64Image =
             imageBuffer.toString("base64");
 
+        if (!base64Image) {
+            throw new Error(
+                "Failed to convert image to base64"
+            );
+        }
+
+        console.log(
+            "BASE64 IMAGE LENGTH:",
+            base64Image.length
+        );
 
         // ====================================================
         // PASS 1 — SOLVE
@@ -361,45 +447,68 @@ If the user asks for "correct answers only", provide concise final answers.
 If the user asks for steps, provide clear steps and the final answer.
 `;
 
+        console.log("=================================");
+        console.log("IMAGE PASS 1 START");
+        console.log("=================================");
 
-        const firstResponse = await axios.post(
-            apiUrl,
-            {
-                contents: [
-                    {
-                        parts: [
-                            {
-                                text: solvePrompt
-                            },
-                            {
-                                inline_data: {
-                                    mime_type: mimeType,
-                                    data: base64Image
+        let firstResponse;
+
+        try {
+
+            firstResponse = await axios.post(
+                apiUrl,
+                {
+                    contents: [
+                        {
+                            parts: [
+                                {
+                                    text: solvePrompt
+                                },
+                                {
+                                    inline_data: {
+                                        mime_type: mimeType,
+                                        data: base64Image
+                                    }
                                 }
-                            }
-                        ]
+                            ]
+                        }
+                    ],
+                    generationConfig: {
+                        temperature: 0.1
                     }
-                ],
-                generationConfig: {
-                    temperature: 0.1
+                },
+                {
+                    timeout: 120000
                 }
-            },
-            {
-                timeout: 120000
-            }
-        );
+            );
 
+            console.log(
+                "IMAGE PASS 1 HTTP STATUS:",
+                firstResponse.status
+            );
+
+            console.log(
+                "IMAGE PASS 1 SUCCESS"
+            );
+
+        } catch (error) {
+
+            logGeminiError(
+                "IMAGE PASS 1 FAILED",
+                error
+            );
+
+            throw error;
+        }
 
         const firstAnswer =
             extractGeminiText(firstResponse);
-
 
         if (!firstAnswer) {
             throw new Error(
                 "Gemini first image pass returned empty response"
             );
         }
-
 
         console.log(
             "================================="
@@ -414,7 +523,6 @@ If the user asks for steps, provide clear steps and the final answer.
         );
 
         console.log(firstAnswer);
-
 
         // ====================================================
         // PASS 2 — INDEPENDENT VERIFICATION
@@ -584,45 +692,68 @@ Give concise steps followed by the final answer.
 Accuracy is more important than speed.
 `;
 
+        console.log("=================================");
+        console.log("IMAGE PASS 2 START");
+        console.log("=================================");
 
-        const secondResponse = await axios.post(
-            apiUrl,
-            {
-                contents: [
-                    {
-                        parts: [
-                            {
-                                text: verifyPrompt
-                            },
-                            {
-                                inline_data: {
-                                    mime_type: mimeType,
-                                    data: base64Image
+        let secondResponse;
+
+        try {
+
+            secondResponse = await axios.post(
+                apiUrl,
+                {
+                    contents: [
+                        {
+                            parts: [
+                                {
+                                    text: verifyPrompt
+                                },
+                                {
+                                    inline_data: {
+                                        mime_type: mimeType,
+                                        data: base64Image
+                                    }
                                 }
-                            }
-                        ]
+                            ]
+                        }
+                    ],
+                    generationConfig: {
+                        temperature: 0.1
                     }
-                ],
-                generationConfig: {
-                    temperature: 0.1
+                },
+                {
+                    timeout: 120000
                 }
-            },
-            {
-                timeout: 120000
-            }
-        );
+            );
 
+            console.log(
+                "IMAGE PASS 2 HTTP STATUS:",
+                secondResponse.status
+            );
+
+            console.log(
+                "IMAGE PASS 2 SUCCESS"
+            );
+
+        } catch (error) {
+
+            logGeminiError(
+                "IMAGE PASS 2 FAILED",
+                error
+            );
+
+            throw error;
+        }
 
         const verifiedAnswer =
             extractGeminiText(secondResponse);
-
 
         if (!verifiedAnswer) {
             throw new Error(
                 "Gemini image verification returned empty response"
             );
         }
-
 
         console.log(
             "================================="
@@ -638,20 +769,18 @@ Accuracy is more important than speed.
 
         console.log(verifiedAnswer);
 
-
         return verifiedAnswer;
 
     } catch (error) {
 
-        console.error(
-            "GEMINI IMAGE ERROR:",
-            error.response?.data || error.message
+        logGeminiError(
+            "GEMINI IMAGE RESPONSE FINAL ERROR",
+            error
         );
 
-        throw new Error("Image analysis failed");
+        throw error;
     }
 }
-
 
 // ============================================================
 // GEMINI PDF RESPONSE
@@ -669,11 +798,37 @@ async function geminiPdfResponse(
     userName
 ) {
     try {
+
+        if (!pdfBuffer) {
+            throw new Error(
+                "PDF buffer is missing"
+            );
+        }
+
+        if (!Buffer.isBuffer(pdfBuffer)) {
+            throw new Error(
+                "PDF data is not a valid buffer"
+            );
+        }
+
+        if (pdfBuffer.length === 0) {
+            throw new Error(
+                "PDF buffer is empty"
+            );
+        }
+
+        console.log("=================================");
+        console.log("PDF INPUT DEBUG");
+        console.log("=================================");
+        console.log(
+            "PDF BUFFER SIZE:",
+            pdfBuffer.length
+        );
+
         const apiUrl = getGeminiApiUrl();
 
         const base64Pdf =
             pdfBuffer.toString("base64");
-
 
         // ====================================================
         // PASS 1 — SOLVE PDF
@@ -829,45 +984,69 @@ If information is genuinely unreadable, do not guess.
 Give the answer requested by the user.
 `;
 
+        console.log("=================================");
+        console.log("PDF PASS 1 START");
+        console.log("=================================");
 
-        const firstResponse = await axios.post(
-            apiUrl,
-            {
-                contents: [
-                    {
-                        parts: [
-                            {
-                                text: solvePrompt
-                            },
-                            {
-                                inline_data: {
-                                    mime_type: "application/pdf",
-                                    data: base64Pdf
+        let firstResponse;
+
+        try {
+
+            firstResponse = await axios.post(
+                apiUrl,
+                {
+                    contents: [
+                        {
+                            parts: [
+                                {
+                                    text: solvePrompt
+                                },
+                                {
+                                    inline_data: {
+                                        mime_type:
+                                            "application/pdf",
+                                        data: base64Pdf
+                                    }
                                 }
-                            }
-                        ]
+                            ]
+                        }
+                    ],
+                    generationConfig: {
+                        temperature: 0.1
                     }
-                ],
-                generationConfig: {
-                    temperature: 0.1
+                },
+                {
+                    timeout: 120000
                 }
-            },
-            {
-                timeout: 120000
-            }
-        );
+            );
 
+            console.log(
+                "PDF PASS 1 HTTP STATUS:",
+                firstResponse.status
+            );
+
+            console.log(
+                "PDF PASS 1 SUCCESS"
+            );
+
+        } catch (error) {
+
+            logGeminiError(
+                "PDF PASS 1 FAILED",
+                error
+            );
+
+            throw error;
+        }
 
         const firstAnswer =
             extractGeminiText(firstResponse);
-
 
         if (!firstAnswer) {
             throw new Error(
                 "Gemini first PDF pass returned empty response"
             );
         }
-
 
         console.log(
             "================================="
@@ -882,7 +1061,6 @@ Give the answer requested by the user.
         );
 
         console.log(firstAnswer);
-
 
         // ====================================================
         // PASS 2 — VERIFY PDF ANSWER
@@ -1009,45 +1187,69 @@ If something important in the PDF is genuinely unreadable, say so rather than gu
 Accuracy is more important than speed.
 `;
 
+        console.log("=================================");
+        console.log("PDF PASS 2 START");
+        console.log("=================================");
 
-        const secondResponse = await axios.post(
-            apiUrl,
-            {
-                contents: [
-                    {
-                        parts: [
-                            {
-                                text: verifyPrompt
-                            },
-                            {
-                                inline_data: {
-                                    mime_type: "application/pdf",
-                                    data: base64Pdf
+        let secondResponse;
+
+        try {
+
+            secondResponse = await axios.post(
+                apiUrl,
+                {
+                    contents: [
+                        {
+                            parts: [
+                                {
+                                    text: verifyPrompt
+                                },
+                                {
+                                    inline_data: {
+                                        mime_type:
+                                            "application/pdf",
+                                        data: base64Pdf
+                                    }
                                 }
-                            }
-                        ]
+                            ]
+                        }
+                    ],
+                    generationConfig: {
+                        temperature: 0.1
                     }
-                ],
-                generationConfig: {
-                    temperature: 0.1
+                },
+                {
+                    timeout: 120000
                 }
-            },
-            {
-                timeout: 120000
-            }
-        );
+            );
 
+            console.log(
+                "PDF PASS 2 HTTP STATUS:",
+                secondResponse.status
+            );
+
+            console.log(
+                "PDF PASS 2 SUCCESS"
+            );
+
+        } catch (error) {
+
+            logGeminiError(
+                "PDF PASS 2 FAILED",
+                error
+            );
+
+            throw error;
+        }
 
         const verifiedAnswer =
             extractGeminiText(secondResponse);
-
 
         if (!verifiedAnswer) {
             throw new Error(
                 "Gemini PDF verification returned empty response"
             );
         }
-
 
         console.log(
             "================================="
@@ -1063,31 +1265,21 @@ Accuracy is more important than speed.
 
         console.log(verifiedAnswer);
 
-
         return verifiedAnswer;
 
     } catch (error) {
 
-        console.error(
-            "GEMINI PDF ERROR:",
-            error.response?.data || error.message
+        logGeminiError(
+            "GEMINI PDF RESPONSE FINAL ERROR",
+            error
         );
 
-        throw new Error("PDF analysis failed");
+        throw error;
     }
 }
 
-
 // ============================================================
 // EXPORTS
-//
-// IMPORTANT:
-// user.controllers.js imports:
-//
-// import geminiResponse, {
-//     geminiImageResponse,
-//     geminiPdfResponse
-// } from "../gemini.js";
 // ============================================================
 
 export default geminiResponse;

@@ -9,7 +9,6 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 
 import moment from "moment";
 
-
 /*
 =====================================================
 GET CURRENT USER
@@ -28,7 +27,6 @@ export const getCurrentUser = async (req, res) => {
             return res.status(404).json({
                 message: "User not found"
             });
-
         }
 
         return res.status(200).json(user);
@@ -44,10 +42,8 @@ export const getCurrentUser = async (req, res) => {
             message: "Get current user error",
             error: error.message
         });
-
     }
 };
-
 
 /*
 =====================================================
@@ -75,7 +71,6 @@ export const updateAssistant = async (
                 await uploadOnCloudinary(
                     req.file.path
                 );
-
         }
 
         const updateData = {};
@@ -87,14 +82,12 @@ export const updateAssistant = async (
 
             updateData.assistantName =
                 assistantName.trim();
-
         }
 
         if (finalImageUrl) {
 
             updateData.assistantImage =
                 finalImageUrl;
-
         }
 
         const user =
@@ -111,7 +104,6 @@ export const updateAssistant = async (
             return res.status(404).json({
                 message: "User not found"
             });
-
         }
 
         return res.status(200).json(user);
@@ -127,10 +119,8 @@ export const updateAssistant = async (
             message: "Update assistant error",
             error: error.message
         });
-
     }
 };
-
 
 /*
 =====================================================
@@ -161,7 +151,6 @@ export const saveHistory = async (
                 message:
                     "Command and answer must be strings"
             });
-
         }
 
         const trimmedCommand =
@@ -179,14 +168,7 @@ export const saveHistory = async (
                 message:
                     "Command and answer cannot be empty"
             });
-
         }
-
-        /*
-        -------------------------------------------------
-        VALID HISTORY TYPES
-        -------------------------------------------------
-        */
 
         const validTypes = [
             "text",
@@ -199,12 +181,6 @@ export const saveHistory = async (
             validTypes.includes(type)
                 ? type
                 : "text";
-
-        /*
-        -------------------------------------------------
-        IMAGE VALIDATION
-        -------------------------------------------------
-        */
 
         let historyImage = "";
 
@@ -221,7 +197,6 @@ export const saveHistory = async (
                     message:
                         "Image must be a string"
                 });
-
             }
 
             const maximumImageSize =
@@ -236,18 +211,10 @@ export const saveHistory = async (
                     message:
                         "Image is too large to save in history."
                 });
-
             }
 
             historyImage = image;
-
         }
-
-        /*
-        -------------------------------------------------
-        FIND USER
-        -------------------------------------------------
-        */
 
         const user =
             await User.findById(req.userId);
@@ -257,14 +224,7 @@ export const saveHistory = async (
             return res.status(404).json({
                 message: "User not found"
             });
-
         }
-
-        /*
-        -------------------------------------------------
-        SAVE HISTORY
-        -------------------------------------------------
-        */
 
         user.history.unshift({
 
@@ -279,7 +239,6 @@ export const saveHistory = async (
 
             image:
                 historyImage
-
         });
 
         await user.save();
@@ -291,7 +250,6 @@ export const saveHistory = async (
 
             history:
                 user.history
-
         });
 
     } catch (error) {
@@ -308,12 +266,9 @@ export const saveHistory = async (
 
             error:
                 error.message
-
         });
-
     }
 };
-
 
 /*
 =====================================================
@@ -340,7 +295,6 @@ export const deleteHistory = async (
             return res.status(404).json({
                 message: "User not found"
             });
-
         }
 
         const historyItem =
@@ -352,7 +306,6 @@ export const deleteHistory = async (
                 message:
                     "History item not found"
             });
-
         }
 
         historyItem.deleteOne();
@@ -366,7 +319,6 @@ export const deleteHistory = async (
 
             history:
                 user.history
-
         });
 
     } catch (error) {
@@ -377,15 +329,11 @@ export const deleteHistory = async (
         );
 
         return res.status(500).json({
-
             message:
                 "Could not delete history"
-
         });
-
     }
 };
-
 
 /*
 =====================================================
@@ -408,7 +356,6 @@ export const clearHistory = async (
             return res.status(404).json({
                 message: "User not found"
             });
-
         }
 
         user.history = [];
@@ -422,7 +369,6 @@ export const clearHistory = async (
 
             history:
                 []
-
         });
 
     } catch (error) {
@@ -436,12 +382,9 @@ export const clearHistory = async (
 
             message:
                 "Could not clear history"
-
         });
-
     }
 };
-
 
 /*
 =====================================================
@@ -469,7 +412,6 @@ export const askToAssistant = async (
                 message:
                     "Command is required"
             });
-
         }
 
         const user =
@@ -480,7 +422,6 @@ export const askToAssistant = async (
             return res.status(404).json({
                 message: "User not found"
             });
-
         }
 
         const userName =
@@ -492,7 +433,6 @@ export const askToAssistant = async (
 
         const lowerCommand =
             command.toLowerCase().trim();
-
 
         /*
         =================================================
@@ -522,11 +462,8 @@ export const askToAssistant = async (
 
                 response:
                     `My name is ${assistantName}.`
-
             });
-
         }
-
 
         /*
         =================================================
@@ -556,11 +493,8 @@ export const askToAssistant = async (
 
                 response:
                     "I was created by my developer."
-
             });
-
         }
-
 
         /*
         =================================================
@@ -590,11 +524,8 @@ export const askToAssistant = async (
                     `The current time is ${moment().format(
                         "hh:mm A"
                     )}.`
-
             });
-
         }
-
 
         /*
         =================================================
@@ -627,11 +558,8 @@ export const askToAssistant = async (
                     `Today's date is ${moment().format(
                         "DD MMMM YYYY"
                     )}.`
-
             });
-
         }
-
 
         /*
         =================================================
@@ -661,11 +589,8 @@ export const askToAssistant = async (
                     `Today is ${moment().format(
                         "dddd"
                     )}.`
-
             });
-
         }
-
 
         /*
         =================================================
@@ -692,11 +617,8 @@ export const askToAssistant = async (
                     `This month is ${moment().format(
                         "MMMM"
                     )}.`
-
             });
-
         }
-
 
         /*
         =================================================
@@ -731,11 +653,8 @@ export const askToAssistant = async (
 
                     response:
                         result
-
                 };
-
             }
-
         }
 
         return res.status(200).json({
@@ -751,7 +670,6 @@ export const askToAssistant = async (
                 data?.response ||
                 data?.answer ||
                 "Sorry, I could not understand that."
-
         });
 
     } catch (error) {
@@ -768,12 +686,9 @@ export const askToAssistant = async (
 
             error:
                 error.message
-
         });
-
     }
 };
-
 
 /*
 =====================================================
@@ -788,18 +703,87 @@ export const analyzeImage = async (
 
     try {
 
+        console.log("=================================");
+        console.log("IMAGE ANALYSIS REQUEST RECEIVED");
+        console.log("=================================");
+
         const {
             command
         } = req.body;
 
+        /*
+        =================================================
+        CHECK FILE
+        =================================================
+        */
+
         if (!req.file) {
+
+            console.error(
+                "IMAGE ERROR: No file received"
+            );
 
             return res.status(400).json({
                 message:
                     "Image is required"
             });
-
         }
+
+        /*
+        =================================================
+        IMAGE DEBUG
+        =================================================
+        */
+
+        console.log(
+            "IMAGE ORIGINAL NAME:",
+            req.file.originalname
+        );
+
+        console.log(
+            "IMAGE MIME TYPE:",
+            req.file.mimetype
+        );
+
+        console.log(
+            "IMAGE SIZE:",
+            req.file.size
+        );
+
+        console.log(
+            "IMAGE BUFFER LENGTH:",
+            req.file.buffer?.length
+        );
+
+        /*
+        =================================================
+        CHECK BUFFER
+        =================================================
+        */
+
+        if (!req.file.buffer) {
+
+            return res.status(400).json({
+                message:
+                    "Image buffer is missing"
+            });
+        }
+
+        if (
+            req.file.buffer.length === 0
+        ) {
+
+            return res.status(400).json({
+                message:
+                    "Image buffer is empty"
+            });
+        }
+
+        /*
+        =================================================
+        FIND USER
+        =================================================
+        */
 
         const user =
             await User.findById(req.userId);
@@ -810,8 +794,13 @@ export const analyzeImage = async (
                 message:
                     "User not found"
             });
-
         }
+
+        /*
+        =================================================
+        USER INFORMATION
+        =================================================
+        */
 
         const userName =
             user.name || "User";
@@ -820,9 +809,30 @@ export const analyzeImage = async (
             user.assistantName ||
             "Assistant";
 
+        /*
+        =================================================
+        QUESTION
+        =================================================
+        */
+
         const question =
             command?.trim() ||
             "Please analyze this image and explain what you see.";
+
+        console.log(
+            "IMAGE QUESTION:",
+            question
+        );
+
+        /*
+        =================================================
+        GEMINI IMAGE ANALYSIS
+        =================================================
+        */
+
+        console.log(
+            "SENDING IMAGE TO GEMINI..."
+        );
 
         const response =
             await geminiImageResponse(
@@ -833,6 +843,16 @@ export const analyzeImage = async (
                 userName
             );
 
+        console.log(
+            "GEMINI IMAGE ANALYSIS SUCCESS"
+        );
+
+        /*
+        =================================================
+        RESPONSE
+        =================================================
+        */
+
         return res.status(200).json({
 
             type:
@@ -842,14 +862,44 @@ export const analyzeImage = async (
                 question,
 
             response
-
         });
 
     } catch (error) {
 
         console.error(
-            "IMAGE ANALYSIS ERROR:",
-            error
+            "================================="
+        );
+
+        console.error(
+            "IMAGE ANALYSIS ERROR"
+        );
+
+        console.error(
+            "================================="
+        );
+
+        console.error(
+            "MESSAGE:",
+            error?.message
+        );
+
+        console.error(
+            "CODE:",
+            error?.code
+        );
+
+        console.error(
+            "STATUS:",
+            error?.response?.status
+        );
+
+        console.error(
+            "DETAILS:",
+            JSON.stringify(
+                error?.response?.data || null,
+                null,
+                2
+            )
         );
 
         return res.status(500).json({
@@ -858,13 +908,15 @@ export const analyzeImage = async (
                 "Unable to analyze image",
 
             error:
-                error.message
+                error?.message ||
+                "Image analysis failed",
 
+            status:
+                error?.response?.status ||
+                null
         });
-
     }
 };
-
 
 /*
 =====================================================
@@ -886,12 +938,9 @@ export const analyzePdf = async (
         if (!req.file) {
 
             return res.status(400).json({
-
                 message:
                     "PDF file is required"
-
             });
-
         }
 
         const user =
@@ -900,12 +949,9 @@ export const analyzePdf = async (
         if (!user) {
 
             return res.status(404).json({
-
                 message:
                     "User not found"
-
             });
-
         }
 
         const userName =
@@ -921,15 +967,10 @@ export const analyzePdf = async (
 
         const response =
             await geminiPdfResponse(
-
                 question,
-
                 req.file.buffer,
-
                 assistantName,
-
                 userName
-
             );
 
         return res.status(200).json({
@@ -944,7 +985,6 @@ export const analyzePdf = async (
                 question,
 
             response
-
         });
 
     } catch (error) {
@@ -961,8 +1001,6 @@ export const analyzePdf = async (
 
             error:
                 error.message
-
         });
-
     }
 };
