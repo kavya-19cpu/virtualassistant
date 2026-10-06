@@ -1,34 +1,148 @@
+import axios from "axios";
+
 // ============================================================
-// GEMINI IMAGE + PDF ANALYSIS
+// GEMINI API
+// ============================================================
+
+const getGeminiApiUrl = () => {
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+        throw new Error("GEMINI_API_KEY is missing");
+    }
+
+    return `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
+};
+
+
+// ============================================================
+// EXTRACT GEMINI TEXT
+// ============================================================
+
+const extractGeminiText = (response) => {
+    return response.data?.candidates?.[0]?.content?.parts
+        ?.map((part) => part.text || "")
+        .join("")
+        .trim();
+};
+
+
+// ============================================================
+// NORMAL GEMINI RESPONSE
+// USED BY askToAssistant
+// ============================================================
+
+async function geminiResponse(
+    command,
+    assistantName,
+    userName
+) {
+    try {
+        const apiUrl = getGeminiApiUrl();
+
+        const prompt = `
+You are ${assistantName}, a highly accurate AI virtual assistant.
+
+The user's name is ${userName}.
+
+The user asked:
+
+"${command}"
+
+Answer the user's question accurately and directly.
+
+GENERAL ACCURACY RULES:
+
+- Understand the complete question before answering.
+- Do not invent information.
+- Do not guess when important information is missing.
+- Preserve numbers, signs, units, formulas and symbols.
+- Check calculations before giving the final answer.
+- For mathematics, recalculate the result.
+- For trigonometry, verify identities and angle assumptions.
+- For chemistry, preserve formulas, subscripts, charges and coefficients.
+- For physics, verify formulas, substitutions and units.
+- For science, use established scientific principles.
+- For programming, check syntax and logic carefully.
+- For MCQs, consider every option before selecting the answer.
+
+If the user asks for a short answer, be concise.
+
+If the user asks for an explanation, provide clear steps.
+
+Give the best accurate answer to the user.
+`;
+
+        const response = await axios.post(
+            apiUrl,
+            {
+                contents: [
+                    {
+                        parts: [
+                            {
+                                text: prompt
+                            }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.1
+                }
+            },
+            {
+                timeout: 120000
+            }
+        );
+
+        const answer = extractGeminiText(response);
+
+        if (!answer) {
+            throw new Error(
+                "Gemini returned an empty response"
+            );
+        }
+
+        return answer;
+
+    } catch (error) {
+        console.error(
+            "GEMINI RESPONSE ERROR:",
+            error.response?.data || error.message
+        );
+
+        throw new Error("Assistant response failed");
+    }
+}
+
+
+// ============================================================
+// GEMINI IMAGE RESPONSE
+//
 // TWO-PASS SYSTEM
+//
 // PASS 1 = SOLVE
 // PASS 2 = VERIFY + CORRECT
 // ============================================================
 
 async function geminiImageResponse(
-  command,
-  imageBuffer,
-  mimeType,
-  assistantName,
-  userName
+    command,
+    imageBuffer,
+    mimeType,
+    assistantName,
+    userName
 ) {
-  try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    try {
+        const apiUrl = getGeminiApiUrl();
 
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is missing");
-    }
+        const base64Image =
+            imageBuffer.toString("base64");
 
-    const base64Image = imageBuffer.toString("base64");
 
-    const apiUrl =
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
+        // ====================================================
+        // PASS 1 — SOLVE
+        // ====================================================
 
-    // ========================================================
-    // PASS 1 — SOLVE
-    // ========================================================
-
-    const solvePrompt = `
+        const solvePrompt = `
 You are ${assistantName}, a highly accurate AI virtual assistant.
 
 The user's name is ${userName}.
@@ -55,7 +169,7 @@ Pay special attention to:
 - fractions
 - numerator and denominator
 - decimal points
-- powers/exponents
+- powers and exponents
 - square roots
 - brackets
 - variables
@@ -73,7 +187,7 @@ Pay special attention to:
 - MCQ options
 - programming code
 
-NEVER guess information that is unreadable.
+NEVER guess information that is genuinely unreadable.
 
 ============================================================
 STEP 2 — PRESERVE THE ORIGINAL QUESTION
@@ -155,8 +269,6 @@ Pay special attention to:
 - temperature
 - catalysts
 - physical states
-
-NEVER change a chemical formula.
 
 For balancing equations:
 
@@ -249,53 +361,66 @@ If the user asks for "correct answers only", provide concise final answers.
 If the user asks for steps, provide clear steps and the final answer.
 `;
 
-    const firstResponse = await axios.post(
-      apiUrl,
-      {
-        contents: [
-          {
-            parts: [
-              {
-                text: solvePrompt
-              },
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: base64Image
+
+        const firstResponse = await axios.post(
+            apiUrl,
+            {
+                contents: [
+                    {
+                        parts: [
+                            {
+                                text: solvePrompt
+                            },
+                            {
+                                inline_data: {
+                                    mime_type: mimeType,
+                                    data: base64Image
+                                }
+                            }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.1
                 }
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.1
+            },
+            {
+                timeout: 120000
+            }
+        );
+
+
+        const firstAnswer =
+            extractGeminiText(firstResponse);
+
+
+        if (!firstAnswer) {
+            throw new Error(
+                "Gemini first image pass returned empty response"
+            );
         }
-      },
-      {
-        timeout: 120000
-      }
-    );
 
-    const firstAnswer =
-      firstResponse.data?.candidates?.[0]?.content?.parts
-        ?.map(part => part.text || "")
-        .join("")
-        .trim();
 
-    if (!firstAnswer) {
-      throw new Error("Gemini first image pass returned empty response");
-    }
+        console.log(
+            "================================="
+        );
 
-    console.log("=================================");
-    console.log("GEMINI IMAGE PASS 1 ANSWER");
-    console.log("=================================");
-    console.log(firstAnswer);
+        console.log(
+            "GEMINI IMAGE PASS 1 ANSWER"
+        );
 
-    // ========================================================
-    // PASS 2 — INDEPENDENT VERIFICATION
-    // ========================================================
+        console.log(
+            "================================="
+        );
 
-    const verifyPrompt = `
+        console.log(firstAnswer);
+
+
+        // ====================================================
+        // PASS 2 — INDEPENDENT VERIFICATION
+        // ====================================================
+
+        const verifyPrompt = `
 You are the FINAL VERIFICATION ENGINE.
 
 The user asked:
@@ -367,9 +492,7 @@ Do not accept the first answer merely because its working looks correct.
 CHECK 3 — CHEMISTRY
 ================================================
 
-If chemistry is involved:
-
-Check:
+If chemistry is involved, check:
 
 - chemical formulas
 - subscripts
@@ -461,91 +584,102 @@ Give concise steps followed by the final answer.
 Accuracy is more important than speed.
 `;
 
-    const secondResponse = await axios.post(
-      apiUrl,
-      {
-        contents: [
-          {
-            parts: [
-              {
-                text: verifyPrompt
-              },
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: base64Image
+
+        const secondResponse = await axios.post(
+            apiUrl,
+            {
+                contents: [
+                    {
+                        parts: [
+                            {
+                                text: verifyPrompt
+                            },
+                            {
+                                inline_data: {
+                                    mime_type: mimeType,
+                                    data: base64Image
+                                }
+                            }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.1
                 }
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.1
+            },
+            {
+                timeout: 120000
+            }
+        );
+
+
+        const verifiedAnswer =
+            extractGeminiText(secondResponse);
+
+
+        if (!verifiedAnswer) {
+            throw new Error(
+                "Gemini image verification returned empty response"
+            );
         }
-      },
-      {
-        timeout: 120000
-      }
-    );
 
-    const verifiedAnswer =
-      secondResponse.data?.candidates?.[0]?.content?.parts
-        ?.map(part => part.text || "")
-        .join("")
-        .trim();
 
-    if (!verifiedAnswer) {
-      throw new Error("Gemini image verification returned empty response");
+        console.log(
+            "================================="
+        );
+
+        console.log(
+            "GEMINI FINAL VERIFIED IMAGE ANSWER"
+        );
+
+        console.log(
+            "================================="
+        );
+
+        console.log(verifiedAnswer);
+
+
+        return verifiedAnswer;
+
+    } catch (error) {
+
+        console.error(
+            "GEMINI IMAGE ERROR:",
+            error.response?.data || error.message
+        );
+
+        throw new Error("Image analysis failed");
     }
-
-    console.log("=================================");
-    console.log("GEMINI FINAL VERIFIED IMAGE ANSWER");
-    console.log("=================================");
-    console.log(verifiedAnswer);
-
-    return verifiedAnswer;
-
-  } catch (error) {
-    console.error(
-      "GEMINI IMAGE ERROR:",
-      error.response?.data || error.message
-    );
-
-    throw new Error("Image analysis failed");
-  }
 }
 
 
 // ============================================================
 // GEMINI PDF RESPONSE
+//
 // TWO-PASS SYSTEM
+//
 // PASS 1 = SOLVE
 // PASS 2 = VERIFY + CORRECT
 // ============================================================
 
 async function geminiPdfResponse(
-  command,
-  pdfBuffer,
-  assistantName,
-  userName
+    command,
+    pdfBuffer,
+    assistantName,
+    userName
 ) {
-  try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    try {
+        const apiUrl = getGeminiApiUrl();
 
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is missing");
-    }
+        const base64Pdf =
+            pdfBuffer.toString("base64");
 
-    const base64Pdf = pdfBuffer.toString("base64");
 
-    const apiUrl =
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
+        // ====================================================
+        // PASS 1 — SOLVE PDF
+        // ====================================================
 
-    // ========================================================
-    // PASS 1 — SOLVE PDF
-    // ========================================================
-
-    const solvePrompt = `
+        const solvePrompt = `
 You are ${assistantName}, a highly accurate AI virtual assistant.
 
 The user's name is ${userName}.
@@ -695,53 +829,66 @@ If information is genuinely unreadable, do not guess.
 Give the answer requested by the user.
 `;
 
-    const firstResponse = await axios.post(
-      apiUrl,
-      {
-        contents: [
-          {
-            parts: [
-              {
-                text: solvePrompt
-              },
-              {
-                inline_data: {
-                  mime_type: "application/pdf",
-                  data: base64Pdf
+
+        const firstResponse = await axios.post(
+            apiUrl,
+            {
+                contents: [
+                    {
+                        parts: [
+                            {
+                                text: solvePrompt
+                            },
+                            {
+                                inline_data: {
+                                    mime_type: "application/pdf",
+                                    data: base64Pdf
+                                }
+                            }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.1
                 }
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.1
+            },
+            {
+                timeout: 120000
+            }
+        );
+
+
+        const firstAnswer =
+            extractGeminiText(firstResponse);
+
+
+        if (!firstAnswer) {
+            throw new Error(
+                "Gemini first PDF pass returned empty response"
+            );
         }
-      },
-      {
-        timeout: 120000
-      }
-    );
 
-    const firstAnswer =
-      firstResponse.data?.candidates?.[0]?.content?.parts
-        ?.map(part => part.text || "")
-        .join("")
-        .trim();
 
-    if (!firstAnswer) {
-      throw new Error("Gemini first PDF pass returned empty response");
-    }
+        console.log(
+            "================================="
+        );
 
-    console.log("=================================");
-    console.log("GEMINI PDF PASS 1 ANSWER");
-    console.log("=================================");
-    console.log(firstAnswer);
+        console.log(
+            "GEMINI PDF PASS 1 ANSWER"
+        );
 
-    // ========================================================
-    // PASS 2 — VERIFY PDF ANSWER
-    // ========================================================
+        console.log(
+            "================================="
+        );
 
-    const verifyPrompt = `
+        console.log(firstAnswer);
+
+
+        // ====================================================
+        // PASS 2 — VERIFY PDF ANSWER
+        // ====================================================
+
+        const verifyPrompt = `
 You are the FINAL ANSWER VERIFICATION ENGINE.
 
 The user asked:
@@ -862,56 +1009,90 @@ If something important in the PDF is genuinely unreadable, say so rather than gu
 Accuracy is more important than speed.
 `;
 
-    const secondResponse = await axios.post(
-      apiUrl,
-      {
-        contents: [
-          {
-            parts: [
-              {
-                text: verifyPrompt
-              },
-              {
-                inline_data: {
-                  mime_type: "application/pdf",
-                  data: base64Pdf
+
+        const secondResponse = await axios.post(
+            apiUrl,
+            {
+                contents: [
+                    {
+                        parts: [
+                            {
+                                text: verifyPrompt
+                            },
+                            {
+                                inline_data: {
+                                    mime_type: "application/pdf",
+                                    data: base64Pdf
+                                }
+                            }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.1
                 }
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.1
+            },
+            {
+                timeout: 120000
+            }
+        );
+
+
+        const verifiedAnswer =
+            extractGeminiText(secondResponse);
+
+
+        if (!verifiedAnswer) {
+            throw new Error(
+                "Gemini PDF verification returned empty response"
+            );
         }
-      },
-      {
-        timeout: 120000
-      }
-    );
 
-    const verifiedAnswer =
-      secondResponse.data?.candidates?.[0]?.content?.parts
-        ?.map(part => part.text || "")
-        .join("")
-        .trim();
 
-    if (!verifiedAnswer) {
-      throw new Error("Gemini PDF verification returned empty response");
+        console.log(
+            "================================="
+        );
+
+        console.log(
+            "GEMINI FINAL VERIFIED PDF ANSWER"
+        );
+
+        console.log(
+            "================================="
+        );
+
+        console.log(verifiedAnswer);
+
+
+        return verifiedAnswer;
+
+    } catch (error) {
+
+        console.error(
+            "GEMINI PDF ERROR:",
+            error.response?.data || error.message
+        );
+
+        throw new Error("PDF analysis failed");
     }
-
-    console.log("=================================");
-    console.log("GEMINI FINAL VERIFIED PDF ANSWER");
-    console.log("=================================");
-    console.log(verifiedAnswer);
-
-    return verifiedAnswer;
-
-  } catch (error) {
-    console.error(
-      "GEMINI PDF ERROR:",
-      error.response?.data || error.message
-    );
-
-    throw new Error("PDF analysis failed");
-  }
 }
+
+
+// ============================================================
+// EXPORTS
+//
+// IMPORTANT:
+// user.controllers.js imports:
+//
+// import geminiResponse, {
+//     geminiImageResponse,
+//     geminiPdfResponse
+// } from "../gemini.js";
+// ============================================================
+
+export default geminiResponse;
+
+export {
+    geminiImageResponse,
+    geminiPdfResponse
+};
