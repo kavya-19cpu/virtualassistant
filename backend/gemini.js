@@ -1,505 +1,35 @@
+// ============================================================
+// GEMINI IMAGE + PDF ANALYSIS
+// TWO-PASS SYSTEM
+// PASS 1 = SOLVE
+// PASS 2 = VERIFY + CORRECT
+// ============================================================
 
-import axios from "axios";
+async function geminiImageResponse(
+  command,
+  imageBuffer,
+  mimeType,
+  assistantName,
+  userName
+) {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
 
-/*
-=====================================================
-INDIAN DATE / TIME HELPERS
-=====================================================
-*/
-
-const getIndianDateTime = () => {
-    const now = new Date();
-
-    const dateTime = new Intl.DateTimeFormat("en-IN", {
-        timeZone: "Asia/Kolkata",
-        weekday: "long",
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true
-    }).formatToParts(now);
-
-    const parts = {};
-
-    dateTime.forEach((part) => {
-        if (part.type !== "literal") {
-            parts[part.type] = part.value;
-        }
-    });
-
-    return parts;
-};
-
-
-/*
-=====================================================
-DETECT REAL DATE / TIME COMMANDS
-=====================================================
-*/
-
-const getDateTimeResponse = (command) => {
-    const text = command
-        .toLowerCase()
-        .trim()
-        .replace(/[?!.]/g, "");
-
-    const parts = getIndianDateTime();
-
-    const time = `${parts.hour}:${parts.minute}:${parts.second} ${parts.dayPeriod}`;
-
-    const date = `${parts.weekday}, ${parts.day} ${parts.month} ${parts.year}`;
-
-    const day = parts.weekday;
-
-    const month = parts.month;
-
-    const year = parts.year;
-
-
-    /*
-    =================================================
-    TIME
-    =================================================
-    */
-
-    const isTimeCommand =
-        text === "time" ||
-        text.includes("what time is it") ||
-        text.includes("what is the time") ||
-        text.includes("current time") ||
-        text.includes("tell me the time") ||
-        text.includes("tell me current time") ||
-        text.includes("time right now") ||
-        text.includes("what's the time") ||
-        text.includes("whats the time");
-
-
-    if (isTimeCommand) {
-        return {
-            type: "get_time",
-            userInput: command,
-            response: `The current time is ${time}.`,
-            query: ""
-        };
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is missing");
     }
 
+    const base64Image = imageBuffer.toString("base64");
 
-    /*
-    =================================================
-    DATE
-    =================================================
-    */
+    const apiUrl =
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 
-    const isDateCommand =
-        text === "date" ||
-        text.includes("what date is it") ||
-        text.includes("what is the date") ||
-        text.includes("what's the date") ||
-        text.includes("whats the date") ||
-        text.includes("today's date") ||
-        text.includes("todays date") ||
-        text.includes("current date") ||
-        text.includes("today date") ||
-        text.includes("tell me today's date") ||
-        text.includes("tell me todays date");
+    // ========================================================
+    // PASS 1 — SOLVE
+    // ========================================================
 
-
-    if (isDateCommand) {
-        return {
-            type: "get_date",
-            userInput: command,
-            response: `Today is ${date}.`,
-            query: ""
-        };
-    }
-
-
-    /*
-    =================================================
-    DAY
-    =================================================
-    */
-
-    const isDayCommand =
-        text === "day" ||
-        text.includes("what day is it") ||
-        text.includes("what is the day") ||
-        text.includes("what day today") ||
-        text.includes("which day is today") ||
-        text.includes("what day is today") ||
-        text.includes("today's day") ||
-        text.includes("todays day") ||
-        text.includes("current day") ||
-        text.includes("tell me the day");
-
-
-    if (isDayCommand) {
-        return {
-            type: "get_day",
-            userInput: command,
-            response: `Today is ${day}.`,
-            query: ""
-        };
-    }
-
-
-    /*
-    =================================================
-    MONTH
-    =================================================
-    */
-
-    const isMonthCommand =
-        text === "month" ||
-        text.includes("what month is it") ||
-        text.includes("what is the month") ||
-        text.includes("which month is it") ||
-        text.includes("current month") ||
-        text.includes("what month are we in") ||
-        text.includes("which month are we in") ||
-        text.includes("tell me the month");
-
-
-    if (isMonthCommand) {
-        return {
-            type: "get_month",
-            userInput: command,
-            response: `The current month is ${month}.`,
-            query: ""
-        };
-    }
-
-
-    /*
-    =================================================
-    YEAR
-    =================================================
-    */
-
-    const isYearCommand =
-        text === "year" ||
-        text.includes("what year is it") ||
-        text.includes("what is the year") ||
-        text.includes("which year is it") ||
-        text.includes("current year") ||
-        text.includes("what year are we in") ||
-        text.includes("which year are we in") ||
-        text.includes("tell me the year");
-
-
-    if (isYearCommand) {
-        return {
-            type: "get_date",
-            userInput: command,
-            response: `The current year is ${year}.`,
-            query: ""
-        };
-    }
-
-
-    /*
-    =================================================
-    FULL DATE + TIME
-    =================================================
-    */
-
-    const isDateTimeCommand =
-        text.includes("date and time") ||
-        text.includes("date & time") ||
-        text.includes("date plus time") ||
-        text.includes("current date and time") ||
-        text.includes("today and time");
-
-
-    if (isDateTimeCommand) {
-        return {
-            type: "get_date",
-            userInput: command,
-            response: `Today is ${date}, and the current time is ${time}.`,
-            query: ""
-        };
-    }
-
-
-    return null;
-};
-
-
-/*
-=====================================================
-NORMAL GEMINI RESPONSE
-=====================================================
-*/
-
-const geminiResponse = async (
-    command,
-    assistantName,
-    userName
-) => {
-
-    try {
-
-        /*
-        =================================================
-        FIRST:
-        HANDLE DATE/TIME LOCALLY
-        DO NOT ASK GEMINI
-        =================================================
-        */
-
-        const dateTimeResponse =
-            getDateTimeResponse(command);
-
-        if (dateTimeResponse) {
-
-            console.log(
-                "REAL DATE/TIME RESPONSE:",
-                dateTimeResponse
-            );
-
-            return dateTimeResponse;
-        }
-
-
-        /*
-        =================================================
-        GEMINI API KEY
-        =================================================
-        */
-
-        const apiKey =
-            process.env.GEMINI_API_KEY;
-
-        if (!apiKey) {
-
-            throw new Error(
-                "GEMINI_API_KEY is missing in .env"
-            );
-        }
-
-
-        /*
-        =================================================
-        GEMINI PROMPT
-        =================================================
-        */
-
-        const prompt = `
-You are a virtual assistant named ${assistantName}, created by ${userName}.
-
-Understand the user's command.
-
-Return ONLY valid JSON:
-
-{
-  "type": "general",
-  "userInput": "original user command",
-  "response": "actual useful answer",
-  "query": ""
-}
-
-Allowed type values:
-
-general
-google_open
-google_search
-youtube_open
-youtube_search
-youtube_play
-get_time
-get_date
-get_day
-get_month
-calculator_open
-calculator_calculate
-instagram_open
-facebook_open
-weather_show
-
-Rules:
-
-1. Normal questions use "general".
-2. Give the actual answer in "response".
-3. Give complete useful answers.
-4. For calculations, provide the actual result.
-5. For Google searches, use "google_search".
-6. For YouTube searches, use "youtube_search".
-7. For YouTube playing, use "youtube_play".
-8. For opening Google, use "google_open".
-9. For opening YouTube, use "youtube_open".
-10. For opening calculator, use "calculator_open".
-11. userInput must contain the original command.
-12. Return ONLY JSON.
-13. Do not use Markdown code fences.
-14. Do not guess the current date, time, month, day, or year.
-15. Date/time commands are handled by the server and should normally never reach you.
-16. For normal questions, provide a complete useful answer rather than only naming the topic.
-
-USER COMMAND:
-${command}
-`;
-
-
-        /*
-        =================================================
-        GEMINI API URL
-        =================================================
-        */
-
-        const apiUrl =
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
-
-
-        /*
-        =================================================
-        GEMINI REQUEST
-        =================================================
-        */
-
-        const result =
-            await axios.post(
-                apiUrl,
-                {
-                    contents: [
-                        {
-                            parts: [
-                                {
-                                    text: prompt
-                                }
-                            ]
-                        }
-                    ],
-
-                    generationConfig: {
-                        temperature: 0.2,
-                        responseMimeType:
-                            "application/json"
-                    }
-                },
-
-                {
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    timeout: 30000
-                }
-            );
-
-
-        /*
-        =================================================
-        GET GEMINI RESPONSE
-        =================================================
-        */
-
-        const text =
-            result.data
-                ?.candidates?.[0]
-                ?.content?.parts?.[0]
-                ?.text;
-
-
-        if (!text) {
-
-            throw new Error(
-                "Gemini response text not found"
-            );
-        }
-
-
-        /*
-        =================================================
-        PARSE JSON
-        =================================================
-        */
-
-        try {
-
-            const parsed =
-                JSON.parse(text);
-
-            return parsed;
-
-        } catch {
-
-            return {
-
-                type:
-                    "general",
-
-                userInput:
-                    command,
-
-                response:
-                    text.trim(),
-
-                query:
-                    ""
-            };
-        }
-
-
-    } catch (error) {
-
-        console.error(
-            "Gemini error:",
-            error.response?.data ||
-            error.message
-        );
-
-        throw error;
-    }
-};
-
-
-/*
-=====================================================
-IMAGE ANALYSIS
-=====================================================
-*/
-
-export const geminiImageResponse =
-    async (
-        command,
-        imageBuffer,
-        mimeType,
-        assistantName,
-        userName
-    ) => {
-
-        try {
-
-            const apiKey =
-                process.env.GEMINI_API_KEY;
-
-            if (!apiKey) {
-
-                throw new Error(
-                    "GEMINI_API_KEY is missing in .env"
-                );
-            }
-
-            if (!imageBuffer) {
-
-                throw new Error(
-                    "Image is required"
-                );
-            }
-
-
-            const imageBase64 =
-                imageBuffer.toString(
-                    "base64"
-                );
-
-
-            const prompt = `
-You are ${assistantName}, a helpful AI virtual assistant.
+    const solvePrompt = `
+You are ${assistantName}, a highly accurate AI virtual assistant.
 
 The user's name is ${userName}.
 
@@ -507,334 +37,881 @@ The user uploaded an image and asked:
 
 "${command}"
 
-Analyze the image carefully.
+The uploaded image is the PRIMARY SOURCE.
 
-You can analyze:
+Your job is to carefully read the image and solve the EXACT question asked by the user.
 
-- handwritten notes
-- printed notes
-- mathematics
-- chemistry
-- physics
-- graphs
-- charts
+============================================================
+STEP 1 — READ THE IMAGE
+============================================================
+
+Read the entire relevant image carefully.
+
+Pay special attention to:
+
+- numbers
+- words
+- + and - signs
+- fractions
+- numerator and denominator
+- decimal points
+- powers/exponents
+- square roots
+- brackets
+- variables
+- mathematical symbols
+- angles
+- units
+- chemical formulas
+- chemical subscripts
+- superscripts
+- charges
+- reaction arrows
 - diagrams
-- programming code
-- screenshots
+- graphs
 - tables
-- documents
-- multiple-choice questions
+- MCQ options
+- programming code
 
-Rules:
+NEVER guess information that is unreadable.
 
-1. Answer the user's exact question.
-2. If there is a question, solve it completely.
-3. If there is a calculation, show the calculation.
-4. If there are MCQs, identify the correct option and explain why.
-5. If there is code, explain errors and corrections.
-6. If there are notes, explain important points.
-7. Do not invent information.
-8. If something is unreadable, say so.
-9. Give a complete answer rather than only naming the topic.
+============================================================
+STEP 2 — PRESERVE THE ORIGINAL QUESTION
+============================================================
+
+Do NOT accidentally change:
+
++ into -
+- into +
+× into ÷
+÷ into ×
+
+Do NOT:
+
+- swap numerator and denominator
+- remove a negative sign
+- change an exponent
+- change a root
+- change a decimal
+- change a chemical subscript
+- change a chemical formula
+- change a coefficient
+- change a unit
+- omit an important symbol
+
+Read fractions, equations and expressions exactly as shown.
+
+============================================================
+MATHEMATICS
+============================================================
+
+For mathematics:
+
+1. Read the complete expression.
+2. Identify exactly what is being asked.
+3. Select the correct formula or identity.
+4. Substitute carefully.
+5. Calculate carefully.
+6. Recalculate the result.
+7. Check the result against the original question.
+
+For trigonometry:
+
+- Correctly identify opposite, adjacent and hypotenuse.
+- Use the correct trigonometric ratio.
+- Preserve the angle.
+- Check identities.
+- Check whether an acute-angle assumption is required.
+- Verify the final value.
+
+Important identities:
+
+sin²θ + cos²θ = 1
+
+tan θ = sin θ / cos θ
+
+cot θ = cos θ / sin θ
+
+sec θ = 1 / cos θ
+
+cosec θ = 1 / sin θ
+
+============================================================
+CHEMISTRY
+============================================================
+
+Read formulas EXACTLY.
+
+Pay special attention to:
+
+- subscripts
+- superscripts
+- coefficients
+- charges
+- brackets
+- ions
+- reaction arrows
+- reaction conditions
+- temperature
+- catalysts
+- physical states
+
+NEVER change a chemical formula.
+
+For balancing equations:
+
+1. Count every atom on both sides.
+2. Balance using COEFFICIENTS.
+3. NEVER change subscripts merely to balance.
+4. Recount all atoms.
+5. Check charge for ionic equations.
+6. Verify the final equation.
+
+============================================================
+PHYSICS
+============================================================
+
+For physics:
+
+1. Identify the given quantities.
+2. Identify what is required.
+3. Select the correct formula/law.
+4. Substitute values carefully.
+5. Calculate.
+6. Check units.
+7. Check dimensions when appropriate.
+8. Verify the final result.
+
+============================================================
+BIOLOGY / SCIENCE
+============================================================
+
+- Read the question carefully.
+- Use established scientific principles.
+- Do not invent facts.
+- Carefully inspect diagrams and labels.
+- Do not assume information that is not given.
+
+============================================================
+PROGRAMMING
+============================================================
+
+If code is present:
+
+- Read the complete visible code.
+- Identify the language.
+- Preserve variable names.
+- Check syntax.
+- Check logic.
+- Check brackets.
+- Check conditions.
+- Check loops and functions.
+- Do not invent missing code.
+
+============================================================
+MCQs
+============================================================
+
+For MCQs:
+
+1. Read the complete question.
+2. Read every option.
+3. Solve independently.
+4. Compare the result with the options.
+5. Select the correct option.
+6. Verify that the selected option matches the result.
+
+============================================================
+FINAL CHECK
+============================================================
+
+Before answering, verify internally:
+
+- Question read correctly
+- Numbers correct
+- Signs correct
+- Fractions correct
+- Powers correct
+- Roots correct
+- Formula correct
+- Calculation correct
+- Units correct
+- Chemical formulas correct
+- MCQ option correct
+- Final answer matches the question
+
+If something is genuinely unreadable, DO NOT GUESS.
+
+Answer the exact question asked.
+
+If the user asks for "correct answers only", provide concise final answers.
+
+If the user asks for steps, provide clear steps and the final answer.
 `;
 
-
-            const apiUrl =
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
-
-
-            const result =
-                await axios.post(
-
-                    apiUrl,
-
-                    {
-                        contents: [
-                            {
-                                parts: [
-
-                                    {
-                                        text:
-                                            prompt
-                                    },
-
-                                    {
-                                        inline_data: {
-
-                                            mime_type:
-                                                mimeType,
-
-                                            data:
-                                                imageBase64
-                                        }
-                                    }
-
-                                ]
-                            }
-                        ],
-
-                        generationConfig: {
-                            temperature:
-                                0.2
-                        }
-                    },
-
-                    {
-                        headers: {
-
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                        timeout:
-                            60000
-                    }
-                );
-
-
-            const text =
-                result.data
-                    ?.candidates?.[0]
-                    ?.content?.parts
-                    ?.map(
-                        part =>
-                            part.text || ""
-                    )
-                    .join("")
-                    .trim();
-
-
-            if (!text) {
-
-                throw new Error(
-                    "Gemini image response not found"
-                );
-            }
-
-
-            return text;
-
-
-        } catch (error) {
-
-            console.error(
-                "Gemini IMAGE ERROR:",
-                error.response?.data ||
-                error.message
-            );
-
-            throw error;
+    const firstResponse = await axios.post(
+      apiUrl,
+      {
+        contents: [
+          {
+            parts: [
+              {
+                text: solvePrompt
+              },
+              {
+                inline_data: {
+                  mime_type: mimeType,
+                  data: base64Image
+                }
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.1
         }
-    };
+      },
+      {
+        timeout: 120000
+      }
+    );
 
+    const firstAnswer =
+      firstResponse.data?.candidates?.[0]?.content?.parts
+        ?.map(part => part.text || "")
+        .join("")
+        .trim();
 
-/*
-=====================================================
-PDF ANALYSIS
-=====================================================
-*/
+    if (!firstAnswer) {
+      throw new Error("Gemini first image pass returned empty response");
+    }
 
-export const geminiPdfResponse =
-    async (
-        command,
-        pdfBuffer,
-        assistantName,
-        userName
-    ) => {
+    console.log("=================================");
+    console.log("GEMINI IMAGE PASS 1 ANSWER");
+    console.log("=================================");
+    console.log(firstAnswer);
 
-        try {
+    // ========================================================
+    // PASS 2 — INDEPENDENT VERIFICATION
+    // ========================================================
 
-            const apiKey =
-                process.env.GEMINI_API_KEY;
+    const verifyPrompt = `
+You are the FINAL VERIFICATION ENGINE.
 
-            if (!apiKey) {
-
-                throw new Error(
-                    "GEMINI_API_KEY is missing in .env"
-                );
-            }
-
-            if (!pdfBuffer) {
-
-                throw new Error(
-                    "PDF is required"
-                );
-            }
-
-
-            const pdfBase64 =
-                pdfBuffer.toString(
-                    "base64"
-                );
-
-
-            const prompt = `
-You are ${assistantName}, an advanced AI virtual assistant.
-
-The user's name is ${userName}.
-
-The user has uploaded a PDF document.
-
-The user asks:
+The user asked:
 
 "${command}"
 
-IMPORTANT:
+The ORIGINAL IMAGE is attached.
 
-Read and understand the uploaded PDF before answering.
+The first AI produced this answer:
 
-The PDF is the PRIMARY SOURCE for your answer.
+================ FIRST ANSWER ================
 
-You can analyze:
+${firstAnswer}
 
-- textbooks
-- notes
-- assignments
-- question papers
-- research papers
-- resumes
-- reports
-- programming documents
-- mathematics documents
-- chemistry documents
-- physics documents
-- educational documents
-- tables
-- charts
-- diagrams
-- scanned pages
-- MCQ papers
-- exam papers
+================================================
 
-RULES:
+DO NOT blindly trust the first answer.
 
-1. Answer the user's exact question.
+You must independently read the ORIGINAL IMAGE again and verify the answer.
 
-2. If the user asks "summarize this PDF", provide a useful structured summary.
+================================================
+CHECK 1 — QUESTION READING
+================================================
 
-3. If the user asks about a particular chapter, section or page, explain that part.
+Verify that the first AI correctly understood:
 
-4. If the user asks a question contained in the PDF, solve it completely.
+- every number
+- every word
+- every symbol
+- every sign
+- every fraction
+- numerator
+- denominator
+- exponent
+- root
+- bracket
+- variable
+- unit
+- diagram
+- graph
+- table
+- MCQ options
 
-5. If the PDF contains MCQs, identify the correct answer and explain why.
+If the question was read incorrectly, correct it.
 
-6. If the PDF contains mathematics, show the steps and final answer.
+================================================
+CHECK 2 — MATHEMATICS
+================================================
 
-7. If the PDF contains chemistry, provide equations and explanations where appropriate.
+Independently recalculate the answer.
 
-8. If the PDF contains physics, show formulas, substitutions and final answers where appropriate.
+Check:
 
-9. If the PDF contains programming code, explain it and identify errors.
+- arithmetic
+- algebra
+- fractions
+- signs
+- powers
+- roots
+- substitutions
+- equations
+- trigonometry
+- identities
+- geometry
 
-10. If the PDF contains tables, use the actual information from the table.
+Do not accept the first answer merely because its working looks correct.
 
-11. If the PDF contains diagrams, explain what they represent.
+================================================
+CHECK 3 — CHEMISTRY
+================================================
 
-12. If the PDF is scanned, use readable text from the scanned pages.
+If chemistry is involved:
 
-13. Do not invent information that cannot be found or reasonably derived from the PDF.
+Check:
 
-14. If the requested information cannot be found in the PDF, clearly say that it is not available in the uploaded document.
+- chemical formulas
+- subscripts
+- coefficients
+- charges
+- oxidation states
+- atoms
+- ionic charge
+- reaction conditions
 
-15. Give complete answers.
+For a balanced equation:
 
-16. Do not answer with only the topic name.
+COUNT EVERY ATOM AGAIN.
 
-17. If the question requires explanation, provide the explanation.
+NEVER change subscripts to balance an equation.
 
-18. If the user asks for a direct answer, still include enough reasoning to make the answer understandable.
+Use coefficients only when balancing.
 
-Answer the user's question directly.
+================================================
+CHECK 4 — PHYSICS
+================================================
+
+Check:
+
+- given values
+- required value
+- formula
+- substitutions
+- arithmetic
+- units
+- dimensions
+- physical reasonableness
+
+================================================
+CHECK 5 — MCQ
+================================================
+
+Solve the MCQ independently.
+
+Compare the calculated or derived answer against EVERY option.
+
+If the first AI selected the wrong option, replace it with the correct option.
+
+================================================
+CHECK 6 — FINAL RESULT
+================================================
+
+If the first answer is correct:
+
+KEEP IT.
+
+If the first answer is wrong:
+
+CORRECT IT.
+
+If the first answer contains only a small calculation error:
+
+CORRECT ONLY THE ERROR.
+
+If the image is genuinely unreadable:
+
+DO NOT GUESS.
+
+Clearly state what cannot be determined.
+
+================================================
+FINAL RESPONSE
+================================================
+
+Return ONLY the final verified answer to the user.
+
+Do NOT mention:
+
+- Pass 1
+- Pass 2
+- verification
+- first AI
+- this prompt
+- internal reasoning
+
+If the user asked for "correct answers only":
+
+Give only the final answers, clearly numbered.
+
+If the user asked for explanation:
+
+Give concise steps followed by the final answer.
+
+Accuracy is more important than speed.
 `;
 
-
-            const apiUrl =
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
-
-
-            const result =
-                await axios.post(
-
-                    apiUrl,
-
-                    {
-                        contents: [
-                            {
-                                parts: [
-
-                                    {
-                                        text:
-                                            prompt
-                                    },
-
-                                    {
-                                        inline_data: {
-
-                                            mime_type:
-                                                "application/pdf",
-
-                                            data:
-                                                pdfBase64
-                                        }
-                                    }
-
-                                ]
-                            }
-                        ],
-
-                        generationConfig: {
-                            temperature:
-                                0.2
-                        }
-                    },
-
-                    {
-                        headers: {
-
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                        timeout:
-                            120000
-                    }
-                );
-
-
-            const text =
-                result.data
-                    ?.candidates?.[0]
-                    ?.content?.parts
-                    ?.map(
-                        part =>
-                            part.text || ""
-                    )
-                    .join("")
-                    .trim();
-
-
-            if (!text) {
-
-                throw new Error(
-                    "Gemini PDF response not found"
-                );
-            }
-
-
-            return text;
-
-
-        } catch (error) {
-
-            console.error(
-                "Gemini PDF ERROR:",
-                error.response?.data ||
-                error.message
-            );
-
-            throw error;
+    const secondResponse = await axios.post(
+      apiUrl,
+      {
+        contents: [
+          {
+            parts: [
+              {
+                text: verifyPrompt
+              },
+              {
+                inline_data: {
+                  mime_type: mimeType,
+                  data: base64Image
+                }
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.1
         }
-    };
+      },
+      {
+        timeout: 120000
+      }
+    );
+
+    const verifiedAnswer =
+      secondResponse.data?.candidates?.[0]?.content?.parts
+        ?.map(part => part.text || "")
+        .join("")
+        .trim();
+
+    if (!verifiedAnswer) {
+      throw new Error("Gemini image verification returned empty response");
+    }
+
+    console.log("=================================");
+    console.log("GEMINI FINAL VERIFIED IMAGE ANSWER");
+    console.log("=================================");
+    console.log(verifiedAnswer);
+
+    return verifiedAnswer;
+
+  } catch (error) {
+    console.error(
+      "GEMINI IMAGE ERROR:",
+      error.response?.data || error.message
+    );
+
+    throw new Error("Image analysis failed");
+  }
+}
 
 
-export default geminiResponse;
+// ============================================================
+// GEMINI PDF RESPONSE
+// TWO-PASS SYSTEM
+// PASS 1 = SOLVE
+// PASS 2 = VERIFY + CORRECT
+// ============================================================
+
+async function geminiPdfResponse(
+  command,
+  pdfBuffer,
+  assistantName,
+  userName
+) {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is missing");
+    }
+
+    const base64Pdf = pdfBuffer.toString("base64");
+
+    const apiUrl =
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
+
+    // ========================================================
+    // PASS 1 — SOLVE PDF
+    // ========================================================
+
+    const solvePrompt = `
+You are ${assistantName}, a highly accurate AI virtual assistant.
+
+The user's name is ${userName}.
+
+The user uploaded a PDF and asked:
+
+"${command}"
+
+The uploaded PDF is the PRIMARY SOURCE.
+
+Read the relevant pages carefully and answer the EXACT question.
+
+============================================================
+READ CAREFULLY
+============================================================
+
+Pay special attention to:
+
+- numbers
+- words
+- signs
+- fractions
+- numerator/denominator
+- powers
+- roots
+- equations
+- mathematical symbols
+- chemical formulas
+- subscripts
+- superscripts
+- charges
+- reaction arrows
+- units
+- tables
+- graphs
+- diagrams
+- MCQs
+- programming code
+
+Do NOT guess unreadable information.
+
+============================================================
+MATHEMATICS
+============================================================
+
+- Read the complete expression.
+- Preserve every sign.
+- Preserve fractions.
+- Preserve powers and roots.
+- Use the correct formula.
+- Calculate carefully.
+- Recalculate and verify the result.
+
+For trigonometry:
+
+- Identify the correct triangle relationships.
+- Use the correct trigonometric ratio.
+- Check identities.
+- Verify the final answer.
+
+============================================================
+CHEMISTRY
+============================================================
+
+Preserve:
+
+- chemical formulas
+- subscripts
+- coefficients
+- charges
+- brackets
+- reaction conditions
+
+For balancing:
+
+- Count atoms.
+- Balance using coefficients.
+- NEVER change subscripts.
+- Recount atoms.
+- Check charge where applicable.
+
+============================================================
+PHYSICS
+============================================================
+
+- Identify given values.
+- Identify required value.
+- Select correct formula.
+- Substitute carefully.
+- Calculate.
+- Check units.
+- Verify the result.
+
+============================================================
+BIOLOGY / SCIENCE
+============================================================
+
+Use correct scientific principles.
+
+Do not invent information.
+
+============================================================
+PROGRAMMING
+============================================================
+
+Read the relevant code completely.
+
+Check:
+
+- syntax
+- logic
+- variables
+- functions
+- loops
+- conditions
+- brackets
+
+============================================================
+MCQs
+============================================================
+
+Solve independently first.
+
+Then compare against all options.
+
+============================================================
+FINAL CHECK
+============================================================
+
+Before answering, verify:
+
+- question
+- numbers
+- signs
+- fractions
+- powers
+- roots
+- formulas
+- calculations
+- units
+- chemical equations
+- MCQ options
+- final answer
+
+If information is genuinely unreadable, do not guess.
+
+Give the answer requested by the user.
+`;
+
+    const firstResponse = await axios.post(
+      apiUrl,
+      {
+        contents: [
+          {
+            parts: [
+              {
+                text: solvePrompt
+              },
+              {
+                inline_data: {
+                  mime_type: "application/pdf",
+                  data: base64Pdf
+                }
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.1
+        }
+      },
+      {
+        timeout: 120000
+      }
+    );
+
+    const firstAnswer =
+      firstResponse.data?.candidates?.[0]?.content?.parts
+        ?.map(part => part.text || "")
+        .join("")
+        .trim();
+
+    if (!firstAnswer) {
+      throw new Error("Gemini first PDF pass returned empty response");
+    }
+
+    console.log("=================================");
+    console.log("GEMINI PDF PASS 1 ANSWER");
+    console.log("=================================");
+    console.log(firstAnswer);
+
+    // ========================================================
+    // PASS 2 — VERIFY PDF ANSWER
+    // ========================================================
+
+    const verifyPrompt = `
+You are the FINAL ANSWER VERIFICATION ENGINE.
+
+The user asked:
+
+"${command}"
+
+The ORIGINAL PDF is attached.
+
+The first AI produced:
+
+================ FIRST ANSWER ================
+
+${firstAnswer}
+
+================================================
+
+DO NOT blindly trust this answer.
+
+Read the ORIGINAL PDF again and independently verify it.
+
+================================================
+CHECK EVERYTHING
+================================================
+
+Check:
+
+1. Question was read correctly.
+2. Numbers were copied correctly.
+3. Signs were copied correctly.
+4. Fractions are correct.
+5. Numerators and denominators are correct.
+6. Powers and roots are correct.
+7. Variables are correct.
+8. Units are correct.
+9. Diagrams were interpreted correctly.
+10. Tables and graphs were read correctly.
+
+================================================
+MATHEMATICS
+================================================
+
+Recalculate independently.
+
+Check:
+
+- arithmetic
+- algebra
+- trigonometry
+- equations
+- identities
+- substitutions
+- final value
+
+If the first answer is wrong, CORRECT IT.
+
+================================================
+CHEMISTRY
+================================================
+
+Check:
+
+- chemical formulas
+- subscripts
+- coefficients
+- charges
+- atoms
+- ionic charge
+- reaction conditions
+
+For balancing equations:
+
+COUNT EVERY ATOM AGAIN.
+
+Never change subscripts merely to balance.
+
+================================================
+PHYSICS
+================================================
+
+Check:
+
+- formula
+- given values
+- substitution
+- arithmetic
+- units
+- dimensions
+- final result
+
+================================================
+MCQs
+================================================
+
+Solve independently.
+
+Check every option.
+
+Select the option that actually matches the correct result.
+
+================================================
+FINAL RESPONSE
+================================================
+
+Return ONLY the FINAL VERIFIED ANSWER.
+
+Do not mention the verification process.
+
+Do not mention the first AI.
+
+Do not mention this prompt.
+
+If the user requested "correct answers only", give only the answers.
+
+If the user requested steps, give concise steps and the final answer.
+
+If something important in the PDF is genuinely unreadable, say so rather than guessing.
+
+Accuracy is more important than speed.
+`;
+
+    const secondResponse = await axios.post(
+      apiUrl,
+      {
+        contents: [
+          {
+            parts: [
+              {
+                text: verifyPrompt
+              },
+              {
+                inline_data: {
+                  mime_type: "application/pdf",
+                  data: base64Pdf
+                }
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.1
+        }
+      },
+      {
+        timeout: 120000
+      }
+    );
+
+    const verifiedAnswer =
+      secondResponse.data?.candidates?.[0]?.content?.parts
+        ?.map(part => part.text || "")
+        .join("")
+        .trim();
+
+    if (!verifiedAnswer) {
+      throw new Error("Gemini PDF verification returned empty response");
+    }
+
+    console.log("=================================");
+    console.log("GEMINI FINAL VERIFIED PDF ANSWER");
+    console.log("=================================");
+    console.log(verifiedAnswer);
+
+    return verifiedAnswer;
+
+  } catch (error) {
+    console.error(
+      "GEMINI PDF ERROR:",
+      error.response?.data || error.message
+    );
+
+    throw new Error("PDF analysis failed");
+  }
+}
