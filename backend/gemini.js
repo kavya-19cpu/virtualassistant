@@ -1,4 +1,3 @@
-
 import axios from "axios";
 
 /*
@@ -48,14 +47,14 @@ const getDateTimeResponse = (command) => {
 
     const parts = getIndianDateTime();
 
-    const time = `${parts.hour}:${parts.minute}:${parts.second} ${parts.dayPeriod}`;
+    const time =
+        `${parts.hour}:${parts.minute}:${parts.second} ${parts.dayPeriod}`;
 
-    const date = `${parts.weekday}, ${parts.day} ${parts.month} ${parts.year}`;
+    const date =
+        `${parts.weekday}, ${parts.day} ${parts.month} ${parts.year}`;
 
     const day = parts.weekday;
-
     const month = parts.month;
-
     const year = parts.year;
 
 
@@ -75,7 +74,6 @@ const getDateTimeResponse = (command) => {
         text.includes("time right now") ||
         text.includes("what's the time") ||
         text.includes("whats the time");
-
 
     if (isTimeCommand) {
         return {
@@ -106,7 +104,6 @@ const getDateTimeResponse = (command) => {
         text.includes("tell me today's date") ||
         text.includes("tell me todays date");
 
-
     if (isDateCommand) {
         return {
             type: "get_date",
@@ -135,7 +132,6 @@ const getDateTimeResponse = (command) => {
         text.includes("current day") ||
         text.includes("tell me the day");
 
-
     if (isDayCommand) {
         return {
             type: "get_day",
@@ -161,7 +157,6 @@ const getDateTimeResponse = (command) => {
         text.includes("what month are we in") ||
         text.includes("which month are we in") ||
         text.includes("tell me the month");
-
 
     if (isMonthCommand) {
         return {
@@ -189,7 +184,6 @@ const getDateTimeResponse = (command) => {
         text.includes("which year are we in") ||
         text.includes("tell me the year");
 
-
     if (isYearCommand) {
         return {
             type: "get_date",
@@ -213,18 +207,139 @@ const getDateTimeResponse = (command) => {
         text.includes("current date and time") ||
         text.includes("today and time");
 
-
     if (isDateTimeCommand) {
         return {
             type: "get_date",
             userInput: command,
-            response: `Today is ${date}, and the current time is ${time}.`,
+            response:
+                `Today is ${date}, and the current time is ${time}.`,
             query: ""
         };
     }
 
 
     return null;
+};
+
+
+/*
+=====================================================
+GEMINI RETRY HELPER
+=====================================================
+
+Retries temporary Gemini errors such as:
+503 Service Unavailable
+429 Too Many Requests
+500 Internal Server Error
+502 Bad Gateway
+504 Gateway Timeout
+
+Does NOT retry normal 400/401/403 errors.
+=====================================================
+*/
+
+const geminiRequestWithRetry = async (
+    apiUrl,
+    requestData,
+    timeout = 60000,
+    maxRetries = 3
+) => {
+
+    let lastError;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+
+        try {
+
+            console.log(
+                `Gemini request attempt ${attempt + 1}/${maxRetries + 1}`
+            );
+
+            const result = await axios.post(
+                apiUrl,
+                requestData,
+                {
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    timeout
+                }
+            );
+
+            return result;
+
+        } catch (error) {
+
+            lastError = error;
+
+            const status = error.response?.status;
+
+            console.error(
+                `Gemini request failed - attempt ${attempt + 1}:`,
+                {
+                    status,
+                    message: error.message,
+                    data: error.response?.data
+                }
+            );
+
+
+            /*
+            ==========================================
+            ONLY RETRY TEMPORARY ERRORS
+            ==========================================
+            */
+
+            const shouldRetry =
+                status === 429 ||
+                status === 500 ||
+                status === 502 ||
+                status === 503 ||
+                status === 504;
+
+
+            if (!shouldRetry) {
+                throw error;
+            }
+
+
+            /*
+            ==========================================
+            NO MORE RETRIES
+            ==========================================
+            */
+
+            if (attempt === maxRetries) {
+                break;
+            }
+
+
+            /*
+            ==========================================
+            EXPONENTIAL BACKOFF
+
+            Attempt 1 → wait 1 second
+            Attempt 2 → wait 2 seconds
+            Attempt 3 → wait 4 seconds
+            ==========================================
+            */
+
+            const delay =
+                Math.pow(2, attempt) * 1000;
+
+            console.log(
+                `Gemini temporary error ${status}. ` +
+                `Retrying in ${delay / 1000} seconds...`
+            );
+
+            await new Promise(
+                resolve => setTimeout(resolve, delay)
+            );
+        }
+    }
+
+    throw lastError;
 };
 
 
@@ -274,7 +389,6 @@ const geminiResponse = async (
             process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
-
             throw new Error(
                 "GEMINI_API_KEY is missing in .env"
             );
@@ -360,7 +474,7 @@ ${command}
         */
 
         const result =
-            await axios.post(
+            await geminiRequestWithRetry(
                 apiUrl,
                 {
                     contents: [
@@ -379,15 +493,8 @@ ${command}
                             "application/json"
                     }
                 },
-
-                {
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    timeout: 30000
-                }
+                30000,
+                3
             );
 
 
@@ -405,7 +512,6 @@ ${command}
 
 
         if (!text) {
-
             throw new Error(
                 "Gemini response text not found"
             );
@@ -428,18 +534,10 @@ ${command}
         } catch {
 
             return {
-
-                type:
-                    "general",
-
-                userInput:
-                    command,
-
-                response:
-                    text.trim(),
-
-                query:
-                    ""
+                type: "general",
+                userInput: command,
+                response: text.trim(),
+                query: ""
             };
         }
 
@@ -474,29 +572,60 @@ export const geminiImageResponse =
 
         try {
 
+            /*
+            =================================================
+            GEMINI API KEY
+            =================================================
+            */
+
             const apiKey =
                 process.env.GEMINI_API_KEY;
 
             if (!apiKey) {
-
                 throw new Error(
                     "GEMINI_API_KEY is missing in .env"
                 );
             }
 
-            if (!imageBuffer) {
 
+            /*
+            =================================================
+            CHECK IMAGE
+            =================================================
+            */
+
+            if (!imageBuffer) {
                 throw new Error(
                     "Image is required"
                 );
             }
 
 
-            const imageBase64 =
-                imageBuffer.toString(
-                    "base64"
-                );
+            /*
+            =================================================
+            CONVERT IMAGE TO BASE64
+            =================================================
+            */
 
+            const imageBase64 =
+                imageBuffer.toString("base64");
+
+
+            console.log(
+                "IMAGE ANALYSIS STARTED",
+                {
+                    mimeType,
+                    imageSize:
+                        imageBuffer.length
+                }
+            );
+
+
+            /*
+            =================================================
+            IMAGE PROMPT
+            =================================================
+            */
 
             const prompt = `
 You are ${assistantName}, a helpful AI virtual assistant.
@@ -539,58 +668,58 @@ Rules:
 `;
 
 
+            /*
+            =================================================
+            GEMINI API URL
+            =================================================
+            */
+
             const apiUrl =
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 
 
+            /*
+            =================================================
+            GEMINI IMAGE REQUEST
+            =================================================
+            */
+
             const result =
-                await axios.post(
-
+                await geminiRequestWithRetry(
                     apiUrl,
-
                     {
                         contents: [
                             {
                                 parts: [
-
                                     {
-                                        text:
-                                            prompt
+                                        text: prompt
                                     },
-
                                     {
                                         inline_data: {
-
                                             mime_type:
                                                 mimeType,
-
                                             data:
                                                 imageBase64
                                         }
                                     }
-
                                 ]
                             }
                         ],
 
                         generationConfig: {
-                            temperature:
-                                0.2
+                            temperature: 0.2
                         }
                     },
-
-                    {
-                        headers: {
-
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                        timeout:
-                            60000
-                    }
+                    60000,
+                    3
                 );
 
+
+            /*
+            =================================================
+            GET GEMINI IMAGE RESPONSE
+            =================================================
+            */
 
             const text =
                 result.data
@@ -605,11 +734,15 @@ Rules:
 
 
             if (!text) {
-
                 throw new Error(
                     "Gemini image response not found"
                 );
             }
+
+
+            console.log(
+                "IMAGE ANALYSIS SUCCESSFUL"
+            );
 
 
             return text;
@@ -619,8 +752,16 @@ Rules:
 
             console.error(
                 "Gemini IMAGE ERROR:",
-                error.response?.data ||
-                error.message
+                {
+                    status:
+                        error.response?.status,
+
+                    data:
+                        error.response?.data,
+
+                    message:
+                        error.message
+                }
             );
 
             throw error;
@@ -644,29 +785,59 @@ export const geminiPdfResponse =
 
         try {
 
+            /*
+            =================================================
+            GEMINI API KEY
+            =================================================
+            */
+
             const apiKey =
                 process.env.GEMINI_API_KEY;
 
             if (!apiKey) {
-
                 throw new Error(
                     "GEMINI_API_KEY is missing in .env"
                 );
             }
 
-            if (!pdfBuffer) {
 
+            /*
+            =================================================
+            CHECK PDF
+            =================================================
+            */
+
+            if (!pdfBuffer) {
                 throw new Error(
                     "PDF is required"
                 );
             }
 
 
-            const pdfBase64 =
-                pdfBuffer.toString(
-                    "base64"
-                );
+            /*
+            =================================================
+            CONVERT PDF TO BASE64
+            =================================================
+            */
 
+            const pdfBase64 =
+                pdfBuffer.toString("base64");
+
+
+            console.log(
+                "PDF ANALYSIS STARTED",
+                {
+                    pdfSize:
+                        pdfBuffer.length
+                }
+            );
+
+
+            /*
+            =================================================
+            PDF PROMPT
+            =================================================
+            */
 
             const prompt = `
 You are ${assistantName}, an advanced AI virtual assistant.
@@ -748,58 +919,58 @@ Answer the user's question directly.
 `;
 
 
+            /*
+            =================================================
+            GEMINI API URL
+            =================================================
+            */
+
             const apiUrl =
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 
 
+            /*
+            =================================================
+            GEMINI PDF REQUEST
+            =================================================
+            */
+
             const result =
-                await axios.post(
-
+                await geminiRequestWithRetry(
                     apiUrl,
-
                     {
                         contents: [
                             {
                                 parts: [
-
                                     {
-                                        text:
-                                            prompt
+                                        text: prompt
                                     },
-
                                     {
                                         inline_data: {
-
                                             mime_type:
                                                 "application/pdf",
-
                                             data:
                                                 pdfBase64
                                         }
                                     }
-
                                 ]
                             }
                         ],
 
                         generationConfig: {
-                            temperature:
-                                0.2
+                            temperature: 0.2
                         }
                     },
-
-                    {
-                        headers: {
-
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                        timeout:
-                            120000
-                    }
+                    120000,
+                    3
                 );
 
+
+            /*
+            =================================================
+            GET GEMINI PDF RESPONSE
+            =================================================
+            */
 
             const text =
                 result.data
@@ -814,11 +985,15 @@ Answer the user's question directly.
 
 
             if (!text) {
-
                 throw new Error(
                     "Gemini PDF response not found"
                 );
             }
+
+
+            console.log(
+                "PDF ANALYSIS SUCCESSFUL"
+            );
 
 
             return text;
@@ -828,13 +1003,27 @@ Answer the user's question directly.
 
             console.error(
                 "Gemini PDF ERROR:",
-                error.response?.data ||
-                error.message
+                {
+                    status:
+                        error.response?.status,
+
+                    data:
+                        error.response?.data,
+
+                    message:
+                        error.message
+                }
             );
 
             throw error;
         }
     };
 
+
+/*
+=====================================================
+DEFAULT EXPORT
+=====================================================
+*/
 
 export default geminiResponse;
