@@ -14,7 +14,6 @@ import {
 } from "react-router-dom";
 
 import axios from "axios";
-
 import aiImg from "../assets/ai.gif";
 
 import {
@@ -35,7 +34,8 @@ import {
   FiLogOut,
   FiLock,
   FiEdit3,
-  FiFileText
+  FiFileText,
+  FiSquare
 } from "react-icons/fi";
 
 
@@ -45,21 +45,23 @@ function Home() {
     userData,
     serverUrl,
     setUserData,
-    getGeminiResponse,
-    analyzePdfFile
+    getGeminiResponse
   } = useContext(userDataContext);
 
   const navigate = useNavigate();
 
 
-  /* =====================================================
-     STATE
-     ===================================================== */
+  // =====================================================
+  // STATES
+  // =====================================================
 
   const [isListening, setIsListening] =
     useState(false);
 
   const [isAIActive, setIsAIActive] =
+    useState(false);
+
+  const [isSpeaking, setIsSpeaking] =
     useState(false);
 
   const [userText, setUserText] =
@@ -90,9 +92,9 @@ function Home() {
     useState("");
 
 
-  /* =====================================================
-     IMAGE
-     ===================================================== */
+  // =====================================================
+  // IMAGE
+  // =====================================================
 
   const [selectedImage, setSelectedImage] =
     useState(null);
@@ -103,43 +105,30 @@ function Home() {
   const [isImageAnalyzing, setIsImageAnalyzing] =
     useState(false);
 
+  const [historyImage, setHistoryImage] =
+    useState("");
 
-  /* =====================================================
-     PDF
-     ===================================================== */
+
+  // =====================================================
+  // PDF
+  // =====================================================
 
   const [selectedPdf, setSelectedPdf] =
     useState(null);
 
-  const [pdfPreview, setPdfPreview] =
+  const [pdfPreviewName, setPdfPreviewName] =
     useState("");
 
   const [isPdfAnalyzing, setIsPdfAnalyzing] =
     useState(false);
 
-  const [pdfName, setPdfName] =
+  const [historyFileName, setHistoryFileName] =
     useState("");
 
 
-  /* =====================================================
-     HISTORY IMAGE
-     ===================================================== */
-
-  const [historyImage, setHistoryImage] =
-    useState("");
-
-
-  /* =====================================================
-     CURRENT PDF SESSION
-     ===================================================== */
-
-  const [activePdf, setActivePdf] =
-    useState(null);
-
-
-  /* =====================================================
-     REFS
-     ===================================================== */
+  // =====================================================
+  // REFS
+  // =====================================================
 
   const imageInputRef =
     useRef(null);
@@ -165,16 +154,39 @@ function Home() {
   const speechTimeoutRef =
     useRef(null);
 
-  const answerRef =
-    useRef(null);
-
   const assistantNameRef =
-    useRef("");
+    useRef("Assistant");
+
+  const getGeminiResponseRef =
+    useRef(getGeminiResponse);
+
+  // =====================================================
+  // IMPORTANT:
+  // Every speech/request gets a generation number.
+  //
+  // When Stop is pressed, generation changes.
+  // Old speech chunks/timers can then NEVER continue.
+  // =====================================================
+
+  const speechGenerationRef =
+    useRef(0);
 
 
-  /* =====================================================
-     ASSISTANT NAME
-     ===================================================== */
+  // =====================================================
+  // LATEST GEMINI FUNCTION
+  // =====================================================
+
+  useEffect(() => {
+
+    getGeminiResponseRef.current =
+      getGeminiResponse;
+
+  }, [getGeminiResponse]);
+
+
+  // =====================================================
+  // ASSISTANT NAME
+  // =====================================================
 
   useEffect(() => {
 
@@ -182,14 +194,12 @@ function Home() {
       userData?.assistantName ||
       "Assistant";
 
-  }, [
-    userData?.assistantName
-  ]);
+  }, [userData?.assistantName]);
 
 
-  /* =====================================================
-     LOAD HISTORY
-     ===================================================== */
+  // =====================================================
+  // HISTORY
+  // =====================================================
 
   useEffect(() => {
 
@@ -199,14 +209,12 @@ function Home() {
         : []
     );
 
-  }, [
-    userData?.history
-  ]);
+  }, [userData?.history]);
 
 
-  /* =====================================================
-     CLEAN AI RESPONSE
-     ===================================================== */
+  // =====================================================
+  // CLEAN AI RESPONSE
+  // =====================================================
 
   const cleanAIResponse = (text) => {
 
@@ -273,12 +281,6 @@ function Home() {
 
     cleaned =
       cleaned.replace(
-        /\$/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
         /\\\[/g,
         ""
       );
@@ -301,15 +303,11 @@ function Home() {
         ""
       );
 
-
     let previous = "";
 
-    while (
-      previous !== cleaned
-    ) {
+    while (previous !== cleaned) {
 
-      previous =
-        cleaned;
+      previous = cleaned;
 
       cleaned =
         cleaned.replace(
@@ -317,7 +315,6 @@ function Home() {
           "$1/$2"
         );
     }
-
 
     cleaned =
       cleaned
@@ -362,6 +359,10 @@ function Home() {
           "ln"
         )
         .replace(
+          /\\lim\b/g,
+          "lim"
+        )
+        .replace(
           /\\infty\b/g,
           "∞"
         )
@@ -390,7 +391,6 @@ function Home() {
           "±"
         );
 
-
     cleaned =
       cleaned.replace(
         /\\left\b/g,
@@ -402,7 +402,6 @@ function Home() {
         /\\right\b/g,
         ""
       );
-
 
     cleaned =
       cleaned
@@ -423,7 +422,6 @@ function Home() {
           ""
         );
 
-
     cleaned =
       cleaned
         .replace(
@@ -442,23 +440,6 @@ function Home() {
           /\^3/g,
           "³"
         );
-
-
-    cleaned =
-      cleaned
-        .replace(
-          /sin\^\{-1\}/g,
-          "sin⁻¹"
-        )
-        .replace(
-          /cos\^\{-1\}/g,
-          "cos⁻¹"
-        )
-        .replace(
-          /tan\^\{-1\}/g,
-          "tan⁻¹"
-        );
-
 
     cleaned =
       cleaned.replace(
@@ -488,536 +469,981 @@ function Home() {
   };
 
 
-  /* =====================================================
-     SAVE HISTORY
-     ===================================================== */
+  // =====================================================
+  // IMAGE TO DATA URL
+  // =====================================================
 
-  const addHistory = async (
-    command,
-    answer,
-    type = "text",
-    image = ""
-  ) => {
+  const imageFileToDataUrl =
+    (file) => {
 
-    const temporaryItem = {
+      return new Promise(
+        (resolve, reject) => {
 
-      _id:
-        `temp-${Date.now()}`,
+          if (!file) {
 
-      command,
+            reject(
+              new Error(
+                "No image file provided"
+              )
+            );
 
-      answer,
+            return;
+          }
 
-      type,
+          const reader =
+            new FileReader();
 
-      image,
+          reader.onload =
+            () => {
 
-      createdAt:
-        new Date().toISOString()
+              const img =
+                new Image();
 
+              img.onload =
+                () => {
+
+                  const maxSize =
+                    1000;
+
+                  let width =
+                    img.width;
+
+                  let height =
+                    img.height;
+
+                  if (
+                    width > maxSize ||
+                    height > maxSize
+                  ) {
+
+                    if (
+                      width > height
+                    ) {
+
+                      height =
+                        Math.round(
+                          (height *
+                            maxSize) /
+                          width
+                        );
+
+                      width =
+                        maxSize;
+
+                    } else {
+
+                      width =
+                        Math.round(
+                          (width *
+                            maxSize) /
+                          height
+                        );
+
+                      height =
+                        maxSize;
+                    }
+                  }
+
+                  const canvas =
+                    document.createElement(
+                      "canvas"
+                    );
+
+                  canvas.width =
+                    width;
+
+                  canvas.height =
+                    height;
+
+                  const ctx =
+                    canvas.getContext(
+                      "2d"
+                    );
+
+                  if (!ctx) {
+
+                    reject(
+                      new Error(
+                        "Could not create canvas"
+                      )
+                    );
+
+                    return;
+                  }
+
+                  ctx.drawImage(
+                    img,
+                    0,
+                    0,
+                    width,
+                    height
+                  );
+
+                  resolve(
+                    canvas.toDataURL(
+                      "image/jpeg",
+                      0.72
+                    )
+                  );
+                };
+
+              img.onerror =
+                () => {
+
+                  reject(
+                    new Error(
+                      "Could not load image"
+                    )
+                  );
+                };
+
+              img.src =
+                reader.result;
+            };
+
+          reader.onerror =
+            () => {
+
+              reject(
+                new Error(
+                  "Could not read image"
+                )
+              );
+            };
+
+          reader.readAsDataURL(
+            file
+          );
+        }
+      );
     };
 
 
-    setHistoryItems(
-      previous => [
-        temporaryItem,
-        ...previous
-      ]
-    );
+  // =====================================================
+  // SAVE HISTORY
+  // =====================================================
 
+  const addHistory =
+    async (
+      command,
+      answer,
+      type = "text",
+      image = "",
+      fileName = ""
+    ) => {
 
-    try {
+      const temporaryItem = {
 
-      const response =
-        await axios.post(
+        _id:
+          `temp-${Date.now()}`,
 
-          `${serverUrl}/api/user/savehistory`,
+        command,
 
-          {
-            command,
-            answer,
-            type,
-            image
-          },
+        answer,
 
-          {
-            withCredentials:
-              true
-          }
+        type,
 
+        image,
+
+        fileName,
+
+        createdAt:
+          new Date().toISOString()
+      };
+
+      setHistoryItems(
+        previous => [
+          temporaryItem,
+          ...previous
+        ]
+      );
+
+      try {
+
+        const response =
+          await axios.post(
+            `${serverUrl}/api/user/savehistory`,
+            {
+              command,
+              answer,
+              type,
+              image,
+              fileName
+            },
+            {
+              withCredentials: true
+            }
+          );
+
+        if (
+          response.data?.history
+        ) {
+
+          setHistoryItems(
+            response.data.history
+          );
+
+          setUserData(
+            previous => ({
+              ...previous,
+              history:
+                response.data.history
+            })
+          );
+        }
+
+      } catch (error) {
+
+        console.error(
+          "HISTORY SAVE ERROR:",
+          error.response?.data ||
+          error.message
         );
+      }
+    };
 
 
-      if (
-        response.data?.history
-      ) {
+  // =====================================================
+  // DELETE HISTORY
+  // =====================================================
+
+  const deleteHistory =
+    async (historyId) => {
+
+      if (!historyId) {
+        return;
+      }
+
+      try {
+
+        const response =
+          await axios.delete(
+            `${serverUrl}/api/user/history/${historyId}`,
+            {
+              withCredentials: true
+            }
+          );
+
+        const updatedHistory =
+          response.data?.history ||
+          [];
 
         setHistoryItems(
-          response.data.history
+          updatedHistory
         );
 
         setUserData(
           previous => ({
             ...previous,
             history:
-              response.data.history
+              updatedHistory
           })
         );
-      }
 
-    } catch (error) {
+      } catch (error) {
 
-      console.error(
-        "HISTORY SAVE ERROR:",
-        error.response?.data ||
-        error.message
-      );
-    }
-  };
-
-
-  /* =====================================================
-     DELETE HISTORY
-     ===================================================== */
-
-  const deleteHistory = async (
-    historyId
-  ) => {
-
-    if (!historyId) {
-      return;
-    }
-
-
-    try {
-
-      const response =
-        await axios.delete(
-
-          `${serverUrl}/api/user/history/${historyId}`,
-
-          {
-            withCredentials:
-              true
-          }
-
+        console.error(
+          "DELETE HISTORY ERROR:",
+          error.response?.data ||
+          error.message
         );
-
-
-      const updatedHistory =
-        response.data.history ||
-        [];
-
-
-      setHistoryItems(
-        updatedHistory
-      );
-
-
-      setUserData(
-        previous => ({
-          ...previous,
-          history:
-            updatedHistory
-        })
-      );
-
-    } catch (error) {
-
-      console.error(
-        "DELETE HISTORY ERROR:",
-        error.response?.data ||
-        error.message
-      );
-    }
-  };
-
-
-  /* =====================================================
-     CLEAR HISTORY
-     ===================================================== */
-
-  const clearHistory = async () => {
-
-    if (
-      historyItems.length === 0
-    ) {
-      return;
-    }
-
-
-    const confirmed =
-      window.confirm(
-        "Clear all history?"
-      );
-
-
-    if (!confirmed) {
-      return;
-    }
-
-
-    try {
-
-      await axios.delete(
-
-        `${serverUrl}/api/user/history`,
-
-        {
-          withCredentials:
-            true
-        }
-
-      );
-
-
-      setHistoryItems([]);
-
-      setHistoryImage("");
-
-      setUserText("");
-
-      setAiText("");
-
-      setShowAIText(false);
-
-      setActivePdf(null);
-
-      setUserData(
-        previous => ({
-          ...previous,
-          history: []
-        })
-      );
-
-    } catch (error) {
-
-      console.error(
-        "CLEAR HISTORY ERROR:",
-        error.response?.data ||
-        error.message
-      );
-    }
-  };
-
-
-  /* =====================================================
-     SPEECH
-     ===================================================== */
-
-  const speak = (text) => {
-
-    if (!text) {
-      return;
-    }
-
-
-    const speechText =
-      String(text).trim();
-
-
-    if (!speechText) {
-      return;
-    }
-
-
-    window.speechSynthesis.cancel();
-
-    clearTimeout(
-      speechTimeoutRef.current
-    );
-
-
-    const sentences =
-      speechText.match(
-        /[^.!?]+[.!?]+|[^.!?]+$/g
-      ) || [
-        speechText
-      ];
-
-
-    const chunks = [];
-
-    let currentChunk = "";
-
-
-    sentences.forEach(
-      sentence => {
-
-        const cleanSentence =
-          sentence.trim();
-
-
-        if (!cleanSentence) {
-          return;
-        }
-
-
-        const combined =
-          `${currentChunk} ${cleanSentence}`
-            .trim();
-
-
-        if (
-          combined.length > 180
-        ) {
-
-          if (
-            currentChunk.trim()
-          ) {
-
-            chunks.push(
-              currentChunk.trim()
-            );
-          }
-
-
-          currentChunk =
-            cleanSentence;
-
-        } else {
-
-          currentChunk =
-            combined;
-        }
       }
-    );
+    };
 
 
-    if (
-      currentChunk.trim()
-    ) {
+  // =====================================================
+  // CLEAR HISTORY
+  // =====================================================
 
-      chunks.push(
-        currentChunk.trim()
-      );
-    }
-
-
-    if (
-      chunks.length === 0
-    ) {
-
-      chunks.push(
-        speechText
-      );
-    }
-
-
-    let currentIndex = 0;
-
-
-    speakingRef.current =
-      true;
-
-    setIsAIActive(true);
-
-
-    const speakNextChunk = () => {
+  const clearHistory =
+    async () => {
 
       if (
-        currentIndex >=
-        chunks.length
+        historyItems.length === 0
       ) {
-
-        speakingRef.current =
-          false;
-
-        setIsAIActive(
-          false
-        );
-
-
-        if (
-          listeningRef.current &&
-          !processingRef.current &&
-          recognitionRef.current
-        ) {
-
-          try {
-
-            recognitionRef.current.start();
-
-          } catch {}
-        }
-
         return;
       }
 
-
-      const utterance =
-        new SpeechSynthesisUtterance(
-          chunks[currentIndex]
+      const confirmed =
+        window.confirm(
+          "Clear all history?"
         );
 
+      if (!confirmed) {
+        return;
+      }
 
-      utterance.rate = 1;
+      try {
 
-      utterance.pitch = 1;
+        await axios.delete(
+          `${serverUrl}/api/user/history`,
+          {
+            withCredentials: true
+          }
+        );
 
-      utterance.volume = 1;
+        setHistoryItems([]);
 
-      utterance.lang = "en-US";
+        setHistoryImage("");
 
+        setHistoryFileName("");
 
-      utterance.onstart = () => {
+        setUserText("");
 
-        speakingRef.current =
-          true;
+        setAiText("");
 
-        setIsAIActive(true);
-      };
+        setShowAIText(false);
 
+        setUserData(
+          previous => ({
+            ...previous,
+            history: []
+          })
+        );
 
-      utterance.onend = () => {
+      } catch (error) {
 
-        currentIndex++;
-
-
-        speechTimeoutRef.current =
-          setTimeout(
-            () => {
-              speakNextChunk();
-            },
-            80
-          );
-      };
-
-
-      utterance.onerror = () => {
-
-        currentIndex++;
-
-
-        speechTimeoutRef.current =
-          setTimeout(
-            () => {
-              speakNextChunk();
-            },
-            80
-          );
-      };
+        console.error(
+          "CLEAR HISTORY ERROR:",
+          error.response?.data ||
+          error.message
+        );
+      }
+    };
 
 
-      window.speechSynthesis.speak(
-        utterance
+  // =====================================================
+  // STOP SPEAKING
+  //
+  // THIS COMPLETELY INVALIDATES THE OLD REQUEST.
+  // =====================================================
+
+  const stopSpeaking =
+    () => {
+
+      // -----------------------------------------------
+      // INVALIDATE OLD SPEECH
+      // -----------------------------------------------
+
+      speechGenerationRef.current += 1;
+
+      // -----------------------------------------------
+      // CANCEL ALL OLD TIMERS
+      // -----------------------------------------------
+
+      clearTimeout(
+        speechTimeoutRef.current
+      );
+
+      clearTimeout(
+        restartTimeoutRef.current
+      );
+
+      speechTimeoutRef.current =
+        null;
+
+      restartTimeoutRef.current =
+        null;
+
+      // -----------------------------------------------
+      // CANCEL BROWSER SPEECH
+      // -----------------------------------------------
+
+      try {
+
+        window.speechSynthesis.cancel();
+
+      } catch {}
+
+      try {
+
+        window.speechSynthesis.pause();
+
+      } catch {}
+
+      // -----------------------------------------------
+      // KILL OLD SPEECH STATE
+      // -----------------------------------------------
+
+      speakingRef.current =
+        false;
+
+      setIsSpeaking(false);
+
+      setIsAIActive(false);
+
+      // -----------------------------------------------
+      // ALSO KILL OLD LISTENING SESSION
+      // -----------------------------------------------
+
+      listeningRef.current =
+        false;
+
+      setIsListening(false);
+
+      if (
+        recognitionRef.current
+      ) {
+
+        try {
+
+          recognitionRef.current.abort();
+
+        } catch {}
+
+        try {
+
+          recognitionRef.current.stop();
+
+        } catch {}
+      }
+
+      console.log(
+        "OLD SPEECH COMPLETELY STOPPED"
       );
     };
 
 
-    speakNextChunk();
-  };
+  // =====================================================
+  // SPEAK
+  //
+  // Every speech gets a generation number.
+  // Old chunks can never continue.
+  // =====================================================
 
+  const speak =
+    (text) => {
 
-  /* =====================================================
-     OPEN URL
-     ===================================================== */
-
-  const openUrl = (url) => {
-
-    if (!url) {
-      return;
-    }
-
-
-    try {
-
-      const finalUrl =
-        /^https?:\/\//i.test(url)
-          ? url
-          : `https://${url}`;
-
-
-      const newWindow =
-        window.open(
-          finalUrl,
-          "_blank",
-          "noopener,noreferrer"
-        );
-
-
-      /*
-       * Some browsers block window.open
-       * after asynchronous operations.
-       *
-       * Use current page as fallback.
-       */
-
-      if (!newWindow) {
-
-        window.location.href =
-          finalUrl;
+      if (!text) {
+        return;
       }
 
-    } catch (error) {
+      const speechText =
+        String(text).trim();
 
-      console.error(
-        "OPEN URL ERROR:",
-        error
+      if (!speechText) {
+        return;
+      }
+
+      // -----------------------------------------------
+      // CREATE NEW SPEECH GENERATION
+      // -----------------------------------------------
+
+      const generation =
+        speechGenerationRef.current + 1;
+
+      speechGenerationRef.current =
+        generation;
+
+      clearTimeout(
+        speechTimeoutRef.current
       );
-    }
-  };
+
+      try {
+
+        window.speechSynthesis.cancel();
+
+      } catch {}
+
+      // -----------------------------------------------
+      // SPLIT ANSWER INTO SMALL CHUNKS
+      // -----------------------------------------------
+
+      const sentences =
+        speechText.match(
+          /[^.!?]+[.!?]+|[^.!?]+$/g
+        ) ||
+        [speechText];
+
+      const chunks = [];
+
+      let currentChunk =
+        "";
+
+      sentences.forEach(
+        sentence => {
+
+          const cleanSentence =
+            sentence.trim();
+
+          if (!cleanSentence) {
+            return;
+          }
+
+          if (
+            cleanSentence.length >
+            160
+          ) {
+
+            const words =
+              cleanSentence.split(
+                /\s+/
+              );
+
+            let wordChunk =
+              "";
+
+            words.forEach(
+              word => {
+
+                const combined =
+                  `${wordChunk} ${word}`
+                    .trim();
+
+                if (
+                  combined.length >
+                  160
+                ) {
+
+                  if (
+                    wordChunk.trim()
+                  ) {
+
+                    chunks.push(
+                      wordChunk.trim()
+                    );
+                  }
+
+                  wordChunk =
+                    word;
+
+                } else {
+
+                  wordChunk =
+                    combined;
+                }
+              }
+            );
+
+            if (
+              wordChunk.trim()
+            ) {
+
+              chunks.push(
+                wordChunk.trim()
+              );
+            }
+
+            return;
+          }
+
+          const combined =
+            `${currentChunk} ${cleanSentence}`
+              .trim();
+
+          if (
+            combined.length >
+            160
+          ) {
+
+            if (
+              currentChunk.trim()
+            ) {
+
+              chunks.push(
+                currentChunk.trim()
+              );
+            }
+
+            currentChunk =
+              cleanSentence;
+
+          } else {
+
+            currentChunk =
+              combined;
+          }
+        }
+      );
 
 
-  /* =====================================================
-     GOOGLE SEARCH
-     ===================================================== */
+      if (
+        currentChunk.trim()
+      ) {
 
-  const googleSearch = (
-    query
-  ) => {
-
-    if (!query?.trim()) {
-      return;
-    }
+        chunks.push(
+          currentChunk.trim()
+        );
+      }
 
 
-    openUrl(
-      `https://www.google.com/search?q=${encodeURIComponent(
-        query.trim()
-      )}`
-    );
-  };
+      if (
+        chunks.length === 0
+      ) {
+
+        chunks.push(
+          speechText
+        );
+      }
 
 
-  /* =====================================================
-     YOUTUBE SEARCH
-     ===================================================== */
+      let currentIndex =
+        0;
 
-  const youtubeSearch = (
-    query
-  ) => {
+      speakingRef.current =
+        true;
 
-    if (!query?.trim()) {
-      return;
-    }
+      setIsSpeaking(true);
+
+      setIsAIActive(true);
 
 
-    openUrl(
-      `https://www.youtube.com/results?search_query=${encodeURIComponent(
-        query.trim()
-      )}`
-    );
-  };
+      // -----------------------------------------------
+      // STOP MICROPHONE WHILE SPEAKING
+      // -----------------------------------------------
+
+      if (
+        recognitionRef.current
+      ) {
+
+        try {
+
+          recognitionRef.current.abort();
+
+        } catch {}
+
+        try {
+
+          recognitionRef.current.stop();
+
+        } catch {}
+      }
 
 
-  /* =====================================================
-     WEBSITES
-     ===================================================== */
+      // -----------------------------------------------
+      // SPEAK NEXT CHUNK
+      // -----------------------------------------------
+
+      const speakNextChunk =
+        () => {
+
+          // ===========================================
+          // OLD GENERATION?
+          // STOP IMMEDIATELY.
+          // ===========================================
+
+          if (
+            generation !==
+            speechGenerationRef.current
+          ) {
+
+            return;
+          }
+
+
+          // ===========================================
+          // SPEECH WAS STOPPED?
+          // ===========================================
+
+          if (
+            !speakingRef.current
+          ) {
+
+            return;
+          }
+
+
+          // ===========================================
+          // FINISHED
+          // ===========================================
+
+          if (
+            currentIndex >=
+            chunks.length
+          ) {
+
+            if (
+              generation !==
+              speechGenerationRef.current
+            ) {
+
+              return;
+            }
+
+            speakingRef.current =
+              false;
+
+            setIsSpeaking(false);
+
+            setIsAIActive(false);
+
+            return;
+          }
+
+
+          const utterance =
+            new SpeechSynthesisUtterance(
+              chunks[currentIndex]
+            );
+
+
+          utterance.rate =
+            1;
+
+          utterance.pitch =
+            1;
+
+          utterance.volume =
+            1;
+
+          utterance.lang =
+            "en-US";
+
+
+          // ===========================================
+          // SPEECH START
+          // ===========================================
+
+          utterance.onstart =
+            () => {
+
+              if (
+                generation !==
+                speechGenerationRef.current ||
+                !speakingRef.current
+              ) {
+
+                try {
+
+                  window.speechSynthesis.cancel();
+
+                } catch {}
+
+                return;
+              }
+
+              setIsSpeaking(
+                true
+              );
+
+              setIsAIActive(
+                true
+              );
+            };
+
+
+          // ===========================================
+          // SPEECH END
+          // ===========================================
+
+          utterance.onend =
+            () => {
+
+              // OLD REQUEST?
+              if (
+                generation !==
+                speechGenerationRef.current
+              ) {
+
+                return;
+              }
+
+              // STOPPED?
+              if (
+                !speakingRef.current
+              ) {
+
+                return;
+              }
+
+              currentIndex++;
+
+              speechTimeoutRef.current =
+                setTimeout(
+                  () => {
+
+                    // CHECK AGAIN
+                    if (
+                      generation !==
+                      speechGenerationRef.current
+                    ) {
+
+                      return;
+                    }
+
+                    if (
+                      !speakingRef.current
+                    ) {
+
+                      return;
+                    }
+
+                    speakNextChunk();
+
+                  },
+                  80
+                );
+            };
+
+
+          // ===========================================
+          // SPEECH ERROR
+          // ===========================================
+
+          utterance.onerror =
+            event => {
+
+              console.log(
+                "Speech error:",
+                event.error
+              );
+
+              if (
+                generation !==
+                speechGenerationRef.current
+              ) {
+
+                return;
+              }
+
+              if (
+                !speakingRef.current
+              ) {
+
+                return;
+              }
+
+              currentIndex++;
+
+              speechTimeoutRef.current =
+                setTimeout(
+                  () => {
+
+                    if (
+                      generation !==
+                      speechGenerationRef.current
+                    ) {
+
+                      return;
+                    }
+
+                    if (
+                      !speakingRef.current
+                    ) {
+
+                      return;
+                    }
+
+                    speakNextChunk();
+
+                  },
+                  80
+                );
+            };
+
+
+          // ===========================================
+          // FINAL SAFETY CHECK
+          // ===========================================
+
+          if (
+            generation !==
+            speechGenerationRef.current ||
+            !speakingRef.current
+          ) {
+
+            return;
+          }
+
+
+          try {
+
+            window.speechSynthesis.resume();
+
+          } catch {}
+
+
+          try {
+
+            window.speechSynthesis.speak(
+              utterance
+            );
+
+          } catch (error) {
+
+            console.error(
+              "Speech start error:",
+              error
+            );
+          }
+        };
+
+
+      speakNextChunk();
+    };
+
+
+  // =====================================================
+  // OPEN URL
+  // =====================================================
+
+  const openUrl =
+    (url) => {
+
+      if (!url) {
+        return;
+      }
+
+      window.open(
+        url,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    };
+
+
+  // =====================================================
+  // GOOGLE SEARCH
+  // =====================================================
+
+  const googleSearch =
+    (query) => {
+
+      if (!query?.trim()) {
+        return;
+      }
+
+      openUrl(
+        `https://www.google.com/search?q=${encodeURIComponent(
+          query.trim()
+        )}`
+      );
+    };
+
+
+  // =====================================================
+  // YOUTUBE SEARCH
+  // =====================================================
+
+  const youtubeSearch =
+    (query) => {
+
+      if (!query?.trim()) {
+        return;
+      }
+
+      openUrl(
+        `https://www.youtube.com/results?search_query=${encodeURIComponent(
+          query.trim()
+        )}`
+      );
+    };
+
+
+  // =====================================================
+  // WEBSITES
+  // =====================================================
 
   const websites = {
 
     google:
       "https://www.google.com",
 
-    yahoo:
-      "https://www.yahoo.com",
-
-    bing:
-      "https://www.bing.com",
-
     youtube:
       "https://www.youtube.com",
+
+    yahoo:
+      "https://www.yahoo.com",
 
     instagram:
       "https://www.instagram.com",
@@ -1072,881 +1498,392 @@ function Home() {
 
     telegram:
       "https://web.telegram.org"
-
   };
 
 
-  /* =====================================================
-     NORMALIZE SITE
-     ===================================================== */
+  // =====================================================
+  // WEBSITE SEARCH URL
+  // =====================================================
 
-  const normalizeSite = (
-    site
-  ) => {
+  const getWebsiteSearchUrl =
+    (
+      site,
+      query
+    ) => {
 
-    const value =
-      String(site || "")
-        .trim()
-        .toLowerCase()
-        .replace(
-          /^www\./,
-          ""
-        )
-        .replace(
-          /\.(com|in|org|net|co|tv)$/i,
-          ""
+      const encodedQuery =
+        encodeURIComponent(
+          query.trim()
         );
 
+      switch (site) {
 
-    const aliases = {
+        case "google":
+          return `https://www.google.com/search?q=${encodedQuery}`;
 
-      google:
-        "google",
+        case "youtube":
+          return `https://www.youtube.com/results?search_query=${encodedQuery}`;
 
-      "google search":
-        "google",
+        case "yahoo":
+          return `https://search.yahoo.com/search?p=${encodedQuery}`;
 
-      yahoo:
-        "yahoo",
+        case "amazon":
+          return `https://www.amazon.in/s?k=${encodedQuery}`;
 
-      "yahoo search":
-        "yahoo",
+        case "flipkart":
+          return `https://www.flipkart.com/search?q=${encodedQuery}`;
 
-      bing:
-        "bing",
+        case "wikipedia":
+          return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
 
-      "bing search":
-        "bing",
+        case "reddit":
+          return `https://www.reddit.com/search/?q=${encodedQuery}`;
 
-      youtube:
-        "youtube",
+        case "github":
+          return `https://github.com/search?q=${encodedQuery}`;
 
-      yt:
-        "youtube",
+        case "linkedin":
+          return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
 
-      instagram:
-        "instagram",
+        case "spotify":
+          return `https://open.spotify.com/search/${encodedQuery}`;
 
-      insta:
-        "instagram",
+        case "pinterest":
+          return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
 
-      facebook:
-        "facebook",
+        case "facebook":
+          return `https://www.facebook.com/search/top?q=${encodedQuery}`;
 
-      fb:
-        "facebook",
+        case "x":
+        case "twitter":
+          return `https://x.com/search?q=${encodedQuery}`;
 
-      wikipedia:
-        "wikipedia",
+        case "instagram":
+          return `https://www.instagram.com/explore/search/keyword/?q=${encodedQuery}`;
 
-      wiki:
-        "wikipedia",
-
-      reddit:
-        "reddit",
-
-      amazon:
-        "amazon",
-
-      flipkart:
-        "flipkart",
-
-      spotify:
-        "spotify",
-
-      github:
-        "github",
-
-      linkedin:
-        "linkedin",
-
-      pinterest:
-        "pinterest",
-
-      twitter:
-        "twitter",
-
-      x:
-        "x",
-
-      quora:
-        "quora",
-
-      twitch:
-        "twitch",
-
-      imdb:
-        "imdb",
-
-      soundcloud:
-        "soundcloud",
-
-      deezer:
-        "deezer",
-
-      udemy:
-        "udemy",
-
-      coursera:
-        "coursera",
-
-      canva:
-        "canva",
-
-      stackoverflow:
-        "stackoverflow"
-
+        default:
+          return null;
+      }
     };
 
 
-    return (
-      aliases[value] ||
-      value
-    );
-  };
+  // =====================================================
+  // SEARCH COMMAND PARSER
+  // =====================================================
 
+  const extractSearchCommand =
+    (command) => {
 
-  /* =====================================================
-     WEBSITE SEARCH URL
-     ===================================================== */
-
-  const getWebsiteSearchUrl = (
-    site,
-    query
-  ) => {
-
-    const normalizedSite =
-      normalizeSite(site);
-
-
-    const cleanQuery =
-      String(query || "")
-        .trim();
-
-
-    if (!cleanQuery) {
-      return null;
-    }
-
-
-    const encodedQuery =
-      encodeURIComponent(
-        cleanQuery
-      );
-
-
-    switch (
-      normalizedSite
-    ) {
-
-      case "google":
-
-        return `https://www.google.com/search?q=${encodedQuery}`;
-
-
-      case "yahoo":
-
-        return `https://search.yahoo.com/search?p=${encodedQuery}`;
-
-
-      case "bing":
-
-        return `https://www.bing.com/search?q=${encodedQuery}`;
-
-
-      case "youtube":
-
-        return `https://www.youtube.com/results?search_query=${encodedQuery}`;
-
-
-      case "instagram":
-
-        return `https://www.instagram.com/explore/search/keyword/?q=${encodedQuery}`;
-
-
-      case "facebook":
-
-        return `https://www.facebook.com/search/top?q=${encodedQuery}`;
-
-
-      case "wikipedia":
-
-        return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
-
-
-      case "reddit":
-
-        return `https://www.reddit.com/search/?q=${encodedQuery}`;
-
-
-      case "amazon":
-
-        return `https://www.amazon.in/s?k=${encodedQuery}`;
-
-
-      case "flipkart":
-
-        return `https://www.flipkart.com/search?q=${encodedQuery}`;
-
-
-      case "spotify":
-
-        return `https://open.spotify.com/search/${encodedQuery}`;
-
-
-      case "github":
-
-        return `https://github.com/search?q=${encodedQuery}`;
-
-
-      case "linkedin":
-
-        return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
-
-
-      case "pinterest":
-
-        return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
-
-
-      case "twitter":
-      case "x":
-
-        return `https://x.com/search?q=${encodedQuery}`;
-
-
-      case "quora":
-
-        return `https://www.quora.com/search?q=${encodedQuery}`;
-
-
-      case "twitch":
-
-        return `https://www.twitch.tv/search?term=${encodedQuery}`;
-
-
-      case "imdb":
-
-        return `https://www.imdb.com/find/?q=${encodedQuery}`;
-
-
-      case "soundcloud":
-
-        return `https://soundcloud.com/search?q=${encodedQuery}`;
-
-
-      case "deezer":
-
-        return `https://www.deezer.com/search/${encodedQuery}`;
-
-
-      case "stackoverflow":
-
-        return `https://stackoverflow.com/search?q=${encodedQuery}`;
-
-
-      case "udemy":
-
-        return `https://www.udemy.com/courses/search/?q=${encodedQuery}`;
-
-
-      case "coursera":
-
-        return `https://www.coursera.org/search?query=${encodedQuery}`;
-
-
-      case "canva":
-
-        return `https://www.canva.com/search?q=${encodedQuery}`;
-
-
-      default:
-
+      if (!command) {
         return null;
-    }
-  };
-
-
-  /* =====================================================
-     EXTRACT SEARCH COMMAND
-     ===================================================== */
-
-  const extractSearchCommand = (
-    command
-  ) => {
-
-    if (!command) {
-      return null;
-    }
-
-
-    const text =
-      String(command)
-        .trim()
-        .replace(
-          /\s+/g,
-          " "
-        )
-        .replace(
-          /[?!.]+$/,
-          ""
-        );
-
-
-    if (!text) {
-      return null;
-    }
-
-
-    let match;
-
-
-    /* =================================================
-       OPEN SITE AND SEARCH FOR QUERY
-
-       Examples:
-
-       open spotify and search for Savriabdul
-       open yahoo and search for cats
-       open google and search for photosynthesis
-       open youtube and search for arijit singh
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:open|launch|visit|go to|take me to)\s+([a-zA-Z0-9.-]+)(?:\s+(?:website|site))?\s+(?:and\s+)?(?:search|find|look for|look up)(?:\s+for|\s+about|\s+regarding)?\s+(.+)$/i
-      );
-
-
-    if (match) {
-
-      const site =
-        normalizeSite(
-          match[1]
-        );
-
-      const query =
-        match[2].trim();
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
       }
-    }
 
-
-    /* =================================================
-       SEARCH QUERY ON SITE
-
-       search cats on yahoo
-       search cats in yahoo
-       search cats at yahoo
-       search cats using yahoo
-       find cats on google
-       look for cats on youtube
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:search|find|look for|look up)\s+(.+?)\s+(?:on|in|at|using)\s+([a-zA-Z0-9.-]+)$/i
-      );
-
-
-    if (match) {
-
-      const query =
-        match[1].trim();
-
-      const site =
-        normalizeSite(
-          match[2]
-        );
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
-    }
-
-
-    /* =================================================
-       SEARCH SITE FOR QUERY
-
-       search yahoo for cats
-       search google for photosynthesis
-       search youtube for arijit singh
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:search|find|look for|look up)\s+([a-zA-Z0-9.-]+)\s+(?:for|about|regarding)\s+(.+)$/i
-      );
-
-
-    if (match) {
-
-      const site =
-        normalizeSite(
-          match[1]
-        );
-
-      const query =
-        match[2].trim();
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
-    }
-
-
-    /* =================================================
-       SITE SEARCH QUERY
-
-       yahoo search cats
-       google search photosynthesis
-       youtube search arijit singh
-       spotify search Savriabdul
-       ================================================= */
-
-    match =
-      text.match(
-        /^([a-zA-Z0-9.-]+)\s+search\s+(.+)$/i
-      );
-
-
-    if (match) {
-
-      const site =
-        normalizeSite(
-          match[1]
-        );
-
-      const query =
-        match[2].trim();
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
-    }
-
-
-    /* =================================================
-       SEARCH SITE QUERY
-
-       search yahoo cats
-       search google photosynthesis
-       search youtube music
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:search|find)\s+([a-zA-Z0-9.-]+)\s+(.+)$/i
-      );
-
-
-    if (match) {
-
-      const site =
-        normalizeSite(
-          match[1]
-        );
-
-      const query =
-        match[2].trim();
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
-    }
-
-
-    /* =================================================
-       SEARCH QUERY SITE
-
-       search cats yahoo
-       search photosynthesis google
-       search arijit singh youtube
-       ================================================= */
-
-    match =
-      text.match(
-        /^(?:search|find|look for|look up)\s+(.+?)\s+([a-zA-Z0-9.-]+)$/i
-      );
-
-
-    if (match) {
-
-      const query =
-        match[1].trim();
-
-      const site =
-        normalizeSite(
-          match[2]
-        );
-
-
-      const url =
-        getWebsiteSearchUrl(
-          site,
-          query
-        );
-
-
-      if (url) {
-
-        return {
-          site,
-          query,
-          url
-        };
-      }
-    }
-
-
-    return null;
-  };
-
-
-  /* =====================================================
-     YOUTUBE QUERY
-     ===================================================== */
-
-  const getYouTubeQuery = (
-    command
-  ) => {
-
-    const result =
-      extractSearchCommand(
+      const text =
         command
-      );
+          .trim()
+          .replace(
+            /[?!.]+$/g,
+            ""
+          )
+          .replace(
+            /\s+/g,
+            " "
+          );
 
-
-    if (
-      result?.site ===
-      "youtube"
-    ) {
-
-      return result.query;
-    }
-
-
-    return "";
-  };
-
-
-  /* =====================================================
-     PROCESS COMMAND
-     ===================================================== */
-
-  const processCommand = async (
-    command,
-    type = "text",
-    shouldSpeak = false
-  ) => {
-
-    const cleanedCommand =
-      String(command || "").trim();
-
-
-    if (!cleanedCommand) {
-      return;
-    }
-
-
-    setHistoryImage("");
-
-    setUserText(
-      cleanedCommand
-    );
-
-    setAiText("");
-
-    setShowAIText(false);
-
-    setIsAIActive(true);
-
-    setIsSending(true);
-
-    processingRef.current =
-      true;
-
-
-    try {
-
-      /* =================================================
-         WEBSITE SEARCH
-         ================================================= */
-
-      const searchCommand =
-        extractSearchCommand(
-          cleanedCommand
-        );
-
-
-      if (searchCommand) {
-
-        const {
-          site,
-          query,
-          url
-        } = searchCommand;
-
-
-        const normalizedSite =
-          normalizeSite(site);
-
-
-        const siteName =
-          normalizedSite === "x"
-            ? "X"
-            : normalizedSite
-                .charAt(0)
-                .toUpperCase() +
-              normalizedSite.slice(1);
-
-
-        const answer =
-          `Searching ${siteName} for ${query}.`;
-
-
-        setAiText(
-          answer
-        );
-
-        setShowAIText(
-          true
-        );
-
-
-        await addHistory(
-          cleanedCommand,
-          answer,
-          type
-        );
-
-
-        if (url) {
-
-          openUrl(url);
-        }
-
-
-        if (shouldSpeak) {
-
-          speak(answer);
-        }
-
-
-        return;
+      if (!text) {
+        return null;
       }
 
+      const siteAliases = {
 
-      /* =================================================
-         SIMPLE GOOGLE SEARCH
-         ================================================= */
+        google:
+          "google",
 
-      const googleSearchMatch =
-        cleanedCommand.match(
-          /^(?:search|google)\s+(.+)$/i
+        goog:
+          "google",
+
+        youtube:
+          "youtube",
+
+        yt:
+          "youtube",
+
+        yahoo:
+          "yahoo",
+
+        instagram:
+          "instagram",
+
+        insta:
+          "instagram",
+
+        facebook:
+          "facebook",
+
+        fb:
+          "facebook",
+
+        github:
+          "github",
+
+        linkedin:
+          "linkedin",
+
+        amazon:
+          "amazon",
+
+        amzn:
+          "amazon",
+
+        flipkart:
+          "flipkart",
+
+        spotify:
+          "spotify",
+
+        wikipedia:
+          "wikipedia",
+
+        wiki:
+          "wikipedia",
+
+        reddit:
+          "reddit",
+
+        pinterest:
+          "pinterest",
+
+        twitter:
+          "twitter",
+
+        x:
+          "x",
+
+        whatsapp:
+          "whatsapp",
+
+        gmail:
+          "gmail",
+
+        netflix:
+          "netflix",
+
+        discord:
+          "discord",
+
+        canva:
+          "canva",
+
+        telegram:
+          "telegram"
+      };
+
+      const siteNames =
+        Object.keys(
+          siteAliases
+        ).join("|");
+
+
+      // search cats on google
+
+      let match =
+        text.match(
+          new RegExp(
+            `^(?:search|find|look\\s+up)\\s+(?:for\\s+)?(.+?)\\s+(?:on|in|using)\\s+(${siteNames})$`,
+            "i"
+          )
         );
 
-
-      if (
-        googleSearchMatch
-      ) {
+      if (match) {
 
         const query =
-          googleSearchMatch[1]
-            .trim();
-
-
-        const answer =
-          `Searching Google for ${query}.`;
-
-
-        setAiText(
-          answer
-        );
-
-        setShowAIText(
-          true
-        );
-
-
-        await addHistory(
-          cleanedCommand,
-          answer,
-          type
-        );
-
-
-        googleSearch(
-          query
-        );
-
-
-        if (shouldSpeak) {
-
-          speak(answer);
-        }
-
-
-        return;
-      }
-
-
-      /* =================================================
-         SIMPLE YOUTUBE SEARCH
-         ================================================= */
-
-      const youtubeSimpleMatch =
-        cleanedCommand.match(
-          /^(?:youtube)\s+(.+)$/i
-        );
-
-
-      if (
-        youtubeSimpleMatch
-      ) {
-
-        const query =
-          youtubeSimpleMatch[1]
-            .trim();
-
-
-        const answer =
-          `Searching YouTube for ${query}.`;
-
-
-        setAiText(
-          answer
-        );
-
-        setShowAIText(
-          true
-        );
-
-
-        await addHistory(
-          cleanedCommand,
-          answer,
-          type
-        );
-
-
-        youtubeSearch(
-          query
-        );
-
-
-        if (shouldSpeak) {
-
-          speak(answer);
-        }
-
-
-        return;
-      }
-
-
-      /* =================================================
-         DIRECT WEBSITE
-         ================================================= */
-
-      const directMatch =
-        cleanedCommand.match(
-          /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
-        );
-
-
-      if (directMatch) {
+          match[1].trim();
 
         const site =
-          directMatch[1]
-            .trim()
-            .toLowerCase()
-            .replace(
-              /\s+(website|site)$/i,
-              ""
-            );
-
-
-        const normalizedSite =
-          normalizeSite(site);
-
+          siteAliases[
+            match[2].toLowerCase()
+          ];
 
         if (
-          websites[
-            normalizedSite
-          ]
+          query &&
+          site
         ) {
 
-          const answer =
-            `Opening ${normalizedSite}.`;
+          return {
+            site,
+            query
+          };
+        }
+      }
 
+
+      // search google for cats
+
+      match =
+        text.match(
+          new RegExp(
+            `^(?:search|find|look\\s+up)\\s+(${siteNames})\\s+(?:for|about)\\s+(.+)$`,
+            "i"
+          )
+        );
+
+      if (match) {
+
+        const site =
+          siteAliases[
+            match[1].toLowerCase()
+          ];
+
+        const query =
+          match[2].trim();
+
+        if (
+          site &&
+          query
+        ) {
+
+          return {
+            site,
+            query
+          };
+        }
+      }
+
+
+      // search google cats
+
+      match =
+        text.match(
+          new RegExp(
+            `^(?:search|find|look\\s+up)\\s+(${siteNames})\\s+(.+)$`,
+            "i"
+          )
+        );
+
+      if (match) {
+
+        const site =
+          siteAliases[
+            match[1].toLowerCase()
+          ];
+
+        const query =
+          match[2].trim();
+
+        if (
+          site &&
+          query
+        ) {
+
+          return {
+            site,
+            query
+          };
+        }
+      }
+
+
+      // search cats
+
+      match =
+        text.match(
+          /^(?:search|find|look\s+up)\s+(?:for\s+)?(.+)$/i
+        );
+
+      if (match) {
+
+        const query =
+          match[1].trim();
+
+        const possibleSite =
+          siteAliases[
+            query.toLowerCase()
+          ];
+
+        if (
+          query &&
+          !possibleSite
+        ) {
+
+          return {
+            site: "google",
+            query
+          };
+        }
+      }
+
+      return null;
+    };
+
+
+  // =====================================================
+  // PROCESS COMMAND
+  // =====================================================
+
+  const processCommand =
+    async (
+      command,
+      type = "text",
+      shouldSpeak = false
+    ) => {
+
+      const cleanedCommand =
+        command.trim();
+
+      if (!cleanedCommand) {
+        return;
+      }
+
+      // Every NEW command invalidates any old speech.
+      speechGenerationRef.current += 1;
+
+      setHistoryImage("");
+
+      setHistoryFileName("");
+
+      setUserText(
+        cleanedCommand
+      );
+
+      setAiText("");
+
+      setShowAIText(false);
+
+      setIsAIActive(true);
+
+      setIsSending(true);
+
+      processingRef.current =
+        true;
+
+      try {
+
+        // =================================================
+        // SEARCH
+        // =================================================
+
+        const searchCommand =
+          extractSearchCommand(
+            cleanedCommand
+          );
+
+        if (searchCommand) {
+
+          const {
+            site,
+            query
+          } = searchCommand;
+
+          const siteName =
+            site === "x"
+              ? "X"
+              : site
+                  .charAt(0)
+                  .toUpperCase() +
+                site.slice(1);
+
+          const answer =
+            `Searching ${siteName} for ${query}.`;
 
           setAiText(
             answer
@@ -1956,6 +1893,62 @@ function Home() {
             true
           );
 
+          await addHistory(
+            cleanedCommand,
+            answer,
+            type
+          );
+
+          const searchUrl =
+            getWebsiteSearchUrl(
+              site,
+              query
+            );
+
+          if (searchUrl) {
+
+            openUrl(
+              searchUrl
+            );
+          }
+
+          if (
+            shouldSpeak
+          ) {
+
+            speak(
+              answer
+            );
+          }
+
+          return;
+        }
+
+
+        // =================================================
+        // GOOGLE
+        // =================================================
+
+        const googleMatch =
+          cleanedCommand.match(
+            /^(?:google)\s+(.+)$/i
+          );
+
+        if (googleMatch) {
+
+          const query =
+            googleMatch[1].trim();
+
+          const answer =
+            `Searching Google for ${query}.`;
+
+          setAiText(
+            answer
+          );
+
+          setShowAIText(
+            true
+          );
 
           await addHistory(
             cleanedCommand,
@@ -1963,1130 +1956,936 @@ function Home() {
             type
           );
 
-
-          openUrl(
-            websites[
-              normalizedSite
-            ]
+          googleSearch(
+            query
           );
 
+          if (
+            shouldSpeak
+          ) {
 
-          if (shouldSpeak) {
-
-            speak(answer);
+            speak(
+              answer
+            );
           }
-
 
           return;
         }
-      }
 
 
-      /* =================================================
-         NORMAL GEMINI
-         ================================================= */
+        // =================================================
+        // YOUTUBE
+        // =================================================
 
-      const result =
-        await getGeminiResponse(
-          cleanedCommand
-        );
-
-
-      let parsedResult =
-        result;
-
-
-      if (
-        typeof result ===
-        "string"
-      ) {
-
-        const cleanResult =
-          result
-            .replace(
-              /```json/gi,
-              ""
-            )
-            .replace(
-              /```/g,
-              ""
-            )
-            .trim();
-
-
-        try {
-
-          parsedResult =
-            JSON.parse(
-              cleanResult
-            );
-
-        } catch {
-
-          parsedResult = {
-
-            type:
-              "general",
-
-            response:
-              cleanResult
-          };
-        }
-      }
-
-
-      const rawResponse =
-        parsedResult?.response ||
-        parsedResult?.answer ||
-        parsedResult?.text ||
-        "Sorry, I could not understand that.";
-
-
-      const response =
-        cleanAIResponse(
-          rawResponse
-        );
-
-
-      /* =================================================
-         GEMINI ACTIONS
-         ================================================= */
-
-      if (
-        parsedResult?.type ===
-        "google_open"
-      ) {
-
-        openUrl(
-          "https://www.google.com"
-        );
-
-      } else if (
-        parsedResult?.type ===
-        "google_search"
-      ) {
-
-        if (
-          parsedResult?.query
-        ) {
-
-          googleSearch(
-            parsedResult.query
+        const youtubeMatch =
+          cleanedCommand.match(
+            /^(?:youtube|yt)\s+(.+)$/i
           );
-        }
 
-      } else if (
-        parsedResult?.type ===
-        "youtube_open"
-      ) {
+        if (youtubeMatch) {
 
-        openUrl(
-          "https://www.youtube.com"
-        );
+          const query =
+            youtubeMatch[1].trim();
 
-      } else if (
-        parsedResult?.type ===
-          "youtube_search" ||
-        parsedResult?.type ===
-          "youtube_play"
-      ) {
+          const answer =
+            `Searching YouTube for ${query}.`;
 
-        if (
-          parsedResult?.query
-        ) {
+          setAiText(
+            answer
+          );
+
+          setShowAIText(
+            true
+          );
+
+          await addHistory(
+            cleanedCommand,
+            answer,
+            type
+          );
 
           youtubeSearch(
-            parsedResult.query
+            query
           );
-        }
 
-      } else if (
-        parsedResult?.type ===
-        "calculator_open"
-      ) {
+          if (
+            shouldSpeak
+          ) {
 
-        openUrl(
-          "https://www.google.com/search?q=calculator"
-        );
-      }
-
-
-      setAiText(
-        response
-      );
-
-      setShowAIText(
-        true
-      );
-
-
-      await addHistory(
-        cleanedCommand,
-        response,
-        type
-      );
-
-
-      if (shouldSpeak) {
-
-        speak(response);
-      }
-
-    } catch (error) {
-
-      console.error(
-        "COMMAND ERROR:",
-        error
-      );
-
-
-      const errorMessage =
-        "Sorry, I could not complete that request right now.";
-
-
-      setAiText(
-        errorMessage
-      );
-
-      setShowAIText(
-        true
-      );
-
-
-      if (shouldSpeak) {
-
-        speak(
-          errorMessage
-        );
-      }
-
-    } finally {
-
-      processingRef.current =
-        false;
-
-      setIsSending(
-        false
-      );
-
-
-      if (
-        !speakingRef.current
-      ) {
-
-        setIsAIActive(
-          false
-        );
-      }
-    }
-  };
-
-
-  /* =====================================================
-     SEND MESSAGE
-     ===================================================== */
-
-  const handleSend = async (
-    e
-  ) => {
-
-    e?.preventDefault();
-
-
-    if (selectedImage) {
-
-      await analyzeImage();
-
-      return;
-    }
-
-
-    if (selectedPdf) {
-
-      await analyzePdf();
-
-      return;
-    }
-
-
-    if (
-      !typedText.trim() ||
-      isSending
-    ) {
-
-      return;
-    }
-
-
-    const command =
-      typedText.trim();
-
-
-    setTypedText("");
-
-    setHistoryImage("");
-
-
-    if (activePdf) {
-
-      await analyzePdfQuestion(
-        command
-      );
-
-      return;
-    }
-
-
-    await processCommand(
-      command,
-      "text",
-      false
-    );
-  };
-
-
-  /* =====================================================
-     IMAGE SELECT
-     ===================================================== */
-
-  const handleImageSelect = (
-    e
-  ) => {
-
-    const file =
-      e.target.files?.[0];
-
-
-    if (!file) {
-      return;
-    }
-
-
-    if (
-      !file.type.startsWith(
-        "image/"
-      )
-    ) {
-
-      alert(
-        "Please select an image file."
-      );
-
-      return;
-    }
-
-
-    if (
-      file.size >
-      10 * 1024 * 1024
-    ) {
-
-      alert(
-        "Image must be smaller than 10 MB."
-      );
-
-      return;
-    }
-
-
-    if (imagePreview) {
-
-      URL.revokeObjectURL(
-        imagePreview
-      );
-    }
-
-
-    removePdf();
-
-    setHistoryImage("");
-
-    setSelectedImage(
-      file
-    );
-
-    setImagePreview(
-      URL.createObjectURL(
-        file
-      )
-    );
-  };
-
-
-  /* =====================================================
-     PDF SELECT
-     ===================================================== */
-
-  const handlePdfSelect = (
-    e
-  ) => {
-
-    const file =
-      e.target.files?.[0];
-
-
-    if (!file) {
-      return;
-    }
-
-
-    const isPdf =
-      file.type ===
-        "application/pdf" ||
-      file.name
-        .toLowerCase()
-        .endsWith(".pdf");
-
-
-    if (!isPdf) {
-
-      alert(
-        "Please select a PDF file."
-      );
-
-      return;
-    }
-
-
-    if (
-      file.size >
-      20 * 1024 * 1024
-    ) {
-
-      alert(
-        "PDF must be smaller than 20 MB."
-      );
-
-      return;
-    }
-
-
-    removeImage();
-
-    setHistoryImage("");
-
-    setActivePdf(null);
-
-    setSelectedPdf(
-      file
-    );
-
-    setPdfName(
-      file.name
-    );
-
-    setPdfPreview(
-      URL.createObjectURL(
-        file
-      )
-    );
-
-    setUserText("");
-
-    setAiText("");
-
-    setShowAIText(false);
-  };
-
-
-  /* =====================================================
-     REMOVE IMAGE
-     ===================================================== */
-
-  const removeImage = () => {
-
-    if (imagePreview) {
-
-      URL.revokeObjectURL(
-        imagePreview
-      );
-    }
-
-
-    setSelectedImage(null);
-
-    setImagePreview("");
-
-
-    if (
-      imageInputRef.current
-    ) {
-
-      imageInputRef.current.value =
-        "";
-    }
-  };
-
-
-  /* =====================================================
-     REMOVE PDF
-     ===================================================== */
-
-  const removePdf = () => {
-
-    if (pdfPreview) {
-
-      URL.revokeObjectURL(
-        pdfPreview
-      );
-    }
-
-
-    setSelectedPdf(null);
-
-    setPdfPreview("");
-
-    setPdfName("");
-
-
-    if (
-      pdfInputRef.current
-    ) {
-
-      pdfInputRef.current.value =
-        "";
-    }
-  };
-
-
-  /* =====================================================
-     PDF ANALYSIS
-     ===================================================== */
-
-  const analyzePdf = async () => {
-
-    if (
-      !selectedPdf ||
-      isPdfAnalyzing
-    ) {
-
-      return;
-    }
-
-
-    const question =
-      typedText.trim() ||
-      "Analyze this PDF and explain its important contents.";
-
-
-    setIsPdfAnalyzing(true);
-
-    setIsAIActive(true);
-
-    setUserText(
-      question
-    );
-
-    setAiText("");
-
-    setShowAIText(false);
-
-
-    try {
-
-      const result =
-        await analyzePdfFile(
-          selectedPdf,
-          question
-        );
-
-
-      const answer =
-        cleanAIResponse(
-          result?.response ||
-          result?.answer ||
-          "I could not analyze this PDF."
-        );
-
-
-      setAiText(
-        answer
-      );
-
-      setShowAIText(
-        true
-      );
-
-
-      setActivePdf(
-        selectedPdf
-      );
-
-
-      await addHistory(
-        question,
-        answer,
-        "pdf"
-      );
-
-
-      setTypedText("");
-
-      removePdf();
-
-    } catch (error) {
-
-      console.error(
-        "PDF ANALYSIS ERROR:",
-        error.response?.data ||
-        error.message
-      );
-
-
-      const errorMessage =
-        error.response?.data?.message ||
-        "Unable to analyze the PDF.";
-
-
-      setAiText(
-        errorMessage
-      );
-
-      setShowAIText(
-        true
-      );
-
-    } finally {
-
-      setIsPdfAnalyzing(
-        false
-      );
-
-
-      if (
-        !speakingRef.current
-      ) {
-
-        setIsAIActive(
-          false
-        );
-      }
-    }
-  };
-
-
-  /* =====================================================
-     ASK QUESTION ABOUT ACTIVE PDF
-     ===================================================== */
-
-  const analyzePdfQuestion = async (
-    question
-  ) => {
-
-    if (
-      !activePdf ||
-      !question.trim() ||
-      isPdfAnalyzing
-    ) {
-
-      return;
-    }
-
-
-    setIsPdfAnalyzing(
-      true
-    );
-
-    setIsAIActive(
-      true
-    );
-
-    setUserText(
-      question
-    );
-
-    setAiText("");
-
-    setShowAIText(
-      false
-    );
-
-
-    try {
-
-      const result =
-        await analyzePdfFile(
-          activePdf,
-          question
-        );
-
-
-      const answer =
-        cleanAIResponse(
-          result?.response ||
-          result?.answer ||
-          "I could not answer that question from the PDF."
-        );
-
-
-      setAiText(
-        answer
-      );
-
-      setShowAIText(
-        true
-      );
-
-
-      await addHistory(
-        question,
-        answer,
-        "pdf"
-      );
-
-    } catch (error) {
-
-      console.error(
-        "PDF QUESTION ERROR:",
-        error.response?.data ||
-        error.message
-      );
-
-
-      setAiText(
-        "Unable to answer the question from the PDF."
-      );
-
-      setShowAIText(
-        true
-      );
-
-    } finally {
-
-      setIsPdfAnalyzing(
-        false
-      );
-
-      setIsAIActive(
-        false
-      );
-    }
-  };
-
-
-  /* =====================================================
-     IMAGE ANALYSIS
-     ===================================================== */
-
-  const analyzeImage = async () => {
-
-    if (
-      !selectedImage ||
-      isImageAnalyzing
-    ) {
-
-      return;
-    }
-
-
-    const question =
-      typedText.trim() ||
-      "Analyze this image and explain what you see.";
-
-
-    setHistoryImage("");
-
-    setIsImageAnalyzing(
-      true
-    );
-
-    setUserText(
-      question
-    );
-
-    setAiText("");
-
-    setShowAIText(
-      false
-    );
-
-    setIsAIActive(
-      true
-    );
-
-
-    try {
-
-      const formData =
-        new FormData();
-
-
-      formData.append(
-        "image",
-        selectedImage
-      );
-
-
-      formData.append(
-        "command",
-        question
-      );
-
-
-      const response =
-        await axios.post(
-
-          `${serverUrl}/api/user/analyze-image`,
-
-          formData,
-
-          {
-            withCredentials:
-              true,
-
-            timeout:
-              120000
+            speak(
+              answer
+            );
           }
-
-        );
-
-
-      const rawAnswer =
-        response.data?.response ||
-        response.data?.answer ||
-        "I could not analyze the image.";
-
-
-      const answer =
-        cleanAIResponse(
-          rawAnswer
-        );
-
-
-      setAiText(
-        answer
-      );
-
-      setShowAIText(
-        true
-      );
-
-
-      let imageForHistory =
-        "";
-
-
-      try {
-
-        imageForHistory =
-          await imageFileToDataUrl(
-            selectedImage
-          );
-
-      } catch (
-        imageError
-      ) {
-
-        console.error(
-          "IMAGE HISTORY ERROR:",
-          imageError
-        );
-      }
-
-
-      await addHistory(
-        question,
-        answer,
-        "image",
-        imageForHistory
-      );
-
-
-      removeImage();
-
-      setTypedText("");
-
-    } catch (error) {
-
-      console.error(
-        "IMAGE ANALYSIS ERROR:",
-        error.response?.data ||
-        error.message
-      );
-
-
-      const errorMessage =
-        error.response?.data?.message ||
-        "Unable to analyze the image.";
-
-
-      setAiText(
-        cleanAIResponse(
-          errorMessage
-        )
-      );
-
-      setShowAIText(
-        true
-      );
-
-    } finally {
-
-      setIsImageAnalyzing(
-        false
-      );
-
-
-      if (
-        !speakingRef.current
-      ) {
-
-        setIsAIActive(
-          false
-        );
-      }
-    }
-  };
-
-
-  /* =====================================================
-     IMAGE TO DATA URL
-     ===================================================== */
-
-  const imageFileToDataUrl = (
-    file
-  ) => {
-
-    return new Promise(
-      (
-        resolve,
-        reject
-      ) => {
-
-        if (!file) {
-
-          reject(
-            new Error(
-              "No image file provided"
-            )
-          );
 
           return;
         }
 
 
-        const reader =
-          new FileReader();
+        // =================================================
+        // OPEN WEBSITE
+        // =================================================
 
+        const directMatch =
+          cleanedCommand.match(
+            /^(?:open|launch|visit|go\s+to|take\s+me\s+to)\s+(.+)$/i
+          );
 
-        reader.onload = () => {
+        if (directMatch) {
 
-          const img =
-            new Image();
+          let site =
+            directMatch[1]
+              .trim()
+              .toLowerCase()
+              .replace(
+                /\s+(website|site)$/i,
+                ""
+              );
 
+          if (
+            websites[site]
+          ) {
 
-          img.onload = () => {
+            const displayName =
+              site === "x"
+                ? "X"
+                : site
+                    .charAt(0)
+                    .toUpperCase() +
+                  site.slice(1);
 
-            const maxSize =
-              1000;
+            const answer =
+              `Opening ${displayName}.`;
 
+            setAiText(
+              answer
+            );
 
-            let width =
-              img.width;
+            setShowAIText(
+              true
+            );
 
-            let height =
-              img.height;
+            await addHistory(
+              cleanedCommand,
+              answer,
+              type
+            );
 
+            openUrl(
+              websites[site]
+            );
 
             if (
-              width > maxSize ||
-              height > maxSize
+              shouldSpeak
             ) {
 
-              if (
-                width > height
-              ) {
-
-                height =
-                  Math.round(
-                    (
-                      height *
-                      maxSize
-                    ) /
-                    width
-                  );
-
-                width =
-                  maxSize;
-
-              } else {
-
-                width =
-                  Math.round(
-                    (
-                      width *
-                      maxSize
-                    ) /
-                    height
-                  );
-
-                height =
-                  maxSize;
-              }
+              speak(
+                answer
+              );
             }
 
-
-            const canvas =
-              document.createElement(
-                "canvas"
-              );
+            return;
+          }
+        }
 
 
-            canvas.width =
-              width;
+        // =================================================
+        // GEMINI
+        // =================================================
 
-            canvas.height =
-              height;
-
-
-            const ctx =
-              canvas.getContext(
-                "2d"
-              );
-
-
-            if (!ctx) {
-
-              reject(
-                new Error(
-                  "Could not create canvas"
-                )
-              );
-
-              return;
-            }
-
-
-            ctx.drawImage(
-              img,
-              0,
-              0,
-              width,
-              height
-            );
-
-
-            resolve(
-              canvas.toDataURL(
-                "image/jpeg",
-                0.72
-              )
-            );
-          };
-
-
-          img.onerror = () => {
-
-            reject(
-              new Error(
-                "Could not load image"
-              )
-            );
-          };
-
-
-          img.src =
-            reader.result;
-        };
-
-
-        reader.onerror = () => {
-
-          reject(
-            new Error(
-              "Could not read image"
-            )
+        const result =
+          await getGeminiResponseRef.current(
+            cleanedCommand
           );
-        };
+
+        // -----------------------------------------------
+        // IMPORTANT:
+        // If user stopped/restarted while Gemini was
+        // processing, ignore the OLD response.
+        // -----------------------------------------------
+
+        if (
+          !processingRef.current
+        ) {
+
+          return;
+        }
+
+        let parsedResult =
+          result;
+
+        if (
+          typeof result ===
+          "string"
+        ) {
+
+          const cleanResult =
+            result
+              .replace(
+                /```json/gi,
+                ""
+              )
+              .replace(
+                /```/g,
+                ""
+              )
+              .trim();
+
+          try {
+
+            parsedResult =
+              JSON.parse(
+                cleanResult
+              );
+
+          } catch {
+
+            parsedResult = {
+
+              type:
+                "general",
+
+              response:
+                cleanResult
+            };
+          }
+        }
+
+        const rawResponse =
+          parsedResult?.response ||
+          parsedResult?.answer ||
+          parsedResult?.text ||
+          "Sorry, I could not understand that.";
+
+        const response =
+          cleanAIResponse(
+            rawResponse
+          );
 
 
-        reader.readAsDataURL(
-          file
+        // =================================================
+        // GOOGLE ACTION
+        // =================================================
+
+        if (
+          parsedResult?.type ===
+          "google_open"
+        ) {
+
+          openUrl(
+            "https://www.google.com"
+          );
+
+        } else if (
+          parsedResult?.type ===
+          "google_search"
+        ) {
+
+          if (
+            parsedResult?.query?.trim()
+          ) {
+
+            googleSearch(
+              parsedResult.query
+            );
+          }
+        }
+
+
+        // =================================================
+        // YOUTUBE ACTION
+        // =================================================
+
+        else if (
+          parsedResult?.type ===
+          "youtube_open"
+        ) {
+
+          openUrl(
+            "https://www.youtube.com"
+          );
+
+        } else if (
+          parsedResult?.type ===
+            "youtube_search" ||
+          parsedResult?.type ===
+            "youtube_play"
+        ) {
+
+          if (
+            parsedResult?.query?.trim()
+          ) {
+
+            youtubeSearch(
+              parsedResult.query
+            );
+          }
+        }
+
+
+        // =================================================
+        // CALCULATOR
+        // =================================================
+
+        else if (
+          parsedResult?.type ===
+          "calculator_open"
+        ) {
+
+          openUrl(
+            "https://www.google.com/search?q=calculator"
+          );
+        }
+
+
+        // =================================================
+        // DISPLAY
+        // =================================================
+
+        setAiText(
+          response
         );
+
+        setShowAIText(
+          true
+        );
+
+        await addHistory(
+          cleanedCommand,
+          response,
+          type
+        );
+
+
+        // =================================================
+        // SPEAK
+        // =================================================
+
+        if (
+          shouldSpeak
+        ) {
+
+          speak(
+            response
+          );
+        }
+
+      } catch (error) {
+
+        console.error(
+          "COMMAND ERROR:",
+          error
+        );
+
+        const errorMessage =
+          "Sorry, I could not complete that request right now.";
+
+        setAiText(
+          errorMessage
+        );
+
+        setShowAIText(
+          true
+        );
+
+        if (
+          shouldSpeak
+        ) {
+
+          speak(
+            errorMessage
+          );
+        }
+
+      } finally {
+
+        processingRef.current =
+          false;
+
+        setIsSending(
+          false
+        );
+
+        if (
+          !speakingRef.current
+        ) {
+
+          setIsAIActive(
+            false
+          );
+        }
       }
-    );
-  };
+    };
 
 
-  /* =====================================================
-     PASTE IMAGE
-     ===================================================== */
+  // =====================================================
+  // SEND
+  // =====================================================
 
-  const handlePaste = (
-    event
-  ) => {
+  const handleSend =
+    async (e) => {
 
-    const clipboardItems =
-      event.clipboardData?.items;
+      e?.preventDefault();
 
+      if (selectedImage) {
 
-    if (!clipboardItems) {
-      return;
-    }
+        await analyzeImage();
 
+        return;
+      }
 
-    for (
-      let i = 0;
-      i < clipboardItems.length;
-      i++
-    ) {
+      if (selectedPdf) {
 
-      const item =
-        clipboardItems[i];
+        await analyzePdf();
 
+        return;
+      }
 
       if (
-        item.type &&
-        item.type.startsWith(
+        !typedText.trim() ||
+        isSending
+      ) {
+
+        return;
+      }
+
+      const command =
+        typedText.trim();
+
+      setTypedText("");
+
+      await processCommand(
+        command,
+        "text",
+        false
+      );
+    };
+
+
+  // =====================================================
+  // IMAGE SELECT
+  // =====================================================
+
+  const handleImageSelect =
+    (e) => {
+
+      const file =
+        e.target.files?.[0];
+
+      if (!file) {
+        return;
+      }
+
+      if (
+        !file.type.startsWith(
           "image/"
         )
       ) {
 
-        event.preventDefault();
-
-
-        const file =
-          item.getAsFile();
-
-
-        if (!file) {
-          return;
-        }
-
-
-        removePdf();
-
-
-        if (imagePreview) {
-
-          URL.revokeObjectURL(
-            imagePreview
-          );
-        }
-
-
-        setHistoryImage("");
-
-        setSelectedImage(
-          file
+        alert(
+          "Please select an image file."
         );
-
-        setImagePreview(
-          URL.createObjectURL(
-            file
-          )
-        );
-
 
         return;
       }
-    }
-  };
+
+      if (
+        file.size >
+        10 * 1024 * 1024
+      ) {
+
+        alert(
+          "Image must be smaller than 10 MB."
+        );
+
+        return;
+      }
+
+      if (imagePreview) {
+
+        URL.revokeObjectURL(
+          imagePreview
+        );
+      }
+
+      setSelectedPdf(null);
+
+      setPdfPreviewName("");
+
+      setSelectedImage(
+        file
+      );
+
+      setImagePreview(
+        URL.createObjectURL(file)
+      );
+
+      setHistoryImage("");
+
+      setHistoryFileName("");
+    };
 
 
-  /* =====================================================
-     SPEECH RECOGNITION
-     ===================================================== */
+  // =====================================================
+  // PDF SELECT
+  // =====================================================
+
+  const handlePdfSelect =
+    (e) => {
+
+      const file =
+        e.target.files?.[0];
+
+      if (!file) {
+        return;
+      }
+
+      if (
+        file.type !==
+        "application/pdf"
+      ) {
+
+        alert(
+          "Please select a PDF file."
+        );
+
+        return;
+      }
+
+      if (
+        file.size >
+        20 * 1024 * 1024
+      ) {
+
+        alert(
+          "PDF must be smaller than 20 MB."
+        );
+
+        return;
+      }
+
+      removeImage();
+
+      setSelectedPdf(
+        file
+      );
+
+      setPdfPreviewName(
+        file.name
+      );
+
+      setHistoryImage("");
+
+      setHistoryFileName("");
+    };
+
+
+  // =====================================================
+  // PASTE IMAGE
+  // =====================================================
+
+  const handlePaste =
+    (event) => {
+
+      const clipboardItems =
+        event.clipboardData?.items;
+
+      if (!clipboardItems) {
+        return;
+      }
+
+      for (
+        let i = 0;
+        i < clipboardItems.length;
+        i++
+      ) {
+
+        const item =
+          clipboardItems[i];
+
+        if (
+          item.type &&
+          item.type.startsWith(
+            "image/"
+          )
+        ) {
+
+          event.preventDefault();
+
+          const file =
+            item.getAsFile();
+
+          if (!file) {
+            return;
+          }
+
+          if (imagePreview) {
+
+            URL.revokeObjectURL(
+              imagePreview
+            );
+          }
+
+          setSelectedPdf(null);
+
+          setPdfPreviewName("");
+
+          setSelectedImage(
+            file
+          );
+
+          setImagePreview(
+            URL.createObjectURL(file)
+          );
+
+          setHistoryImage("");
+
+          setHistoryFileName("");
+
+          return;
+        }
+      }
+    };
+
+
+  // =====================================================
+  // REMOVE IMAGE
+  // =====================================================
+
+  const removeImage =
+    () => {
+
+      if (imagePreview) {
+
+        URL.revokeObjectURL(
+          imagePreview
+        );
+      }
+
+      setSelectedImage(
+        null
+      );
+
+      setImagePreview(
+        ""
+      );
+
+      if (
+        imageInputRef.current
+      ) {
+
+        imageInputRef.current.value =
+          "";
+      }
+    };
+
+
+  // =====================================================
+  // REMOVE PDF
+  // =====================================================
+
+  const removePdf =
+    () => {
+
+      setSelectedPdf(
+        null
+      );
+
+      setPdfPreviewName(
+        ""
+      );
+
+      if (
+        pdfInputRef.current
+      ) {
+
+        pdfInputRef.current.value =
+          "";
+      }
+    };
+
+
+  // =====================================================
+  // ANALYZE PDF
+  // =====================================================
+
+  const analyzePdf =
+    async () => {
+
+      if (
+        !selectedPdf ||
+        isPdfAnalyzing
+      ) {
+
+        return;
+      }
+
+      const question =
+        typedText.trim() ||
+        "Analyze this PDF and explain its important contents.";
+
+      setIsPdfAnalyzing(
+        true
+      );
+
+      setUserText(
+        question
+      );
+
+      setAiText("");
+
+      setShowAIText(
+        false
+      );
+
+      setIsAIActive(
+        true
+      );
+
+      try {
+
+        const formData =
+          new FormData();
+
+        formData.append(
+          "pdf",
+          selectedPdf
+        );
+
+        formData.append(
+          "command",
+          question
+        );
+
+        const response =
+          await axios.post(
+            `${serverUrl}/api/user/analyze-pdf`,
+            formData,
+            {
+              withCredentials: true
+            }
+          );
+
+        const rawAnswer =
+          response.data?.response ||
+          response.data?.answer ||
+          "I could not analyze the PDF.";
+
+        const answer =
+          cleanAIResponse(
+            rawAnswer
+          );
+
+        setAiText(
+          answer
+        );
+
+        setShowAIText(
+          true
+        );
+
+        await addHistory(
+          question,
+          answer,
+          "file",
+          "",
+          selectedPdf.name
+        );
+
+        removePdf();
+
+        setTypedText("");
+
+      } catch (error) {
+
+        console.error(
+          "PDF ANALYSIS ERROR:",
+          error.response?.data ||
+          error.message
+        );
+
+        const errorMessage =
+          error.response?.data?.message ||
+          "Unable to analyze the PDF.";
+
+        setAiText(
+          cleanAIResponse(
+            errorMessage
+          )
+        );
+
+        setShowAIText(
+          true
+        );
+
+      } finally {
+
+        setIsPdfAnalyzing(
+          false
+        );
+
+        if (
+          !speakingRef.current
+        ) {
+
+          setIsAIActive(
+            false
+          );
+        }
+      }
+    };
+
+
+  // =====================================================
+  // ANALYZE IMAGE
+  // =====================================================
+
+  const analyzeImage =
+    async () => {
+
+      if (
+        !selectedImage ||
+        isImageAnalyzing
+      ) {
+
+        return;
+      }
+
+      const question =
+        typedText.trim() ||
+        "Analyze this image and explain what you see.";
+
+      setIsImageAnalyzing(
+        true
+      );
+
+      setUserText(
+        question
+      );
+
+      setAiText("");
+
+      setShowAIText(
+        false
+      );
+
+      setIsAIActive(
+        true
+      );
+
+      try {
+
+        const formData =
+          new FormData();
+
+        formData.append(
+          "image",
+          selectedImage
+        );
+
+        formData.append(
+          "command",
+          question
+        );
+
+        const response =
+          await axios.post(
+            `${serverUrl}/api/user/analyze-image`,
+            formData,
+            {
+              withCredentials: true
+            }
+          );
+
+        const rawAnswer =
+          response.data?.response ||
+          response.data?.answer ||
+          "I could not analyze the image.";
+
+        const answer =
+          cleanAIResponse(
+            rawAnswer
+          );
+
+        setAiText(
+          answer
+        );
+
+        setShowAIText(
+          true
+        );
+
+        let imageForHistory =
+          "";
+
+        try {
+
+          imageForHistory =
+            await imageFileToDataUrl(
+              selectedImage
+            );
+
+        } catch (error) {
+
+          console.error(
+            "IMAGE HISTORY ERROR:",
+            error
+          );
+        }
+
+        await addHistory(
+          question,
+          answer,
+          "image",
+          imageForHistory
+        );
+
+        removeImage();
+
+        setTypedText("");
+
+      } catch (error) {
+
+        console.error(
+          "IMAGE ANALYSIS ERROR:",
+          error.response?.data ||
+          error.message
+        );
+
+        const errorMessage =
+          error.response?.data?.message ||
+          "Unable to analyze the image.";
+
+        setAiText(
+          cleanAIResponse(
+            errorMessage
+          )
+        );
+
+        setShowAIText(
+          true
+        );
+
+      } finally {
+
+        setIsImageAnalyzing(
+          false
+        );
+
+        if (
+          !speakingRef.current
+        ) {
+
+          setIsAIActive(
+            false
+          );
+        }
+      }
+    };
+
+
+  // =====================================================
+  // SPEECH RECOGNITION
+  // =====================================================
 
   useEffect(() => {
 
@@ -3094,104 +2893,136 @@ function Home() {
       window.SpeechRecognition ||
       window.webkitSpeechRecognition;
 
-
     if (!SpeechRecognition) {
 
       console.warn(
-        "Speech recognition is not supported."
+        "Speech recognition is not supported in this browser."
       );
 
       return;
     }
 
-
     const recognition =
       new SpeechRecognition();
 
-
     recognition.continuous =
+      false;
+
+    recognition.interimResults =
       true;
 
     recognition.lang =
       "en-US";
 
-    recognition.interimResults =
-      false;
-
     recognition.maxAlternatives =
       1;
-
 
     recognitionRef.current =
       recognition;
 
 
-    recognition.onstart = () => {
+    // ===================================================
+    // START
+    // ===================================================
 
-      listeningRef.current =
-        true;
+    recognition.onstart =
+      () => {
 
-      setIsListening(
-        true
-      );
-    };
+        setIsListening(
+          true
+        );
+      };
 
+
+    // ===================================================
+    // RESULT
+    // ===================================================
 
     recognition.onresult =
-      async event => {
+      async (event) => {
+
+        let finalTranscript =
+          "";
+
+        let interimTranscript =
+          "";
+
+        for (
+          let i =
+            event.resultIndex;
+          i <
+          event.results.length;
+          i++
+        ) {
+
+          const result =
+            event.results[i];
+
+          if (
+            result.isFinal
+          ) {
+
+            finalTranscript +=
+              result[0]?.transcript ||
+              "";
+
+          } else {
+
+            interimTranscript +=
+              result[0]?.transcript ||
+              "";
+          }
+        }
+
+        const liveText =
+          `${finalTranscript} ${interimTranscript}`
+            .trim();
+
+        if (liveText) {
+
+          setUserText(
+            liveText
+          );
+        }
 
         if (
-          processingRef.current
+          !finalTranscript.trim()
         ) {
 
           return;
         }
 
-
-        const lastResult =
-          event.results[
-            event.results.length - 1
-          ];
-
-
-        if (!lastResult) {
-          return;
-        }
-
-
         const transcript =
-          lastResult[0]
-            ?.transcript
-            ?.trim();
-
-
-        if (!transcript) {
-          return;
-        }
-
+          finalTranscript.trim();
 
         const lowerTranscript =
-          transcript.toLowerCase();
+          transcript
+            .toLowerCase()
+            .trim();
 
+
+        // =================================================
+        // STOP COMMANDS
+        // =================================================
 
         const stopCommands = [
 
-          "thank you",
+          "stop listening",
 
-          "thanks",
+          "stop microphone",
+
+          "turn off microphone",
+
+          "cancel microphone",
 
           "stop",
 
-          "bye",
+          "cancel",
 
           "goodbye",
 
-          "stop listening",
-
-          "cancel"
-
+          "bye"
         ];
-
 
         if (
           stopCommands.includes(
@@ -3205,31 +3036,11 @@ function Home() {
         }
 
 
-        setUserText(
-          transcript
-        );
+        // =================================================
+        // NEW VOICE REQUEST
+        // =================================================
 
-
-        /* =============================================
-           PDF VOICE QUESTION
-           ============================================= */
-
-        if (activePdf) {
-
-          await analyzePdfQuestion(
-            transcript
-          );
-
-
-          return;
-        }
-
-
-        /* =============================================
-           NORMAL VOICE QUESTION
-           ============================================= */
-
-        await processCommand(
+        processCommand(
           transcript,
           "voice",
           true
@@ -3237,42 +3048,78 @@ function Home() {
       };
 
 
-    recognition.onend = () => {
+    // ===================================================
+    // END
+    // ===================================================
 
-      if (
-        listeningRef.current &&
-        !speakingRef.current &&
-        !processingRef.current
-      ) {
+    recognition.onend =
+      () => {
+
+        if (
+          !listeningRef.current
+        ) {
+
+          setIsListening(
+            false
+          );
+
+          return;
+        }
+
+        setIsListening(
+          false
+        );
+
+        if (
+          processingRef.current
+        ) {
+
+          return;
+        }
+
+        if (
+          speakingRef.current
+        ) {
+
+          return;
+        }
 
         clearTimeout(
           restartTimeoutRef.current
         );
 
-
         restartTimeoutRef.current =
           setTimeout(
             () => {
 
-              try {
+              if (
+                listeningRef.current &&
+                !processingRef.current &&
+                !speakingRef.current &&
+                recognitionRef.current
+              ) {
 
-                recognition.start();
+                try {
 
-              } catch {}
+                  recognitionRef.current.start();
+
+                  setIsListening(
+                    true
+                  );
+
+                } catch {}
+
+              }
+
             },
             400
           );
+      };
 
-      } else if (
-        !listeningRef.current
-      ) {
 
-        setIsListening(
-          false
-        );
-      }
-    };
-
+    // ===================================================
+    // ERROR
+    // ===================================================
 
     recognition.onerror =
       event => {
@@ -3282,12 +3129,11 @@ function Home() {
           event.error
         );
 
-
         if (
           event.error ===
             "not-allowed" ||
           event.error ===
-            "audio-capture"
+            "service-not-allowed"
         ) {
 
           listeningRef.current =
@@ -3296,170 +3142,295 @@ function Home() {
           setIsListening(
             false
           );
+
+          alert(
+            "Microphone permission is blocked. Please allow microphone access in Chrome."
+          );
+
+          return;
+        }
+
+        if (
+          event.error ===
+          "audio-capture"
+        ) {
+
+          listeningRef.current =
+            false;
+
+          setIsListening(
+            false
+          );
+
+          alert(
+            "No microphone was detected. Please check your microphone."
+          );
+
+          return;
         }
       };
 
+
+    // ===================================================
+    // CLEANUP
+    // ===================================================
 
     return () => {
 
       listeningRef.current =
         false;
 
-      processingRef.current =
-        false;
-
-
       clearTimeout(
         restartTimeoutRef.current
       );
-
 
       clearTimeout(
         speechTimeoutRef.current
       );
 
-
       try {
 
-        recognition.stop();
+        recognition.abort();
 
       } catch {}
-
-
-      window.speechSynthesis.cancel();
-
 
       recognitionRef.current =
         null;
     };
 
-  }, [
-    getGeminiResponse,
-    activePdf
-  ]);
+  }, []);
 
 
-  /* =====================================================
-     START LISTENING
-     ===================================================== */
+  // =====================================================
+  // START LISTENING
+  // =====================================================
 
-  const startListening = () => {
+  const startListening =
+    () => {
 
-    if (
-      !recognitionRef.current
-    ) {
+      if (
+        !recognitionRef.current
+      ) {
 
-      alert(
-        "Speech recognition is not supported in this browser."
+        alert(
+          "Speech recognition is not supported in this browser."
+        );
+
+        return;
+      }
+
+      // New listening session = new generation
+      speechGenerationRef.current += 1;
+
+      clearTimeout(
+        restartTimeoutRef.current
       );
 
-      return;
-    }
+      clearTimeout(
+        speechTimeoutRef.current
+      );
 
+      try {
 
-    try {
+        window.speechSynthesis.cancel();
 
-      window.speechSynthesis.cancel();
-
+      } catch {}
 
       speakingRef.current =
         false;
 
+      processingRef.current =
+        false;
 
       listeningRef.current =
         true;
 
+      setIsSpeaking(false);
+
+      setIsAIActive(false);
 
       setIsListening(
         true
       );
 
+      try {
 
-      recognitionRef.current.start();
+        recognitionRef.current.start();
 
-    } catch {
+      } catch (error) {
+
+        console.log(
+          "Recognition start:",
+          error.message
+        );
+
+        setIsListening(
+          true
+        );
+      }
+    };
+
+
+  // =====================================================
+  // STOP LISTENING
+  // =====================================================
+
+  const stopListening =
+    () => {
+
+      listeningRef.current =
+        false;
+
+      setIsListening(
+        false
+      );
+
+      clearTimeout(
+        restartTimeoutRef.current
+      );
+
+      if (
+        recognitionRef.current
+      ) {
+
+        try {
+
+          recognitionRef.current.abort();
+
+        } catch {}
+
+        try {
+
+          recognitionRef.current.stop();
+
+        } catch {}
+      }
 
       console.log(
-        "Microphone already running."
+        "Microphone stopped."
       );
-    }
-  };
+    };
 
 
-  /* =====================================================
-     STOP LISTENING
-     ===================================================== */
+  // =====================================================
+  // MIC BUTTON
+  //
+  // ONE BUTTON:
+  //
+  // speaking  -> STOP OLD SPEECH
+  // listening -> STOP LISTENING
+  // normal    -> START NEW LISTENING
+  // =====================================================
 
-  const stopListening = () => {
+  const handleMicClick =
+    () => {
 
-    listeningRef.current =
-      false;
+      // -----------------------------------------------
+      // CURRENTLY SPEAKING
+      // -----------------------------------------------
+
+      if (
+        isSpeaking ||
+        speakingRef.current ||
+        window.speechSynthesis.speaking
+      ) {
+
+        stopSpeaking();
+
+        return;
+      }
 
 
-    setIsListening(
-      false
-    );
+      // -----------------------------------------------
+      // CURRENTLY LISTENING
+      // -----------------------------------------------
+
+      if (
+        isListening
+      ) {
+
+        stopListening();
+
+        return;
+      }
 
 
-    clearTimeout(
-      restartTimeoutRef.current
-    );
+      // -----------------------------------------------
+      // NEW REQUEST
+      // -----------------------------------------------
 
+      speechGenerationRef.current += 1;
 
-    if (
-      recognitionRef.current
-    ) {
+      clearTimeout(
+        speechTimeoutRef.current
+      );
+
+      clearTimeout(
+        restartTimeoutRef.current
+      );
 
       try {
 
-        recognitionRef.current.stop();
+        window.speechSynthesis.cancel();
 
       } catch {}
-    }
-  };
+
+      speakingRef.current =
+        false;
+
+      processingRef.current =
+        false;
+
+      setIsSpeaking(false);
+
+      setIsAIActive(false);
+
+      startListening();
+    };
 
 
-  /* =====================================================
-     LOGOUT
-     ===================================================== */
+  // =====================================================
+  // LOGOUT
+  // =====================================================
 
-  const handleLogout = async () => {
+  const handleLogout =
+    async () => {
 
-    try {
+      stopSpeaking();
 
-      await axios.post(
+      stopListening();
 
-        `${serverUrl}/api/auth/logout`,
+      try {
 
-        {},
+        await axios.post(
+          `${serverUrl}/api/auth/logout`,
+          {},
+          {
+            withCredentials: true
+          }
+        );
 
-        {
-          withCredentials:
-            true
-        }
+      } catch (error) {
 
+        console.error(
+          "LOGOUT ERROR:",
+          error
+        );
+      }
+
+      setUserData(
+        null
       );
 
-    } catch (error) {
-
-      console.error(
-        "LOGOUT ERROR:",
-        error
+      navigate(
+        "/signin"
       );
-    }
+    };
 
 
-    setUserData(null);
-
-    navigate(
-      "/signin"
-    );
-  };
-
-
-  /* =====================================================
-     FILTER HISTORY
-     ===================================================== */
+  // =====================================================
+  // FILTER HISTORY
+  // =====================================================
 
   const filteredHistory =
     historyItems.filter(
@@ -3467,32 +3438,36 @@ function Home() {
 
         const command =
           item?.command ||
-          item?.text ||
-          item?.query ||
           "";
-
 
         const answer =
           item?.answer ||
           "";
 
+        const fileName =
+          item?.fileName ||
+          "";
 
         const search =
           historySearch
             .toLowerCase()
             .trim();
 
-
         if (!search) {
           return true;
         }
 
-
         return (
+
           command
             .toLowerCase()
             .includes(search) ||
+
           answer
+            .toLowerCase()
+            .includes(search) ||
+
+          fileName
             .toLowerCase()
             .includes(search)
         );
@@ -3500,110 +3475,108 @@ function Home() {
     );
 
 
-  /* =====================================================
-     OPEN HISTORY
-     ===================================================== */
+  // =====================================================
+  // OPEN HISTORY
+  // =====================================================
 
-  const openHistory = (
-    item
-  ) => {
+  const openHistory =
+    (item) => {
 
-    const command =
-      item?.command ||
-      "";
+      // Stop any current speech first.
+      stopSpeaking();
 
-
-    const answer =
-      item?.answer ||
-      "";
-
-
-    setUserText(
-      command
-    );
-
-
-    setAiText(
-      cleanAIResponse(
-        answer
-      )
-    );
-
-
-    setShowAIText(
-      true
-    );
-
-
-    if (
-      item?.type ===
-        "image" &&
-      item?.image
-    ) {
-
-      setHistoryImage(
-        item.image
-      );
-
-    } else {
-
-      setHistoryImage(
+      setUserText(
+        item?.command ||
         ""
       );
-    }
 
+      setAiText(
+        cleanAIResponse(
+          item?.answer ||
+          ""
+        )
+      );
 
-    setActivePdf(
-      null
-    );
+      setShowAIText(
+        true
+      );
 
+      if (
+        item?.type ===
+          "image" &&
+        item?.image
+      ) {
 
-    setShowHistory(
-      false
-    );
-  };
+        setHistoryImage(
+          item.image
+        );
 
+      } else {
 
-  /* =====================================================
-     FORMAT DATE
-     ===================================================== */
-
-  const formatDate = (
-    date
-  ) => {
-
-    if (!date) {
-      return "";
-    }
-
-
-    return new Date(
-      date
-    ).toLocaleString(
-      "en-IN",
-      {
-        day:
-          "2-digit",
-
-        month:
-          "short",
-
-        year:
-          "numeric",
-
-        hour:
-          "2-digit",
-
-        minute:
-          "2-digit"
+        setHistoryImage(
+          ""
+        );
       }
-    );
-  };
+
+      if (
+        item?.type ===
+        "file"
+      ) {
+
+        setHistoryFileName(
+          item?.fileName ||
+          "Previous PDF"
+        );
+
+      } else {
+
+        setHistoryFileName(
+          ""
+        );
+      }
+
+      setShowHistory(
+        false
+      );
+    };
 
 
-  /* =====================================================
-     UI
-     ===================================================== */
+  // =====================================================
+  // FORMAT DATE
+  // =====================================================
+
+  const formatDate =
+    (date) => {
+
+      if (!date) {
+        return "";
+      }
+
+      try {
+
+        return new Date(
+          date
+        ).toLocaleString(
+          "en-IN",
+          {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          }
+        );
+
+      } catch {
+
+        return "";
+      }
+    };
+
+
+  // =====================================================
+  // UI
+  // =====================================================
 
   return (
 
@@ -3611,11 +3584,11 @@ function Home() {
       onPaste={
         handlePaste
       }
-
       className="
         relative
         flex
-        min-h-screen
+        h-screen
+        min-h-0
         w-full
         flex-col
         overflow-hidden
@@ -3626,7 +3599,7 @@ function Home() {
 
       {/* =================================================
           HEADER
-          ================================================= */}
+      ================================================= */}
 
       <header
         className="
@@ -3634,6 +3607,7 @@ function Home() {
           z-40
           flex
           h-16
+          w-full
           shrink-0
           items-center
           justify-between
@@ -3669,7 +3643,6 @@ function Home() {
                 false
               );
             }}
-
             className="
               flex
               h-10
@@ -3684,7 +3657,13 @@ function Home() {
               transition
               hover:bg-white/5
               hover:text-cyan-300
+              active:scale-95
             "
+            title={
+              showHistory
+                ? "Close history"
+                : "Open history"
+            }
           >
 
             {showHistory ? (
@@ -3708,9 +3687,7 @@ function Home() {
               userData?.assistantImage ||
               aiImg
             }
-
             alt="Assistant"
-
             className="
               h-9
               w-9
@@ -3725,11 +3702,7 @@ function Home() {
           />
 
 
-          <div
-            className="
-              min-w-0
-            "
-          >
+          <div className="min-w-0">
 
             <p
               className="
@@ -3739,12 +3712,9 @@ function Home() {
                 text-white
               "
             >
-              {
-                userData?.assistantName ||
-                "Assistant"
-              }
+              {userData?.assistantName ||
+                "Assistant"}
             </p>
-
 
             <p
               className="
@@ -3777,7 +3747,6 @@ function Home() {
                 "/customize2"
               )
             }
-
             className="
               hidden
               rounded-full
@@ -3808,7 +3777,6 @@ function Home() {
                 false
               );
             }}
-
             className="
               flex
               h-10
@@ -3825,7 +3793,10 @@ function Home() {
               transition
               hover:border-cyan-400/30
               hover:bg-cyan-400/10
+              hover:text-cyan-300
+              active:scale-95
             "
+            title="Account and settings"
           >
 
             {userData?.assistantImage ? (
@@ -3834,9 +3805,7 @@ function Home() {
                 src={
                   userData.assistantImage
                 }
-
                 alt="Profile"
-
                 className="
                   h-full
                   w-full
@@ -3891,12 +3860,9 @@ function Home() {
                     font-semibold
                   "
                 >
-                  {
-                    userData?.name ||
-                    "User"
-                  }
+                  {userData?.name ||
+                    "User"}
                 </p>
-
 
                 <p
                   className="
@@ -3905,10 +3871,8 @@ function Home() {
                     text-gray-500
                   "
                 >
-                  {
-                    userData?.email ||
-                    "Account"
-                  }
+                  {userData?.email ||
+                    "Account"}
                 </p>
 
               </div>
@@ -3925,7 +3889,6 @@ function Home() {
                     false
                   );
                 }}
-
                 className="
                   flex
                   w-full
@@ -3952,22 +3915,19 @@ function Home() {
 
 
               <button
-                onClick={
-                  async () => {
+                onClick={async () => {
 
-                    await clearHistory();
+                  await clearHistory();
 
-                    setShowProfileMenu(
-                      false
-                    );
-                  }
-                }
+                  setShowProfileMenu(
+                    false
+                  );
 
+                }}
                 disabled={
                   historyItems.length ===
                   0
                 }
-
                 className="
                   flex
                   w-full
@@ -4005,7 +3965,6 @@ function Home() {
                     false
                   );
                 }}
-
                 className="
                   flex
                   w-full
@@ -4044,7 +4003,6 @@ function Home() {
                 onClick={
                   handleLogout
                 }
-
                 className="
                   flex
                   w-full
@@ -4078,7 +4036,7 @@ function Home() {
 
       {/* =================================================
           HISTORY
-          ================================================= */}
+      ================================================= */}
 
       {showHistory && (
 
@@ -4086,11 +4044,8 @@ function Home() {
 
           <div
             onClick={() =>
-              setShowHistory(
-                false
-              )
+              setShowHistory(false)
             }
-
             className="
               fixed
               inset-0
@@ -4142,14 +4097,13 @@ function Home() {
                   History
                 </h2>
 
-
                 <p
                   className="
                     text-xs
                     text-gray-500
                   "
                 >
-                  Previous conversations
+                  Your previous conversations
                 </p>
 
               </div>
@@ -4161,7 +4115,6 @@ function Home() {
                     false
                   )
                 }
-
                 className="
                   flex
                   h-9
@@ -4171,6 +4124,7 @@ function Home() {
                   rounded-lg
                   text-gray-400
                   hover:bg-white/5
+                  hover:text-white
                 "
               >
 
@@ -4214,15 +4168,12 @@ function Home() {
                   value={
                     historySearch
                   }
-
                   onChange={e =>
                     setHistorySearch(
                       e.target.value
                     )
                   }
-
                   placeholder="Search history..."
-
                   className="
                     h-10
                     w-full
@@ -4247,7 +4198,7 @@ function Home() {
 
             <div
               className="
-                history-scroll
+                min-h-0
                 flex-1
                 overflow-y-auto
                 p-3
@@ -4255,7 +4206,7 @@ function Home() {
             >
 
               {filteredHistory.length >
-              0 ? (
+                0 ? (
 
                 filteredHistory.map(
                   item => (
@@ -4265,7 +4216,6 @@ function Home() {
                         item._id ||
                         `${item.command}-${item.createdAt}`
                       }
-
                       className="
                         group
                         mb-2
@@ -4274,7 +4224,6 @@ function Home() {
                         border-white/5
                         bg-white/2.5
                         p-3
-                        transition
                         hover:border-cyan-400/20
                       "
                     >
@@ -4285,7 +4234,6 @@ function Home() {
                             item
                           )
                         }
-
                         className="
                           w-full
                           text-left
@@ -4313,17 +4261,14 @@ function Home() {
                               text-cyan-300
                             "
                           >
-                            {
-                              item.type ||
-                              "text"
-                            }
+                            {item.type ||
+                              "text"}
                           </span>
 
 
                           <span
                             className="
                               flex
-                              min-w-0
                               items-center
                               gap-1
                               text-[10px]
@@ -4335,17 +4280,9 @@ function Home() {
                               size={10}
                             />
 
-                            <span
-                              className="
-                                truncate
-                              "
-                            >
-                              {
-                                formatDate(
-                                  item.createdAt
-                                )
-                              }
-                            </span>
+                            {formatDate(
+                              item.createdAt
+                            )}
 
                           </span>
 
@@ -4360,34 +4297,61 @@ function Home() {
                               src={
                                 item.image
                               }
-
-                              alt="Previous question"
-
+                              alt="Previous"
                               className="
                                 mb-3
                                 h-28
                                 w-full
                                 rounded-xl
-                                border
-                                border-white/10
-                                bg-black/20
                                 object-cover
                               "
                             />
                           )}
 
 
+                        {item?.type ===
+                          "file" && (
+
+                            <div
+                              className="
+                                mb-3
+                                flex
+                                items-center
+                                gap-3
+                                rounded-xl
+                                bg-cyan-400/3
+                                p-3
+                              "
+                            >
+
+                              <FiFileText
+                                size={22}
+                                className="text-cyan-400"
+                              />
+
+                              <span
+                                className="
+                                  truncate
+                                  text-xs
+                                  text-gray-400
+                                "
+                              >
+                                {item.fileName ||
+                                  "PDF document"}
+                              </span>
+
+                            </div>
+                          )}
+
+
                         <p
                           className="
                             line-clamp-2
-                            wrap-break-word
                             text-sm
                             text-gray-300
                           "
                         >
-                          {
-                            item.command
-                          }
+                          {item.command}
                         </p>
 
 
@@ -4397,17 +4361,12 @@ function Home() {
                             className="
                               mt-2
                               line-clamp-2
-                              wrap-break-word
                               text-xs
-                              leading-relaxed
                               text-gray-600
                             "
                           >
-                            {
-                              item.answer
-                            }
+                            {item.answer}
                           </p>
-
                         )}
 
                       </button>
@@ -4426,7 +4385,6 @@ function Home() {
                                 item._id
                               )
                             }
-
                             className="
                               mt-2
                               flex
@@ -4445,13 +4403,10 @@ function Home() {
                             Delete
 
                           </button>
-
                         )}
 
                     </div>
-
                   )
-
                 )
 
               ) : (
@@ -4460,22 +4415,13 @@ function Home() {
                   className="
                     flex
                     h-full
-                    flex-col
                     items-center
                     justify-center
-                    text-center
+                    text-sm
+                    text-gray-500
                   "
                 >
-
-                  <p
-                    className="
-                      text-sm
-                      text-gray-500
-                    "
-                  >
-                    No history found
-                  </p>
-
+                  No history found
                 </div>
               )}
 
@@ -4489,12 +4435,13 @@ function Home() {
 
       {/* =================================================
           MAIN
-          ================================================= */}
+      ================================================= */}
 
       <main
         className="
           flex
           min-h-0
+          w-full
           flex-1
           justify-center
           overflow-hidden
@@ -4504,11 +4451,12 @@ function Home() {
         <section
           className="
             flex
-            min-w-0
+            min-h-0
+            h-full
             w-full
-            max-w-5xl
-            flex-1
+            max-w-6xl
             flex-col
+            items-center
             overflow-hidden
             px-3
             py-4
@@ -4517,38 +4465,47 @@ function Home() {
           "
         >
 
+
+          {/* =================================================
+              ONLY CHAT AREA SCROLLS
+          ================================================= */}
+
           <div
             className="
-              answer-scroll
               min-h-0
+              w-full
               flex-1
               overflow-y-auto
               overscroll-contain
               px-1
-              pb-6
+              pb-8
             "
           >
 
             <div
               className="
+                mx-auto
                 flex
                 w-full
+                max-w-3xl
                 flex-col
                 items-center
+                pt-2
+                sm:pt-5
               "
             >
 
-              {/* ASSISTANT */}
+
+              {/* =================================================
+                  ASSISTANT IMAGE
+              ================================================= */}
 
               <div
                 className={`
-                  mt-2
                   mb-4
                   rounded-full
                   p-1
                   transition
-                  sm:mt-4
-                  sm:mb-5
                   ${
                     isAIActive
                       ? "ring-4 ring-cyan-400/30"
@@ -4562,15 +4519,12 @@ function Home() {
                     userData?.assistantImage ||
                     aiImg
                   }
-
                   alt="Assistant"
-
                   className="
-                    h-24
-                    w-24
+                    h-20
+                    w-20
                     rounded-full
                     object-cover
-                    shadow-2xl
                     sm:h-28
                     sm:w-28
                     md:h-32
@@ -4581,13 +4535,13 @@ function Home() {
               </div>
 
 
-              {/* NAME */}
+              {/* =================================================
+                  ASSISTANT NAME
+              ================================================= */}
 
               <h1
                 className="
-                  w-full
-                  max-w-3xl
-                  wrap-break-word
+                  px-3
                   text-center
                   text-xl
                   font-semibold
@@ -4595,14 +4549,14 @@ function Home() {
                   md:text-3xl
                 "
               >
-                {
-                  userData?.assistantName ||
-                  "Assistant"
-                }
+                {userData?.assistantName ||
+                  "Assistant"}
               </h1>
 
 
-              {/* STATUS */}
+              {/* =================================================
+                  STATUS
+              ================================================= */}
 
               <p
                 className="
@@ -4614,34 +4568,66 @@ function Home() {
                 "
               >
 
-                {isListening
+                {isSpeaking
 
-                  ? "Listening..."
+                  ? "Speaking..."
 
-                  : isPdfAnalyzing
+                  : isListening
 
-                    ? "Analyzing PDF..."
+                    ? "Listening..."
 
                     : isImageAnalyzing
 
                       ? "Analyzing image..."
 
-                      : speakingRef.current
+                      : isPdfAnalyzing
 
-                        ? "Speaking..."
+                        ? "Analyzing PDF..."
 
-                        : activePdf
-
-                          ? `PDF active: ${activePdf.name}`
-
-                          : "How can I help you?"}
+                        : "How can I help you?"}
 
               </p>
 
 
-              {/* PDF SESSION */}
+              {/* =================================================
+                  HISTORY IMAGE
+              ================================================= */}
 
-              {activePdf && (
+              {historyImage && (
+
+                <div
+                  className="
+                    mt-5
+                    w-full
+                    max-w-2xl
+                    rounded-2xl
+                    border
+                    border-cyan-400/10
+                    p-2
+                  "
+                >
+
+                  <img
+                    src={historyImage}
+                    alt="Previous"
+                    className="
+                      mx-auto
+                      max-h-[45vh]
+                      w-full
+                      rounded-xl
+                      object-contain
+                    "
+                  />
+
+                </div>
+              )}
+
+
+              {/* =================================================
+                  HISTORY PDF
+              ================================================= */}
+
+              {historyFileName && (
 
                 <div
                   className="
@@ -4653,32 +4639,16 @@ function Home() {
                     gap-3
                     rounded-2xl
                     border
-                    border-cyan-400/20
-                    bg-cyan-400/5
-                    p-3
+                    border-cyan-400/10
+                    bg-cyan-400/3
+                    p-4
                   "
                 >
 
-                  <div
-                    className="
-                      flex
-                      h-11
-                      w-11
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-xl
-                      bg-cyan-400/10
-                      text-cyan-300
-                    "
-                  >
-
-                    <FiFileText
-                      size={21}
-                    />
-
-                  </div>
-
+                  <FiFileText
+                    size={25}
+                    className="text-cyan-400"
+                  />
 
                   <div
                     className="
@@ -4689,101 +4659,32 @@ function Home() {
 
                     <p
                       className="
-                        truncate
-                        text-sm
-                        font-medium
-                        text-white
+                        text-xs
+                        text-gray-500
                       "
                     >
-                      {
-                        activePdf.name
-                      }
+                      Previous PDF
                     </p>
-
 
                     <p
                       className="
-                        text-xs
-                        text-cyan-300/70
+                        truncate
+                        text-sm
+                        text-gray-300
                       "
                     >
-                      PDF analysis active
+                      {historyFileName}
                     </p>
 
                   </div>
 
-
-                  <button
-                    type="button"
-
-                    onClick={() =>
-                      setActivePdf(
-                        null
-                      )
-                    }
-
-                    className="
-                      flex
-                      h-8
-                      w-8
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-lg
-                      text-gray-500
-                      hover:bg-white/5
-                      hover:text-red-400
-                    "
-                  >
-
-                    <FiX
-                      size={17}
-                    />
-
-                  </button>
-
                 </div>
               )}
 
 
-              {/* OLD IMAGE */}
-
-              {historyImage && (
-
-                <div
-                  className="
-                    mt-5
-                    w-full
-                    max-w-2xl
-                    overflow-hidden
-                    rounded-2xl
-                    border
-                    border-cyan-400/10
-                    bg-black/20
-                    p-2
-                  "
-                >
-
-                  <img
-                    src={
-                      historyImage
-                    }
-
-                    alt="Previous image"
-
-                    className="
-                      max-h-105
-                      w-full
-                      rounded-xl
-                      object-contain
-                    "
-                  />
-
-                </div>
-              )}
-
-
-              {/* USER QUESTION */}
+              {/* =================================================
+                  USER QUESTION
+              ================================================= */}
 
               {userText && (
 
@@ -4791,7 +4692,7 @@ function Home() {
                   className="
                     mt-5
                     w-full
-                    max-w-3xl
+                    max-w-2xl
                     wrap-break-word
                     rounded-2xl
                     border
@@ -4799,59 +4700,52 @@ function Home() {
                     bg-cyan-400/5
                     px-4
                     py-3
-                    text-left
                     text-sm
                     leading-relaxed
                     text-gray-300
-                    sm:px-5
                   "
                 >
-                  {
-                    userText
-                  }
+                  {userText}
                 </div>
               )}
 
 
-              {/* ANSWER */}
+              {/* =================================================
+                  AI ANSWER
+
+                  mb-6 = 24px
+                  pb-8 on parent = additional bottom space
+
+                  The important part is that this is inside
+                  the scrollable chat region.
+              ================================================= */}
 
               {showAIText &&
                 aiText && (
 
                   <div
-                    ref={
-                      answerRef
-                    }
-
                     className="
-                      answer-box
                       mt-4
                       mb-6
                       w-full
                       max-w-3xl
-                      max-h-[55vh]
-                      overflow-y-auto
-                      overscroll-contain
                       wrap-break-word
                       rounded-2xl
                       border
                       border-white/10
                       bg-white/3
                       px-4
-                      py-5
-                      text-left
+                      py-4
                       text-sm
                       leading-7
                       whitespace-pre-wrap
                       text-gray-200
                       sm:px-6
-                      sm:py-6
+                      sm:py-5
                       sm:text-base
                     "
                   >
-                    {
-                      aiText
-                    }
+                    {aiText}
                   </div>
                 )}
 
@@ -4860,7 +4754,9 @@ function Home() {
           </div>
 
 
-          {/* IMAGE PREVIEW */}
+          {/* =================================================
+              IMAGE PREVIEW
+          ================================================= */}
 
           {imagePreview && (
 
@@ -4869,7 +4765,7 @@ function Home() {
                 mb-3
                 w-full
                 max-w-3xl
-                self-center
+                shrink-0
                 rounded-2xl
                 border
                 border-cyan-400/20
@@ -4881,19 +4777,14 @@ function Home() {
               <div
                 className="
                   flex
-                  min-w-0
                   items-center
                   gap-3
                 "
               >
 
                 <img
-                  src={
-                    imagePreview
-                  }
-
+                  src={imagePreview}
                   alt="Selected"
-
                   className="
                     h-14
                     w-14
@@ -4902,7 +4793,6 @@ function Home() {
                     object-cover
                   "
                 />
-
 
                 <div
                   className="
@@ -4913,25 +4803,20 @@ function Home() {
 
                   <p
                     className="
-                      truncate
                       text-sm
-                      font-medium
+                      text-white
                     "
                   >
                     Image selected
                   </p>
 
-
                   <p
                     className="
-                      mt-1
-                      hidden
                       text-xs
                       text-gray-500
-                      sm:block
                     "
                   >
-                    Ask your question and press Send.
+                    Ask your question below.
                   </p>
 
                 </div>
@@ -4939,16 +4824,13 @@ function Home() {
 
                 <button
                   type="button"
-
                   onClick={
                     removeImage
                   }
-
                   className="
                     flex
                     h-8
                     w-8
-                    shrink-0
                     items-center
                     justify-center
                     rounded-lg
@@ -4969,16 +4851,18 @@ function Home() {
           )}
 
 
-          {/* PDF PREVIEW */}
+          {/* =================================================
+              PDF PREVIEW
+          ================================================= */}
 
-          {pdfPreview && (
+          {pdfPreviewName && (
 
             <div
               className="
                 mb-3
                 w-full
                 max-w-3xl
-                self-center
+                shrink-0
                 rounded-2xl
                 border
                 border-cyan-400/20
@@ -4990,7 +4874,6 @@ function Home() {
               <div
                 className="
                   flex
-                  min-w-0
                   items-center
                   gap-3
                 "
@@ -5006,12 +4889,12 @@ function Home() {
                     justify-center
                     rounded-xl
                     bg-red-400/10
-                    text-red-300
                   "
                 >
 
                   <FiFileText
-                    size={24}
+                    size={25}
+                    className="text-red-400"
                   />
 
                 </div>
@@ -5026,25 +4909,21 @@ function Home() {
 
                   <p
                     className="
-                      truncate
-                      text-sm
-                      font-medium
-                    "
-                  >
-                    {
-                      pdfName
-                    }
-                  </p>
-
-
-                  <p
-                    className="
-                      mt-1
                       text-xs
                       text-gray-500
                     "
                   >
-                    Ask a question about this PDF.
+                    PDF selected
+                  </p>
+
+                  <p
+                    className="
+                      truncate
+                      text-sm
+                      text-white
+                    "
+                  >
+                    {pdfPreviewName}
                   </p>
 
                 </div>
@@ -5052,16 +4931,13 @@ function Home() {
 
                 <button
                   type="button"
-
                   onClick={
                     removePdf
                   }
-
                   className="
                     flex
                     h-8
                     w-8
-                    shrink-0
                     items-center
                     justify-center
                     rounded-lg
@@ -5082,13 +4958,17 @@ function Home() {
           )}
 
 
-          {/* INPUT */}
+          {/* =================================================
+              FIXED INPUT AREA
+
+              shrink-0 = NEVER GETS PUSHED DOWN BY ANSWER
+          ================================================= */}
 
           <div
             className="
               w-full
               max-w-3xl
-              self-center
+              shrink-0
             "
           >
 
@@ -5096,7 +4976,6 @@ function Home() {
               onSubmit={
                 handleSend
               }
-
               className="
                 flex
                 min-w-0
@@ -5113,15 +4992,16 @@ function Home() {
               "
             >
 
-              {/* IMAGE */}
+
+              {/* =================================================
+                  IMAGE
+              ================================================= */}
 
               <button
                 type="button"
-
                 onClick={() =>
                   imageInputRef.current?.click()
                 }
-
                 className="
                   flex
                   h-10
@@ -5134,7 +5014,6 @@ function Home() {
                   hover:bg-white/5
                   hover:text-cyan-300
                 "
-
                 title="Analyze image"
               >
 
@@ -5149,28 +5028,24 @@ function Home() {
                 ref={
                   imageInputRef
                 }
-
                 type="file"
-
                 accept="image/*"
-
                 onChange={
                   handleImageSelect
                 }
-
                 className="hidden"
               />
 
 
-              {/* PDF */}
+              {/* =================================================
+                  PDF
+              ================================================= */}
 
               <button
                 type="button"
-
                 onClick={() =>
                   pdfInputRef.current?.click()
                 }
-
                 className="
                   flex
                   h-10
@@ -5183,7 +5058,6 @@ function Home() {
                   hover:bg-white/5
                   hover:text-cyan-300
                 "
-
                 title="Upload PDF"
               >
 
@@ -5198,53 +5072,43 @@ function Home() {
                 ref={
                   pdfInputRef
                 }
-
                 type="file"
-
                 accept="application/pdf,.pdf"
-
                 onChange={
                   handlePdfSelect
                 }
-
                 className="hidden"
               />
 
 
-              {/* TEXT */}
+              {/* =================================================
+                  QUESTION
+              ================================================= */}
 
               <input
                 value={
                   typedText
                 }
-
                 onChange={e =>
                   setTypedText(
                     e.target.value
                   )
                 }
-
-                onPaste={
-                  handlePaste
-                }
-
                 placeholder={
-
-                  selectedImage
+                  imagePreview
 
                     ? "Ask about the image..."
 
-                    : selectedPdf
+                    : pdfPreviewName
 
                       ? "Ask about the PDF..."
 
-                      : activePdf
+                      : isListening
 
-                        ? "Ask another question about the PDF..."
+                        ? "Listening..."
 
                         : "Ask me anything..."
                 }
-
                 className="
                   min-w-0
                   flex-1
@@ -5259,17 +5123,15 @@ function Home() {
               />
 
 
-              {/* MIC */}
+              {/* =================================================
+                  ONE MIC / STOP BUTTON
+              ================================================= */}
 
               <button
                 type="button"
-
                 onClick={
-                  isListening
-                    ? stopListening
-                    : startListening
+                  handleMicClick
                 }
-
                 className={`
                   flex
                   h-10
@@ -5282,14 +5144,38 @@ function Home() {
                   sm:h-11
                   sm:w-11
                   ${
-                    isListening
-                      ? "bg-red-400/10 text-red-400"
-                      : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
+                    isSpeaking
+
+                      ? "bg-red-400/15 text-red-400 hover:bg-red-400/25"
+
+                      : isListening
+
+                        ? "bg-red-400/10 text-red-400 hover:bg-red-400/20"
+
+                        : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
                   }
                 `}
+                title={
+                  isSpeaking
+
+                    ? "Stop speaking"
+
+                    : isListening
+
+                      ? "Stop microphone"
+
+                      : "Start microphone"
+                }
               >
 
-                {isListening ? (
+                {isSpeaking ? (
+
+                  <FiSquare
+                    size={17}
+                    fill="currentColor"
+                  />
+
+                ) : isListening ? (
 
                   <FiMicOff
                     size={19}
@@ -5300,34 +5186,29 @@ function Home() {
                   <FiMic
                     size={19}
                   />
-
                 )}
 
               </button>
 
 
-              {/* SEND */}
+              {/* =================================================
+                  SEND
+              ================================================= */}
 
               <button
                 type="submit"
-
                 disabled={
+                  selectedImage
 
-                  isImageAnalyzing ||
+                    ? isImageAnalyzing
 
-                  isPdfAnalyzing ||
+                    : selectedPdf
 
-                  isSending ||
+                      ? isPdfAnalyzing
 
-                  (
-                    !selectedImage &&
-                    !selectedPdf &&
-                    !activePdf &&
-                    !typedText.trim()
-                  )
-
+                      : isSending ||
+                        !typedText.trim()
                 }
-
                 className="
                   flex
                   h-10
@@ -5345,6 +5226,7 @@ function Home() {
                   sm:h-11
                   sm:w-11
                 "
+                title="Send"
               >
 
                 <FiSend
@@ -5362,7 +5244,6 @@ function Home() {
                 text-center
                 text-[10px]
                 text-gray-700
-                sm:mt-3
                 sm:text-[11px]
               "
             >
@@ -5374,53 +5255,6 @@ function Home() {
         </section>
 
       </main>
-
-
-      {/* =================================================
-          CUSTOM SCROLLBAR
-          ================================================= */}
-
-      <style>
-        {`
-          .answer-scroll,
-          .answer-box,
-          .history-scroll {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(103, 232, 249, 0.25) transparent;
-          }
-
-          .answer-scroll::-webkit-scrollbar,
-          .answer-box::-webkit-scrollbar,
-          .history-scroll::-webkit-scrollbar {
-            width: 5px;
-          }
-
-          .answer-scroll::-webkit-scrollbar-track,
-          .answer-box::-webkit-scrollbar-track,
-          .history-scroll::-webkit-scrollbar-track {
-            background: transparent;
-          }
-
-          .answer-scroll::-webkit-scrollbar-thumb,
-          .answer-box::-webkit-scrollbar-thumb,
-          .history-scroll::-webkit-scrollbar-thumb {
-            background: rgba(103, 232, 249, 0.22);
-            border-radius: 999px;
-          }
-
-          .answer-scroll::-webkit-scrollbar-thumb:hover,
-          .answer-box::-webkit-scrollbar-thumb:hover,
-          .history-scroll::-webkit-scrollbar-thumb:hover {
-            background: rgba(103, 232, 249, 0.45);
-          }
-
-          @media (max-width: 640px) {
-            .answer-box {
-              max-height: 48vh;
-            }
-          }
-        `}
-      </style>
 
     </div>
   );
