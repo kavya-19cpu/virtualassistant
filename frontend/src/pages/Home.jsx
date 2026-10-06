@@ -1,5264 +1,2914 @@
 import React, {
-  useContext,
-  useEffect,
-  useRef,
-  useState
+    useContext,
+    useEffect,
+    useRef,
+    useState
 } from "react";
 
-import {
-  userDataContext
-} from "../context/UserContext";
 
-import {
-  useNavigate
-} from "react-router-dom";
-
+import { userDataContext } from "../context/UserContext";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
+
+
+import userImg from "../assets/user.gif";
 import aiImg from "../assets/ai.gif";
 
-import {
-  IoMdMenu,
-  IoMdClose
-} from "react-icons/io";
 
 import {
-  FiMic,
-  FiMicOff,
-  FiImage,
-  FiSend,
-  FiTrash2,
-  FiSearch,
-  FiX,
-  FiClock,
-  FiSettings,
-  FiLogOut,
-  FiLock,
-  FiEdit3,
-  FiFileText,
-  FiSquare
-} from "react-icons/fi";
+    IoMdMenu,
+    IoMdClose
+} from "react-icons/io";
+
 
 
 function Home() {
 
-  const {
-    userData,
-    serverUrl,
-    setUserData,
-    getGeminiResponse
-  } = useContext(userDataContext);
 
-  const navigate = useNavigate();
+    const {
+        userData,
+        serverUrl,
+        setUserData,
+        getGeminiResponse
+    } = useContext(userDataContext);
 
 
-  // =====================================================
-  // STATES
-  // =====================================================
+    const navigate = useNavigate();
 
-  const [isListening, setIsListening] =
-    useState(false);
 
-  const [isAIActive, setIsAIActive] =
-    useState(false);
 
-  const [isSpeaking, setIsSpeaking] =
-    useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const [isAIActive, setIsAIActive] = useState(false);
 
-  const [userText, setUserText] =
-    useState("");
 
-  const [aiText, setAiText] =
-    useState("");
+    const [userText, setUserText] = useState("");
+    const [aiText, setAiText] = useState("");
 
-  const [showAIText, setShowAIText] =
-    useState(false);
 
-  const [showHistory, setShowHistory] =
-    useState(false);
+    const [showAIText, setShowAIText] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
 
-  const [showProfileMenu, setShowProfileMenu] =
-    useState(false);
 
-  const [historyItems, setHistoryItems] =
-    useState([]);
+    const [historyItems, setHistoryItems] = useState([]);
 
-  const [typedText, setTypedText] =
-    useState("");
 
-  const [isSending, setIsSending] =
-    useState(false);
+    const [typedText, setTypedText] = useState("");
+    const [isSending, setIsSending] = useState(false);
 
-  const [historySearch, setHistorySearch] =
-    useState("");
 
 
-  // =====================================================
-  // IMAGE
-  // =====================================================
+    const recognitionRef = useRef(null);
 
-  const [selectedImage, setSelectedImage] =
-    useState(null);
 
-  const [imagePreview, setImagePreview] =
-    useState("");
+    const listeningRef = useRef(false);
+    const speakingRef = useRef(false);
+    const processingRef = useRef(false);
 
-  const [isImageAnalyzing, setIsImageAnalyzing] =
-    useState(false);
 
-  const [historyImage, setHistoryImage] =
-    useState("");
+    const restartTimeoutRef = useRef(null);
 
 
-  // =====================================================
-  // PDF
-  // =====================================================
 
-  const [selectedPdf, setSelectedPdf] =
-    useState(null);
+    // =====================================================
+    // LOAD HISTORY FROM USER ACCOUNT
+    // =====================================================
 
-  const [pdfPreviewName, setPdfPreviewName] =
-    useState("");
 
-  const [isPdfAnalyzing, setIsPdfAnalyzing] =
-    useState(false);
+    useEffect(() => {
 
-  const [historyFileName, setHistoryFileName] =
-    useState("");
-
-
-  // =====================================================
-  // REFS
-  // =====================================================
-
-  const imageInputRef =
-    useRef(null);
-
-  const pdfInputRef =
-    useRef(null);
-
-  const recognitionRef =
-    useRef(null);
-
-  const listeningRef =
-    useRef(false);
-
-  const speakingRef =
-    useRef(false);
-
-  const processingRef =
-    useRef(false);
-
-  const restartTimeoutRef =
-    useRef(null);
-
-  const speechTimeoutRef =
-    useRef(null);
-
-  const assistantNameRef =
-    useRef("Assistant");
-
-  const getGeminiResponseRef =
-    useRef(getGeminiResponse);
-
-  // =====================================================
-  // IMPORTANT:
-  // Every speech/request gets a generation number.
-  //
-  // When Stop is pressed, generation changes.
-  // Old speech chunks/timers can then NEVER continue.
-  // =====================================================
-
-  const speechGenerationRef =
-    useRef(0);
-
-
-  // =====================================================
-  // LATEST GEMINI FUNCTION
-  // =====================================================
-
-  useEffect(() => {
-
-    getGeminiResponseRef.current =
-      getGeminiResponse;
-
-  }, [getGeminiResponse]);
-
-
-  // =====================================================
-  // ASSISTANT NAME
-  // =====================================================
-
-  useEffect(() => {
-
-    assistantNameRef.current =
-      userData?.assistantName ||
-      "Assistant";
-
-  }, [userData?.assistantName]);
-
-
-  // =====================================================
-  // HISTORY
-  // =====================================================
-
-  useEffect(() => {
-
-    setHistoryItems(
-      Array.isArray(userData?.history)
-        ? userData.history
-        : []
-    );
-
-  }, [userData?.history]);
-
-
-  // =====================================================
-  // CLEAN AI RESPONSE
-  // =====================================================
-
-  const cleanAIResponse = (text) => {
-
-    if (!text) {
-      return "";
-    }
-
-    let cleaned =
-      String(text);
-
-    cleaned =
-      cleaned.replace(
-        /```(?:json|javascript|js|text|markdown|md)?/gi,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /```/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\*\*/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /__/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /^\s*#{1,6}\s*/gm,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /^\s*>\s?/gm,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /^\s*[-*+]\s+/gm,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /`/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\$\$/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\\\[/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\\\]/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\\\(/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\\\)/g,
-        ""
-      );
-
-    let previous = "";
-
-    while (previous !== cleaned) {
-
-      previous = cleaned;
-
-      cleaned =
-        cleaned.replace(
-          /\\(?:frac|dfrac|tfrac)\{([^{}]+)\}\{([^{}]+)\}/g,
-          "$1/$2"
-        );
-    }
-
-    cleaned =
-      cleaned
-        .replace(
-          /\\pi\b/g,
-          "π"
-        )
-        .replace(
-          /\\sqrt\{([^{}]+)\}/g,
-          "√($1)"
-        )
-        .replace(
-          /\\sin\b/g,
-          "sin"
-        )
-        .replace(
-          /\\cos\b/g,
-          "cos"
-        )
-        .replace(
-          /\\tan\b/g,
-          "tan"
-        )
-        .replace(
-          /\\cot\b/g,
-          "cot"
-        )
-        .replace(
-          /\\sec\b/g,
-          "sec"
-        )
-        .replace(
-          /\\csc\b/g,
-          "csc"
-        )
-        .replace(
-          /\\log\b/g,
-          "log"
-        )
-        .replace(
-          /\\ln\b/g,
-          "ln"
-        )
-        .replace(
-          /\\lim\b/g,
-          "lim"
-        )
-        .replace(
-          /\\infty\b/g,
-          "∞"
-        )
-        .replace(
-          /\\times\b/g,
-          "×"
-        )
-        .replace(
-          /\\cdot\b/g,
-          "·"
-        )
-        .replace(
-          /\\leq\b/g,
-          "≤"
-        )
-        .replace(
-          /\\geq\b/g,
-          "≥"
-        )
-        .replace(
-          /\\neq\b/g,
-          "≠"
-        )
-        .replace(
-          /\\pm\b/g,
-          "±"
-        );
-
-    cleaned =
-      cleaned.replace(
-        /\\left\b/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\\right\b/g,
-        ""
-      );
-
-    cleaned =
-      cleaned
-        .replace(
-          /\\text\{([^{}]*)\}/g,
-          "$1"
-        )
-        .replace(
-          /\\mathrm\{([^{}]*)\}/g,
-          "$1"
-        )
-        .replace(
-          /\\mathbf\{([^{}]*)\}/g,
-          "$1"
-        )
-        .replace(
-          /\\displaystyle/g,
-          ""
-        );
-
-    cleaned =
-      cleaned
-        .replace(
-          /\^\{2\}/g,
-          "²"
-        )
-        .replace(
-          /\^\{3\}/g,
-          "³"
-        )
-        .replace(
-          /\^2/g,
-          "²"
-        )
-        .replace(
-          /\^3/g,
-          "³"
-        );
-
-    cleaned =
-      cleaned.replace(
-        /[{}]/g,
-        ""
-      );
-
-    cleaned =
-      cleaned.replace(
-        /[ \t]+/g,
-        " "
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\n[ \t]+/g,
-        "\n"
-      );
-
-    cleaned =
-      cleaned.replace(
-        /\n{3,}/g,
-        "\n\n"
-      );
-
-    return cleaned.trim();
-  };
-
-
-  // =====================================================
-  // IMAGE TO DATA URL
-  // =====================================================
-
-  const imageFileToDataUrl =
-    (file) => {
-
-      return new Promise(
-        (resolve, reject) => {
-
-          if (!file) {
-
-            reject(
-              new Error(
-                "No image file provided"
-              )
-            );
-
-            return;
-          }
-
-          const reader =
-            new FileReader();
-
-          reader.onload =
-            () => {
-
-              const img =
-                new Image();
-
-              img.onload =
-                () => {
-
-                  const maxSize =
-                    1000;
-
-                  let width =
-                    img.width;
-
-                  let height =
-                    img.height;
-
-                  if (
-                    width > maxSize ||
-                    height > maxSize
-                  ) {
-
-                    if (
-                      width > height
-                    ) {
-
-                      height =
-                        Math.round(
-                          (height *
-                            maxSize) /
-                          width
-                        );
-
-                      width =
-                        maxSize;
-
-                    } else {
-
-                      width =
-                        Math.round(
-                          (width *
-                            maxSize) /
-                          height
-                        );
-
-                      height =
-                        maxSize;
-                    }
-                  }
-
-                  const canvas =
-                    document.createElement(
-                      "canvas"
-                    );
-
-                  canvas.width =
-                    width;
-
-                  canvas.height =
-                    height;
-
-                  const ctx =
-                    canvas.getContext(
-                      "2d"
-                    );
-
-                  if (!ctx) {
-
-                    reject(
-                      new Error(
-                        "Could not create canvas"
-                      )
-                    );
-
-                    return;
-                  }
-
-                  ctx.drawImage(
-                    img,
-                    0,
-                    0,
-                    width,
-                    height
-                  );
-
-                  resolve(
-                    canvas.toDataURL(
-                      "image/jpeg",
-                      0.72
-                    )
-                  );
-                };
-
-              img.onerror =
-                () => {
-
-                  reject(
-                    new Error(
-                      "Could not load image"
-                    )
-                  );
-                };
-
-              img.src =
-                reader.result;
-            };
-
-          reader.onerror =
-            () => {
-
-              reject(
-                new Error(
-                  "Could not read image"
-                )
-              );
-            };
-
-          reader.readAsDataURL(
-            file
-          );
-        }
-      );
-    };
-
-
-  // =====================================================
-  // SAVE HISTORY
-  // =====================================================
-
-  const addHistory =
-    async (
-      command,
-      answer,
-      type = "text",
-      image = "",
-      fileName = ""
-    ) => {
-
-      const temporaryItem = {
-
-        _id:
-          `temp-${Date.now()}`,
-
-        command,
-
-        answer,
-
-        type,
-
-        image,
-
-        fileName,
-
-        createdAt:
-          new Date().toISOString()
-      };
-
-      setHistoryItems(
-        previous => [
-          temporaryItem,
-          ...previous
-        ]
-      );
-
-      try {
-
-        const response =
-          await axios.post(
-            `${serverUrl}/api/user/savehistory`,
-            {
-              command,
-              answer,
-              type,
-              image,
-              fileName
-            },
-            {
-              withCredentials: true
-            }
-          );
-
-        if (
-          response.data?.history
-        ) {
-
-          setHistoryItems(
-            response.data.history
-          );
-
-          setUserData(
-            previous => ({
-              ...previous,
-              history:
-                response.data.history
-            })
-          );
-        }
-
-      } catch (error) {
-
-        console.error(
-          "HISTORY SAVE ERROR:",
-          error.response?.data ||
-          error.message
-        );
-      }
-    };
-
-
-  // =====================================================
-  // DELETE HISTORY
-  // =====================================================
-
-  const deleteHistory =
-    async (historyId) => {
-
-      if (!historyId) {
-        return;
-      }
-
-      try {
-
-        const response =
-          await axios.delete(
-            `${serverUrl}/api/user/history/${historyId}`,
-            {
-              withCredentials: true
-            }
-          );
-
-        const updatedHistory =
-          response.data?.history ||
-          [];
 
         setHistoryItems(
-          updatedHistory
+            Array.isArray(userData?.history)
+                ? userData.history
+                : []
         );
 
-        setUserData(
-          previous => ({
-            ...previous,
-            history:
-              updatedHistory
-          })
-        );
 
-      } catch (error) {
+    }, [userData?.history]);
 
-        console.error(
-          "DELETE HISTORY ERROR:",
-          error.response?.data ||
-          error.message
-        );
-      }
-    };
 
 
-  // =====================================================
-  // CLEAR HISTORY
-  // =====================================================
+    // =====================================================
+    // SAVE HISTORY PERMANENTLY
+    // =====================================================
 
-  const clearHistory =
-    async () => {
 
-      if (
-        historyItems.length === 0
-      ) {
-        return;
-      }
+    const addHistory = async (command, answer) => {
 
-      const confirmed =
-        window.confirm(
-          "Clear all history?"
-        );
 
-      if (!confirmed) {
-        return;
-      }
-
-      try {
-
-        await axios.delete(
-          `${serverUrl}/api/user/history`,
-          {
-            withCredentials: true
-          }
-        );
-
-        setHistoryItems([]);
-
-        setHistoryImage("");
-
-        setHistoryFileName("");
-
-        setUserText("");
-
-        setAiText("");
-
-        setShowAIText(false);
-
-        setUserData(
-          previous => ({
-            ...previous,
-            history: []
-          })
-        );
-
-      } catch (error) {
-
-        console.error(
-          "CLEAR HISTORY ERROR:",
-          error.response?.data ||
-          error.message
-        );
-      }
-    };
-
-
-  // =====================================================
-  // STOP SPEAKING
-  //
-  // THIS COMPLETELY INVALIDATES THE OLD REQUEST.
-  // =====================================================
-
-  const stopSpeaking =
-    () => {
-
-      // -----------------------------------------------
-      // INVALIDATE OLD SPEECH
-      // -----------------------------------------------
-
-      speechGenerationRef.current += 1;
-
-      // -----------------------------------------------
-      // CANCEL ALL OLD TIMERS
-      // -----------------------------------------------
-
-      clearTimeout(
-        speechTimeoutRef.current
-      );
-
-      clearTimeout(
-        restartTimeoutRef.current
-      );
-
-      speechTimeoutRef.current =
-        null;
-
-      restartTimeoutRef.current =
-        null;
-
-      // -----------------------------------------------
-      // CANCEL BROWSER SPEECH
-      // -----------------------------------------------
-
-      try {
-
-        window.speechSynthesis.cancel();
-
-      } catch {}
-
-      try {
-
-        window.speechSynthesis.pause();
-
-      } catch {}
-
-      // -----------------------------------------------
-      // KILL OLD SPEECH STATE
-      // -----------------------------------------------
-
-      speakingRef.current =
-        false;
-
-      setIsSpeaking(false);
-
-      setIsAIActive(false);
-
-      // -----------------------------------------------
-      // ALSO KILL OLD LISTENING SESSION
-      // -----------------------------------------------
-
-      listeningRef.current =
-        false;
-
-      setIsListening(false);
-
-      if (
-        recognitionRef.current
-      ) {
-
-        try {
-
-          recognitionRef.current.abort();
-
-        } catch {}
-
-        try {
-
-          recognitionRef.current.stop();
-
-        } catch {}
-      }
-
-      console.log(
-        "OLD SPEECH COMPLETELY STOPPED"
-      );
-    };
-
-
-  // =====================================================
-  // SPEAK
-  //
-  // Every speech gets a generation number.
-  // Old chunks can never continue.
-  // =====================================================
-
-  const speak =
-    (text) => {
-
-      if (!text) {
-        return;
-      }
-
-      const speechText =
-        String(text).trim();
-
-      if (!speechText) {
-        return;
-      }
-
-      // -----------------------------------------------
-      // CREATE NEW SPEECH GENERATION
-      // -----------------------------------------------
-
-      const generation =
-        speechGenerationRef.current + 1;
-
-      speechGenerationRef.current =
-        generation;
-
-      clearTimeout(
-        speechTimeoutRef.current
-      );
-
-      try {
-
-        window.speechSynthesis.cancel();
-
-      } catch {}
-
-      // -----------------------------------------------
-      // SPLIT ANSWER INTO SMALL CHUNKS
-      // -----------------------------------------------
-
-      const sentences =
-        speechText.match(
-          /[^.!?]+[.!?]+|[^.!?]+$/g
-        ) ||
-        [speechText];
-
-      const chunks = [];
-
-      let currentChunk =
-        "";
-
-      sentences.forEach(
-        sentence => {
-
-          const cleanSentence =
-            sentence.trim();
-
-          if (!cleanSentence) {
-            return;
-          }
-
-          if (
-            cleanSentence.length >
-            160
-          ) {
-
-            const words =
-              cleanSentence.split(
-                /\s+/
-              );
-
-            let wordChunk =
-              "";
-
-            words.forEach(
-              word => {
-
-                const combined =
-                  `${wordChunk} ${word}`
-                    .trim();
-
-                if (
-                  combined.length >
-                  160
-                ) {
-
-                  if (
-                    wordChunk.trim()
-                  ) {
-
-                    chunks.push(
-                      wordChunk.trim()
-                    );
-                  }
-
-                  wordChunk =
-                    word;
-
-                } else {
-
-                  wordChunk =
-                    combined;
-                }
-              }
-            );
-
-            if (
-              wordChunk.trim()
-            ) {
-
-              chunks.push(
-                wordChunk.trim()
-              );
-            }
-
-            return;
-          }
-
-          const combined =
-            `${currentChunk} ${cleanSentence}`
-              .trim();
-
-          if (
-            combined.length >
-            160
-          ) {
-
-            if (
-              currentChunk.trim()
-            ) {
-
-              chunks.push(
-                currentChunk.trim()
-              );
-            }
-
-            currentChunk =
-              cleanSentence;
-
-          } else {
-
-            currentChunk =
-              combined;
-          }
-        }
-      );
-
-
-      if (
-        currentChunk.trim()
-      ) {
-
-        chunks.push(
-          currentChunk.trim()
-        );
-      }
-
-
-      if (
-        chunks.length === 0
-      ) {
-
-        chunks.push(
-          speechText
-        );
-      }
-
-
-      let currentIndex =
-        0;
-
-      speakingRef.current =
-        true;
-
-      setIsSpeaking(true);
-
-      setIsAIActive(true);
-
-
-      // -----------------------------------------------
-      // STOP MICROPHONE WHILE SPEAKING
-      // -----------------------------------------------
-
-      if (
-        recognitionRef.current
-      ) {
-
-        try {
-
-          recognitionRef.current.abort();
-
-        } catch {}
-
-        try {
-
-          recognitionRef.current.stop();
-
-        } catch {}
-      }
-
-
-      // -----------------------------------------------
-      // SPEAK NEXT CHUNK
-      // -----------------------------------------------
-
-      const speakNextChunk =
-        () => {
-
-          // ===========================================
-          // OLD GENERATION?
-          // STOP IMMEDIATELY.
-          // ===========================================
-
-          if (
-            generation !==
-            speechGenerationRef.current
-          ) {
-
-            return;
-          }
-
-
-          // ===========================================
-          // SPEECH WAS STOPPED?
-          // ===========================================
-
-          if (
-            !speakingRef.current
-          ) {
-
-            return;
-          }
-
-
-          // ===========================================
-          // FINISHED
-          // ===========================================
-
-          if (
-            currentIndex >=
-            chunks.length
-          ) {
-
-            if (
-              generation !==
-              speechGenerationRef.current
-            ) {
-
-              return;
-            }
-
-            speakingRef.current =
-              false;
-
-            setIsSpeaking(false);
-
-            setIsAIActive(false);
-
-            return;
-          }
-
-
-          const utterance =
-            new SpeechSynthesisUtterance(
-              chunks[currentIndex]
-            );
-
-
-          utterance.rate =
-            1;
-
-          utterance.pitch =
-            1;
-
-          utterance.volume =
-            1;
-
-          utterance.lang =
-            "en-US";
-
-
-          // ===========================================
-          // SPEECH START
-          // ===========================================
-
-          utterance.onstart =
-            () => {
-
-              if (
-                generation !==
-                speechGenerationRef.current ||
-                !speakingRef.current
-              ) {
-
-                try {
-
-                  window.speechSynthesis.cancel();
-
-                } catch {}
-
-                return;
-              }
-
-              setIsSpeaking(
-                true
-              );
-
-              setIsAIActive(
-                true
-              );
-            };
-
-
-          // ===========================================
-          // SPEECH END
-          // ===========================================
-
-          utterance.onend =
-            () => {
-
-              // OLD REQUEST?
-              if (
-                generation !==
-                speechGenerationRef.current
-              ) {
-
-                return;
-              }
-
-              // STOPPED?
-              if (
-                !speakingRef.current
-              ) {
-
-                return;
-              }
-
-              currentIndex++;
-
-              speechTimeoutRef.current =
-                setTimeout(
-                  () => {
-
-                    // CHECK AGAIN
-                    if (
-                      generation !==
-                      speechGenerationRef.current
-                    ) {
-
-                      return;
-                    }
-
-                    if (
-                      !speakingRef.current
-                    ) {
-
-                      return;
-                    }
-
-                    speakNextChunk();
-
-                  },
-                  80
-                );
-            };
-
-
-          // ===========================================
-          // SPEECH ERROR
-          // ===========================================
-
-          utterance.onerror =
-            event => {
-
-              console.log(
-                "Speech error:",
-                event.error
-              );
-
-              if (
-                generation !==
-                speechGenerationRef.current
-              ) {
-
-                return;
-              }
-
-              if (
-                !speakingRef.current
-              ) {
-
-                return;
-              }
-
-              currentIndex++;
-
-              speechTimeoutRef.current =
-                setTimeout(
-                  () => {
-
-                    if (
-                      generation !==
-                      speechGenerationRef.current
-                    ) {
-
-                      return;
-                    }
-
-                    if (
-                      !speakingRef.current
-                    ) {
-
-                      return;
-                    }
-
-                    speakNextChunk();
-
-                  },
-                  80
-                );
-            };
-
-
-          // ===========================================
-          // FINAL SAFETY CHECK
-          // ===========================================
-
-          if (
-            generation !==
-            speechGenerationRef.current ||
-            !speakingRef.current
-          ) {
-
-            return;
-          }
-
-
-          try {
-
-            window.speechSynthesis.resume();
-
-          } catch {}
-
-
-          try {
-
-            window.speechSynthesis.speak(
-              utterance
-            );
-
-          } catch (error) {
-
-            console.error(
-              "Speech start error:",
-              error
-            );
-          }
+        const newHistoryItem = {
+            command,
+            answer
         };
 
 
-      speakNextChunk();
-    };
 
+        // Immediately show it in the UI
+        setHistoryItems(prev => [
+            newHistoryItem,
+            ...prev
+        ]);
 
-  // =====================================================
-  // OPEN URL
-  // =====================================================
 
-  const openUrl =
-    (url) => {
 
-      if (!url) {
-        return;
-      }
-
-      window.open(
-        url,
-        "_blank",
-        "noopener,noreferrer"
-      );
-    };
-
-
-  // =====================================================
-  // GOOGLE SEARCH
-  // =====================================================
-
-  const googleSearch =
-    (query) => {
-
-      if (!query?.trim()) {
-        return;
-      }
-
-      openUrl(
-        `https://www.google.com/search?q=${encodeURIComponent(
-          query.trim()
-        )}`
-      );
-    };
-
-
-  // =====================================================
-  // YOUTUBE SEARCH
-  // =====================================================
-
-  const youtubeSearch =
-    (query) => {
-
-      if (!query?.trim()) {
-        return;
-      }
-
-      openUrl(
-        `https://www.youtube.com/results?search_query=${encodeURIComponent(
-          query.trim()
-        )}`
-      );
-    };
-
-
-  // =====================================================
-  // WEBSITES
-  // =====================================================
-
-  const websites = {
-
-    google:
-      "https://www.google.com",
-
-    youtube:
-      "https://www.youtube.com",
-
-    yahoo:
-      "https://www.yahoo.com",
-
-    instagram:
-      "https://www.instagram.com",
-
-    facebook:
-      "https://www.facebook.com",
-
-    github:
-      "https://github.com",
-
-    linkedin:
-      "https://www.linkedin.com",
-
-    whatsapp:
-      "https://web.whatsapp.com",
-
-    gmail:
-      "https://mail.google.com",
-
-    amazon:
-      "https://www.amazon.in",
-
-    flipkart:
-      "https://www.flipkart.com",
-
-    spotify:
-      "https://open.spotify.com",
-
-    netflix:
-      "https://www.netflix.com",
-
-    wikipedia:
-      "https://www.wikipedia.org",
-
-    reddit:
-      "https://www.reddit.com",
-
-    discord:
-      "https://discord.com",
-
-    canva:
-      "https://www.canva.com",
-
-    pinterest:
-      "https://www.pinterest.com",
-
-    twitter:
-      "https://x.com",
-
-    x:
-      "https://x.com",
-
-    telegram:
-      "https://web.telegram.org"
-  };
-
-
-  // =====================================================
-  // WEBSITE SEARCH URL
-  // =====================================================
-
-  const getWebsiteSearchUrl =
-    (
-      site,
-      query
-    ) => {
-
-      const encodedQuery =
-        encodeURIComponent(
-          query.trim()
-        );
-
-      switch (site) {
-
-        case "google":
-          return `https://www.google.com/search?q=${encodedQuery}`;
-
-        case "youtube":
-          return `https://www.youtube.com/results?search_query=${encodedQuery}`;
-
-        case "yahoo":
-          return `https://search.yahoo.com/search?p=${encodedQuery}`;
-
-        case "amazon":
-          return `https://www.amazon.in/s?k=${encodedQuery}`;
-
-        case "flipkart":
-          return `https://www.flipkart.com/search?q=${encodedQuery}`;
-
-        case "wikipedia":
-          return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
-
-        case "reddit":
-          return `https://www.reddit.com/search/?q=${encodedQuery}`;
-
-        case "github":
-          return `https://github.com/search?q=${encodedQuery}`;
-
-        case "linkedin":
-          return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
-
-        case "spotify":
-          return `https://open.spotify.com/search/${encodedQuery}`;
-
-        case "pinterest":
-          return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
-
-        case "facebook":
-          return `https://www.facebook.com/search/top?q=${encodedQuery}`;
-
-        case "x":
-        case "twitter":
-          return `https://x.com/search?q=${encodedQuery}`;
-
-        case "instagram":
-          return `https://www.instagram.com/explore/search/keyword/?q=${encodedQuery}`;
-
-        default:
-          return null;
-      }
-    };
-
-
-  // =====================================================
-  // SEARCH COMMAND PARSER
-  // =====================================================
-
-  const extractSearchCommand =
-    (command) => {
-
-      if (!command) {
-        return null;
-      }
-
-      const text =
-        command
-          .trim()
-          .replace(
-            /[?!.]+$/g,
-            ""
-          )
-          .replace(
-            /\s+/g,
-            " "
-          );
-
-      if (!text) {
-        return null;
-      }
-
-      const siteAliases = {
-
-        google:
-          "google",
-
-        goog:
-          "google",
-
-        youtube:
-          "youtube",
-
-        yt:
-          "youtube",
-
-        yahoo:
-          "yahoo",
-
-        instagram:
-          "instagram",
-
-        insta:
-          "instagram",
-
-        facebook:
-          "facebook",
-
-        fb:
-          "facebook",
-
-        github:
-          "github",
-
-        linkedin:
-          "linkedin",
-
-        amazon:
-          "amazon",
-
-        amzn:
-          "amazon",
-
-        flipkart:
-          "flipkart",
-
-        spotify:
-          "spotify",
-
-        wikipedia:
-          "wikipedia",
-
-        wiki:
-          "wikipedia",
-
-        reddit:
-          "reddit",
-
-        pinterest:
-          "pinterest",
-
-        twitter:
-          "twitter",
-
-        x:
-          "x",
-
-        whatsapp:
-          "whatsapp",
-
-        gmail:
-          "gmail",
-
-        netflix:
-          "netflix",
-
-        discord:
-          "discord",
-
-        canva:
-          "canva",
-
-        telegram:
-          "telegram"
-      };
-
-      const siteNames =
-        Object.keys(
-          siteAliases
-        ).join("|");
-
-
-      // search cats on google
-
-      let match =
-        text.match(
-          new RegExp(
-            `^(?:search|find|look\\s+up)\\s+(?:for\\s+)?(.+?)\\s+(?:on|in|using)\\s+(${siteNames})$`,
-            "i"
-          )
-        );
-
-      if (match) {
-
-        const query =
-          match[1].trim();
-
-        const site =
-          siteAliases[
-            match[2].toLowerCase()
-          ];
-
-        if (
-          query &&
-          site
-        ) {
-
-          return {
-            site,
-            query
-          };
-        }
-      }
-
-
-      // search google for cats
-
-      match =
-        text.match(
-          new RegExp(
-            `^(?:search|find|look\\s+up)\\s+(${siteNames})\\s+(?:for|about)\\s+(.+)$`,
-            "i"
-          )
-        );
-
-      if (match) {
-
-        const site =
-          siteAliases[
-            match[1].toLowerCase()
-          ];
-
-        const query =
-          match[2].trim();
-
-        if (
-          site &&
-          query
-        ) {
-
-          return {
-            site,
-            query
-          };
-        }
-      }
-
-
-      // search google cats
-
-      match =
-        text.match(
-          new RegExp(
-            `^(?:search|find|look\\s+up)\\s+(${siteNames})\\s+(.+)$`,
-            "i"
-          )
-        );
-
-      if (match) {
-
-        const site =
-          siteAliases[
-            match[1].toLowerCase()
-          ];
-
-        const query =
-          match[2].trim();
-
-        if (
-          site &&
-          query
-        ) {
-
-          return {
-            site,
-            query
-          };
-        }
-      }
-
-
-      // search cats
-
-      match =
-        text.match(
-          /^(?:search|find|look\s+up)\s+(?:for\s+)?(.+)$/i
-        );
-
-      if (match) {
-
-        const query =
-          match[1].trim();
-
-        const possibleSite =
-          siteAliases[
-            query.toLowerCase()
-          ];
-
-        if (
-          query &&
-          !possibleSite
-        ) {
-
-          return {
-            site: "google",
-            query
-          };
-        }
-      }
-
-      return null;
-    };
-
-
-  // =====================================================
-  // PROCESS COMMAND
-  // =====================================================
-
-  const processCommand =
-    async (
-      command,
-      type = "text",
-      shouldSpeak = false
-    ) => {
-
-      const cleanedCommand =
-        command.trim();
-
-      if (!cleanedCommand) {
-        return;
-      }
-
-      // Every NEW command invalidates any old speech.
-      speechGenerationRef.current += 1;
-
-      setHistoryImage("");
-
-      setHistoryFileName("");
-
-      setUserText(
-        cleanedCommand
-      );
-
-      setAiText("");
-
-      setShowAIText(false);
-
-      setIsAIActive(true);
-
-      setIsSending(true);
-
-      processingRef.current =
-        true;
-
-      try {
-
-        // =================================================
-        // SEARCH
-        // =================================================
-
-        const searchCommand =
-          extractSearchCommand(
-            cleanedCommand
-          );
-
-        if (searchCommand) {
-
-          const {
-            site,
-            query
-          } = searchCommand;
-
-          const siteName =
-            site === "x"
-              ? "X"
-              : site
-                  .charAt(0)
-                  .toUpperCase() +
-                site.slice(1);
-
-          const answer =
-            `Searching ${siteName} for ${query}.`;
-
-          setAiText(
-            answer
-          );
-
-          setShowAIText(
-            true
-          );
-
-          await addHistory(
-            cleanedCommand,
-            answer,
-            type
-          );
-
-          const searchUrl =
-            getWebsiteSearchUrl(
-              site,
-              query
-            );
-
-          if (searchUrl) {
-
-            openUrl(
-              searchUrl
-            );
-          }
-
-          if (
-            shouldSpeak
-          ) {
-
-            speak(
-              answer
-            );
-          }
-
-          return;
-        }
-
-
-        // =================================================
-        // GOOGLE
-        // =================================================
-
-        const googleMatch =
-          cleanedCommand.match(
-            /^(?:google)\s+(.+)$/i
-          );
-
-        if (googleMatch) {
-
-          const query =
-            googleMatch[1].trim();
-
-          const answer =
-            `Searching Google for ${query}.`;
-
-          setAiText(
-            answer
-          );
-
-          setShowAIText(
-            true
-          );
-
-          await addHistory(
-            cleanedCommand,
-            answer,
-            type
-          );
-
-          googleSearch(
-            query
-          );
-
-          if (
-            shouldSpeak
-          ) {
-
-            speak(
-              answer
-            );
-          }
-
-          return;
-        }
-
-
-        // =================================================
-        // YOUTUBE
-        // =================================================
-
-        const youtubeMatch =
-          cleanedCommand.match(
-            /^(?:youtube|yt)\s+(.+)$/i
-          );
-
-        if (youtubeMatch) {
-
-          const query =
-            youtubeMatch[1].trim();
-
-          const answer =
-            `Searching YouTube for ${query}.`;
-
-          setAiText(
-            answer
-          );
-
-          setShowAIText(
-            true
-          );
-
-          await addHistory(
-            cleanedCommand,
-            answer,
-            type
-          );
-
-          youtubeSearch(
-            query
-          );
-
-          if (
-            shouldSpeak
-          ) {
-
-            speak(
-              answer
-            );
-          }
-
-          return;
-        }
-
-
-        // =================================================
-        // OPEN WEBSITE
-        // =================================================
-
-        const directMatch =
-          cleanedCommand.match(
-            /^(?:open|launch|visit|go\s+to|take\s+me\s+to)\s+(.+)$/i
-          );
-
-        if (directMatch) {
-
-          let site =
-            directMatch[1]
-              .trim()
-              .toLowerCase()
-              .replace(
-                /\s+(website|site)$/i,
-                ""
-              );
-
-          if (
-            websites[site]
-          ) {
-
-            const displayName =
-              site === "x"
-                ? "X"
-                : site
-                    .charAt(0)
-                    .toUpperCase() +
-                  site.slice(1);
-
-            const answer =
-              `Opening ${displayName}.`;
-
-            setAiText(
-              answer
-            );
-
-            setShowAIText(
-              true
-            );
-
-            await addHistory(
-              cleanedCommand,
-              answer,
-              type
-            );
-
-            openUrl(
-              websites[site]
-            );
-
-            if (
-              shouldSpeak
-            ) {
-
-              speak(
-                answer
-              );
-            }
-
-            return;
-          }
-        }
-
-
-        // =================================================
-        // GEMINI
-        // =================================================
-
-        const result =
-          await getGeminiResponseRef.current(
-            cleanedCommand
-          );
-
-        // -----------------------------------------------
-        // IMPORTANT:
-        // If user stopped/restarted while Gemini was
-        // processing, ignore the OLD response.
-        // -----------------------------------------------
-
-        if (
-          !processingRef.current
-        ) {
-
-          return;
-        }
-
-        let parsedResult =
-          result;
-
-        if (
-          typeof result ===
-          "string"
-        ) {
-
-          const cleanResult =
-            result
-              .replace(
-                /```json/gi,
-                ""
-              )
-              .replace(
-                /```/g,
-                ""
-              )
-              .trim();
-
-          try {
-
-            parsedResult =
-              JSON.parse(
-                cleanResult
-              );
-
-          } catch {
-
-            parsedResult = {
-
-              type:
-                "general",
-
-              response:
-                cleanResult
-            };
-          }
-        }
-
-        const rawResponse =
-          parsedResult?.response ||
-          parsedResult?.answer ||
-          parsedResult?.text ||
-          "Sorry, I could not understand that.";
-
-        const response =
-          cleanAIResponse(
-            rawResponse
-          );
-
-
-        // =================================================
-        // GOOGLE ACTION
-        // =================================================
-
-        if (
-          parsedResult?.type ===
-          "google_open"
-        ) {
-
-          openUrl(
-            "https://www.google.com"
-          );
-
-        } else if (
-          parsedResult?.type ===
-          "google_search"
-        ) {
-
-          if (
-            parsedResult?.query?.trim()
-          ) {
-
-            googleSearch(
-              parsedResult.query
-            );
-          }
-        }
-
-
-        // =================================================
-        // YOUTUBE ACTION
-        // =================================================
-
-        else if (
-          parsedResult?.type ===
-          "youtube_open"
-        ) {
-
-          openUrl(
-            "https://www.youtube.com"
-          );
-
-        } else if (
-          parsedResult?.type ===
-            "youtube_search" ||
-          parsedResult?.type ===
-            "youtube_play"
-        ) {
-
-          if (
-            parsedResult?.query?.trim()
-          ) {
-
-            youtubeSearch(
-              parsedResult.query
-            );
-          }
-        }
-
-
-        // =================================================
-        // CALCULATOR
-        // =================================================
-
-        else if (
-          parsedResult?.type ===
-          "calculator_open"
-        ) {
-
-          openUrl(
-            "https://www.google.com/search?q=calculator"
-          );
-        }
-
-
-        // =================================================
-        // DISPLAY
-        // =================================================
-
-        setAiText(
-          response
-        );
-
-        setShowAIText(
-          true
-        );
-
-        await addHistory(
-          cleanedCommand,
-          response,
-          type
-        );
-
-
-        // =================================================
-        // SPEAK
-        // =================================================
-
-        if (
-          shouldSpeak
-        ) {
-
-          speak(
-            response
-          );
-        }
-
-      } catch (error) {
-
-        console.error(
-          "COMMAND ERROR:",
-          error
-        );
-
-        const errorMessage =
-          "Sorry, I could not complete that request right now.";
-
-        setAiText(
-          errorMessage
-        );
-
-        setShowAIText(
-          true
-        );
-
-        if (
-          shouldSpeak
-        ) {
-
-          speak(
-            errorMessage
-          );
-        }
-
-      } finally {
-
-        processingRef.current =
-          false;
-
-        setIsSending(
-          false
-        );
-
-        if (
-          !speakingRef.current
-        ) {
-
-          setIsAIActive(
-            false
-          );
-        }
-      }
-    };
-
-
-  // =====================================================
-  // SEND
-  // =====================================================
-
-  const handleSend =
-    async (e) => {
-
-      e?.preventDefault();
-
-      if (selectedImage) {
-
-        await analyzeImage();
-
-        return;
-      }
-
-      if (selectedPdf) {
-
-        await analyzePdf();
-
-        return;
-      }
-
-      if (
-        !typedText.trim() ||
-        isSending
-      ) {
-
-        return;
-      }
-
-      const command =
-        typedText.trim();
-
-      setTypedText("");
-
-      await processCommand(
-        command,
-        "text",
-        false
-      );
-    };
-
-
-  // =====================================================
-  // IMAGE SELECT
-  // =====================================================
-
-  const handleImageSelect =
-    (e) => {
-
-      const file =
-        e.target.files?.[0];
-
-      if (!file) {
-        return;
-      }
-
-      if (
-        !file.type.startsWith(
-          "image/"
-        )
-      ) {
-
-        alert(
-          "Please select an image file."
-        );
-
-        return;
-      }
-
-      if (
-        file.size >
-        10 * 1024 * 1024
-      ) {
-
-        alert(
-          "Image must be smaller than 10 MB."
-        );
-
-        return;
-      }
-
-      if (imagePreview) {
-
-        URL.revokeObjectURL(
-          imagePreview
-        );
-      }
-
-      setSelectedPdf(null);
-
-      setPdfPreviewName("");
-
-      setSelectedImage(
-        file
-      );
-
-      setImagePreview(
-        URL.createObjectURL(file)
-      );
-
-      setHistoryImage("");
-
-      setHistoryFileName("");
-    };
-
-
-  // =====================================================
-  // PDF SELECT
-  // =====================================================
-
-  const handlePdfSelect =
-    (e) => {
-
-      const file =
-        e.target.files?.[0];
-
-      if (!file) {
-        return;
-      }
-
-      if (
-        file.type !==
-        "application/pdf"
-      ) {
-
-        alert(
-          "Please select a PDF file."
-        );
-
-        return;
-      }
-
-      if (
-        file.size >
-        20 * 1024 * 1024
-      ) {
-
-        alert(
-          "PDF must be smaller than 20 MB."
-        );
-
-        return;
-      }
-
-      removeImage();
-
-      setSelectedPdf(
-        file
-      );
-
-      setPdfPreviewName(
-        file.name
-      );
-
-      setHistoryImage("");
-
-      setHistoryFileName("");
-    };
-
-
-  // =====================================================
-  // PASTE IMAGE
-  // =====================================================
-
-  const handlePaste =
-    (event) => {
-
-      const clipboardItems =
-        event.clipboardData?.items;
-
-      if (!clipboardItems) {
-        return;
-      }
-
-      for (
-        let i = 0;
-        i < clipboardItems.length;
-        i++
-      ) {
-
-        const item =
-          clipboardItems[i];
-
-        if (
-          item.type &&
-          item.type.startsWith(
-            "image/"
-          )
-        ) {
-
-          event.preventDefault();
-
-          const file =
-            item.getAsFile();
-
-          if (!file) {
-            return;
-          }
-
-          if (imagePreview) {
-
-            URL.revokeObjectURL(
-              imagePreview
-            );
-          }
-
-          setSelectedPdf(null);
-
-          setPdfPreviewName("");
-
-          setSelectedImage(
-            file
-          );
-
-          setImagePreview(
-            URL.createObjectURL(file)
-          );
-
-          setHistoryImage("");
-
-          setHistoryFileName("");
-
-          return;
-        }
-      }
-    };
-
-
-  // =====================================================
-  // REMOVE IMAGE
-  // =====================================================
-
-  const removeImage =
-    () => {
-
-      if (imagePreview) {
-
-        URL.revokeObjectURL(
-          imagePreview
-        );
-      }
-
-      setSelectedImage(
-        null
-      );
-
-      setImagePreview(
-        ""
-      );
-
-      if (
-        imageInputRef.current
-      ) {
-
-        imageInputRef.current.value =
-          "";
-      }
-    };
-
-
-  // =====================================================
-  // REMOVE PDF
-  // =====================================================
-
-  const removePdf =
-    () => {
-
-      setSelectedPdf(
-        null
-      );
-
-      setPdfPreviewName(
-        ""
-      );
-
-      if (
-        pdfInputRef.current
-      ) {
-
-        pdfInputRef.current.value =
-          "";
-      }
-    };
-
-
-  // =====================================================
-  // ANALYZE PDF
-  // =====================================================
-
-  const analyzePdf =
-    async () => {
-
-      if (
-        !selectedPdf ||
-        isPdfAnalyzing
-      ) {
-
-        return;
-      }
-
-      const question =
-        typedText.trim() ||
-        "Analyze this PDF and explain its important contents.";
-
-      setIsPdfAnalyzing(
-        true
-      );
-
-      setUserText(
-        question
-      );
-
-      setAiText("");
-
-      setShowAIText(
-        false
-      );
-
-      setIsAIActive(
-        true
-      );
-
-      try {
-
-        const formData =
-          new FormData();
-
-        formData.append(
-          "pdf",
-          selectedPdf
-        );
-
-        formData.append(
-          "command",
-          question
-        );
-
-        const response =
-          await axios.post(
-            `${serverUrl}/api/user/analyze-pdf`,
-            formData,
-            {
-              withCredentials: true
-            }
-          );
-
-        const rawAnswer =
-          response.data?.response ||
-          response.data?.answer ||
-          "I could not analyze the PDF.";
-
-        const answer =
-          cleanAIResponse(
-            rawAnswer
-          );
-
-        setAiText(
-          answer
-        );
-
-        setShowAIText(
-          true
-        );
-
-        await addHistory(
-          question,
-          answer,
-          "file",
-          "",
-          selectedPdf.name
-        );
-
-        removePdf();
-
-        setTypedText("");
-
-      } catch (error) {
-
-        console.error(
-          "PDF ANALYSIS ERROR:",
-          error.response?.data ||
-          error.message
-        );
-
-        const errorMessage =
-          error.response?.data?.message ||
-          "Unable to analyze the PDF.";
-
-        setAiText(
-          cleanAIResponse(
-            errorMessage
-          )
-        );
-
-        setShowAIText(
-          true
-        );
-
-      } finally {
-
-        setIsPdfAnalyzing(
-          false
-        );
-
-        if (
-          !speakingRef.current
-        ) {
-
-          setIsAIActive(
-            false
-          );
-        }
-      }
-    };
-
-
-  // =====================================================
-  // ANALYZE IMAGE
-  // =====================================================
-
-  const analyzeImage =
-    async () => {
-
-      if (
-        !selectedImage ||
-        isImageAnalyzing
-      ) {
-
-        return;
-      }
-
-      const question =
-        typedText.trim() ||
-        "Analyze this image and explain what you see.";
-
-      setIsImageAnalyzing(
-        true
-      );
-
-      setUserText(
-        question
-      );
-
-      setAiText("");
-
-      setShowAIText(
-        false
-      );
-
-      setIsAIActive(
-        true
-      );
-
-      try {
-
-        const formData =
-          new FormData();
-
-        formData.append(
-          "image",
-          selectedImage
-        );
-
-        formData.append(
-          "command",
-          question
-        );
-
-        const response =
-          await axios.post(
-            `${serverUrl}/api/user/analyze-image`,
-            formData,
-            {
-              withCredentials: true
-            }
-          );
-
-        const rawAnswer =
-          response.data?.response ||
-          response.data?.answer ||
-          "I could not analyze the image.";
-
-        const answer =
-          cleanAIResponse(
-            rawAnswer
-          );
-
-        setAiText(
-          answer
-        );
-
-        setShowAIText(
-          true
-        );
-
-        let imageForHistory =
-          "";
-
+        // Permanently save it in MongoDB
         try {
 
-          imageForHistory =
-            await imageFileToDataUrl(
-              selectedImage
+
+            const response = await axios.post(
+                `${serverUrl}/api/user/savehistory`,
+                {
+                    command,
+                    answer
+                },
+                {
+                    withCredentials: true
+                }
             );
+
+
+
+            console.log(
+                "✅ HISTORY SAVED PERMANENTLY:",
+                response.data
+            );
+
 
         } catch (error) {
 
-          console.error(
-            "IMAGE HISTORY ERROR:",
-            error
-          );
+
+            console.error(
+                "❌ HISTORY SAVE ERROR:",
+                error.response?.data || error.message
+            );
+
+
         }
-
-        await addHistory(
-          question,
-          answer,
-          "image",
-          imageForHistory
-        );
-
-        removeImage();
-
-        setTypedText("");
-
-      } catch (error) {
-
-        console.error(
-          "IMAGE ANALYSIS ERROR:",
-          error.response?.data ||
-          error.message
-        );
-
-        const errorMessage =
-          error.response?.data?.message ||
-          "Unable to analyze the image.";
-
-        setAiText(
-          cleanAIResponse(
-            errorMessage
-          )
-        );
-
-        setShowAIText(
-          true
-        );
-
-      } finally {
-
-        setIsImageAnalyzing(
-          false
-        );
-
-        if (
-          !speakingRef.current
-        ) {
-
-          setIsAIActive(
-            false
-          );
-        }
-      }
     };
 
 
-  // =====================================================
-  // SPEECH RECOGNITION
-  // =====================================================
 
-  useEffect(() => {
-
-    const SpeechRecognition =
-      window.SpeechRecognition ||
-      window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-
-      console.warn(
-        "Speech recognition is not supported in this browser."
-      );
-
-      return;
-    }
-
-    const recognition =
-      new SpeechRecognition();
-
-    recognition.continuous =
-      false;
-
-    recognition.interimResults =
-      true;
-
-    recognition.lang =
-      "en-US";
-
-    recognition.maxAlternatives =
-      1;
-
-    recognitionRef.current =
-      recognition;
+    // =====================================================
+    // SPEAK
+    // =====================================================
 
 
-    // ===================================================
-    // START
-    // ===================================================
-
-    recognition.onstart =
-      () => {
-
-        setIsListening(
-          true
-        );
-      };
+    const speak = (text) => {
 
 
-    // ===================================================
-    // RESULT
-    // ===================================================
-
-    recognition.onresult =
-      async (event) => {
-
-        let finalTranscript =
-          "";
-
-        let interimTranscript =
-          "";
-
-        for (
-          let i =
-            event.resultIndex;
-          i <
-          event.results.length;
-          i++
-        ) {
-
-          const result =
-            event.results[i];
-
-          if (
-            result.isFinal
-          ) {
-
-            finalTranscript +=
-              result[0]?.transcript ||
-              "";
-
-          } else {
-
-            interimTranscript +=
-              result[0]?.transcript ||
-              "";
-          }
-        }
-
-        const liveText =
-          `${finalTranscript} ${interimTranscript}`
-            .trim();
-
-        if (liveText) {
-
-          setUserText(
-            liveText
-          );
-        }
-
-        if (
-          !finalTranscript.trim()
-        ) {
-
-          return;
-        }
-
-        const transcript =
-          finalTranscript.trim();
-
-        const lowerTranscript =
-          transcript
-            .toLowerCase()
-            .trim();
+        if (!text) return;
 
 
-        // =================================================
-        // STOP COMMANDS
-        // =================================================
 
-        const stopCommands = [
-
-          "stop listening",
-
-          "stop microphone",
-
-          "turn off microphone",
-
-          "cancel microphone",
-
-          "stop",
-
-          "cancel",
-
-          "goodbye",
-
-          "bye"
-        ];
-
-        if (
-          stopCommands.includes(
-            lowerTranscript
-          )
-        ) {
-
-          stopListening();
-
-          return;
-        }
-
-
-        // =================================================
-        // NEW VOICE REQUEST
-        // =================================================
-
-        processCommand(
-          transcript,
-          "voice",
-          true
-        );
-      };
-
-
-    // ===================================================
-    // END
-    // ===================================================
-
-    recognition.onend =
-      () => {
-
-        if (
-          !listeningRef.current
-        ) {
-
-          setIsListening(
-            false
-          );
-
-          return;
-        }
-
-        setIsListening(
-          false
+        console.log(
+            "🔊 SPEAK FUNCTION CALLED:",
+            window.__commandStart
+                ? (
+                    (performance.now() - window.__commandStart) /
+                    1000
+                ).toFixed(2)
+                : "N/A",
+            "seconds after command start"
         );
 
-        if (
-          processingRef.current
-        ) {
 
-          return;
-        }
 
-        if (
-          speakingRef.current
-        ) {
+        window.speechSynthesis.cancel();
 
-          return;
-        }
 
-        clearTimeout(
-          restartTimeoutRef.current
-        );
 
-        restartTimeoutRef.current =
-          setTimeout(
-            () => {
+        const utterance =
+            new SpeechSynthesisUtterance(
+                String(text)
+            );
 
-              if (
+
+
+        utterance.rate = 1;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+
+
+
+        utterance.onstart = () => {
+
+
+            speakingRef.current = true;
+
+
+            setIsAIActive(true);
+
+
+
+            console.log(
+                "🔊 SPEECH ACTUALLY STARTED:",
+                window.__commandStart
+                    ? (
+                        (performance.now() - window.__commandStart) /
+                        1000
+                    ).toFixed(2)
+                    : "N/A",
+                "seconds after command start"
+            );
+        };
+
+
+
+        utterance.onend = () => {
+
+
+            speakingRef.current = false;
+
+
+            setIsAIActive(false);
+
+
+
+            console.log(
+                "🔊 SPEECH ENDED:",
+                window.__commandStart
+                    ? (
+                        (performance.now() - window.__commandStart) /
+                        1000
+                    ).toFixed(2)
+                    : "N/A",
+                "seconds after command start"
+            );
+
+
+
+            if (
                 listeningRef.current &&
                 !processingRef.current &&
-                !speakingRef.current &&
                 recognitionRef.current
-              ) {
+            ) {
+
+
+                try {
+                    recognitionRef.current.start();
+                } catch {}
+
+
+            }
+
+
+        };
+
+
+
+        utterance.onerror = () => {
+
+
+            speakingRef.current = false;
+
+
+            setIsAIActive(false);
+
+
+
+            console.log(
+                "❌ SPEECH ERROR:",
+                window.__commandStart
+                    ? (
+                        (performance.now() - window.__commandStart) /
+                        1000
+                    ).toFixed(2)
+                    : "N/A",
+                "seconds after command start"
+            );
+        };
+
+
+
+        window.speechSynthesis.speak(
+            utterance
+        );
+
+
+    };
+
+
+
+    // =====================================================
+    // WEBSITE MAP
+    // =====================================================
+
+
+    const websiteMap = {
+
+
+        google: "https://www.google.com",
+        youtube: "https://www.youtube.com",
+        instagram: "https://www.instagram.com",
+        facebook: "https://www.facebook.com",
+        snapchat: "https://www.snapchat.com",
+        wikipedia: "https://www.wikipedia.org",
+        gaana: "https://gaana.com",
+        spotify: "https://open.spotify.com",
+        github: "https://github.com",
+        reddit: "https://www.reddit.com",
+        linkedin: "https://www.linkedin.com",
+        netflix: "https://www.netflix.com",
+        gmail: "https://mail.google.com",
+        whatsapp: "https://web.whatsapp.com",
+        amazon: "https://www.amazon.in",
+        flipkart: "https://www.flipkart.com",
+        twitter: "https://x.com",
+        x: "https://x.com",
+        telegram: "https://web.telegram.org",
+        discord: "https://discord.com",
+        stackoverflow: "https://stackoverflow.com",
+        canva: "https://www.canva.com",
+        quora: "https://www.quora.com",
+        pinterest: "https://www.pinterest.com",
+        twitch: "https://www.twitch.tv",
+        imdb: "https://www.imdb.com",
+        soundcloud: "https://soundcloud.com",
+        deezer: "https://www.deezer.com",
+        yahoo: "https://www.yahoo.com",
+        bing: "https://www.bing.com",
+        topper: "https://www.toppr.com",
+        toppr: "https://www.toppr.com",
+        vedant: "https://www.vedantu.com",
+        vedantu: "https://www.vedantu.com",
+        hungama: "https://www.hungama.com",
+        udemy: "https://www.udemy.com",
+        coursera: "https://www.coursera.org",
+        gate: "https://gate2027.iitm.ac.in"
+
+
+    };
+
+
+
+    // =====================================================
+    // CREATE SITE SEARCH URL
+    // =====================================================
+
+
+    const createSiteSearchUrl = (site, query) => {
+
+
+        const q = encodeURIComponent(query);
+
+
+
+        const searchUrls = {
+
+
+            google:
+                `https://www.google.com/search?q=${q}`,
+
+
+            youtube:
+                `https://www.youtube.com/results?search_query=${q}`,
+
+
+            instagram:
+                `https://www.instagram.com/explore/search/keyword/?q=${q}`,
+
+
+            facebook:
+                `https://www.facebook.com/search/top?q=${q}`,
+
+
+            wikipedia:
+                `https://www.wikipedia.org/w/index.php?search=${q}`,
+
+
+            spotify:
+                `https://open.spotify.com/search/${q}`,
+
+
+            github:
+                `https://github.com/search?q=${q}`,
+
+
+            reddit:
+                `https://www.reddit.com/search/?q=${q}`,
+
+
+            linkedin:
+                `https://www.linkedin.com/search/results/all/?keywords=${q}`,
+
+
+            amazon:
+                `https://www.amazon.in/s?k=${q}`,
+
+
+            flipkart:
+                `https://www.flipkart.com/search?q=${q}`,
+
+
+            bing:
+                `https://www.bing.com/search?q=${q}`,
+
+
+            yahoo:
+                `https://search.yahoo.com/search?p=${q}`,
+
+
+            stackoverflow:
+                `https://stackoverflow.com/search?q=${q}`,
+
+
+            pinterest:
+                `https://www.pinterest.com/search/pins/?q=${q}`,
+
+
+            quora:
+                `https://www.quora.com/search?q=${q}`,
+
+
+            twitch:
+                `https://www.twitch.tv/search?term=${q}`,
+
+
+            imdb:
+                `https://www.imdb.com/find/?q=${q}`,
+
+
+            soundcloud:
+                `https://soundcloud.com/search?q=${q}`,
+
+
+            deezer:
+                `https://www.deezer.com/search/${q}`,
+
+
+            udemy:
+                `https://www.udemy.com/courses/search/?q=${q}`,
+
+
+            coursera:
+                `https://www.coursera.org/search?query=${q}`,
+
+
+            canva:
+                `https://www.canva.com/search?q=${q}`
+
+
+        };
+
+
+
+        return searchUrls[site] || null;
+    };
+
+
+
+    // =====================================================
+    // GET SEARCH URL
+    // =====================================================
+
+
+    const getSearchUrl = (command) => {
+
+
+        const text =
+            command.trim().replace(/[?!.]+$/, "");
+
+
+
+        const match = text.match(
+            /^(?:search|find|look for|look up)\s+(.+?)\s+(?:on|in|at|using)\s+([a-zA-Z0-9]+)$/i
+        );
+
+
+
+        if (match) {
+
+
+            return {
+
+
+                url: createSiteSearchUrl(
+                    match[2].toLowerCase(),
+                    match[1].trim()
+                ),
+
+
+                site: match[2].trim(),
+
+
+                query: match[1].trim()
+
+
+            };
+        }
+
+
+
+        const reverse = text.match(
+            /^(?:search|find|look for|look up)\s+([a-zA-Z0-9]+)\s+(?:for|about|regarding)\s+(.+)$/i
+        );
+
+
+
+        if (reverse) {
+
+
+            return {
+
+
+                url: createSiteSearchUrl(
+                    reverse[1].toLowerCase(),
+                    reverse[2].trim()
+                ),
+
+
+                site: reverse[1].trim(),
+
+
+                query: reverse[2].trim()
+
+
+            };
+        }
+
+
+
+        return null;
+    };
+
+
+
+    // =====================================================
+    // GET DIRECT URL
+    // =====================================================
+
+
+    const getDirectUrl = (command) => {
+
+
+        const text = command.trim();
+
+
+
+        const domainMatch = text.match(
+            /^(?:open|launch|visit|go to|take me to)\s+(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+)$/i
+        );
+
+
+
+        if (domainMatch) {
+
+
+            let url =
+                domainMatch[1].replace(
+                    /[.,!?]+$/,
+                    ""
+                );
+
+
+
+            if (
+                !/^https?:\/\//i.test(url)
+            ) {
+                url = `https://${url}`;
+            }
+
+
+
+            return url;
+        }
+
+
+
+        const nameMatch = text.match(
+            /^(?:open|launch|visit|go to|take me to)\s+(.+)$/i
+        );
+
+
+
+        if (!nameMatch) return null;
+
+
+
+        const siteName =
+            nameMatch[1]
+                .trim()
+                .toLowerCase()
+                .replace(/\s+website$/i, "")
+                .replace(/\s+site$/i, "");
+
+
+
+        return websiteMap[siteName] || null;
+    };
+
+
+
+    // =====================================================
+    // OPEN URL
+    // =====================================================
+
+
+    const openUrl = (url) => {
+
+
+        if (!url) return false;
+
+
+
+        let finalUrl = String(url).trim();
+
+
+
+        if (!/^https?:\/\//i.test(finalUrl)) {
+            finalUrl = `https://${finalUrl}`;
+        }
+
+
+
+        try {
+
+
+            const parsed =
+                new URL(finalUrl);
+
+
+
+            if (
+                parsed.protocol !== "http:" &&
+                parsed.protocol !== "https:"
+            ) {
+                return false;
+            }
+
+
+
+            const newTab =
+                window.open(
+                    parsed.href,
+                    "_blank"
+                );
+
+
+
+            if (!newTab) {
+
+
+                console.warn(
+                    "Browser blocked the new tab."
+                );
+
+
+                return false;
+            }
+
+
+
+            return true;
+
+
+        } catch (error) {
+
+
+            console.error(
+                "Invalid URL:",
+                url
+            );
+
+
+            return false;
+        }
+
+
+    };
+
+
+
+    // =====================================================
+    // SPECIAL COMMAND
+    // =====================================================
+
+
+    const handleSpecialCommand = (
+        data,
+        shouldSpeak
+    ) => {
+
+
+        if (!data) return false;
+
+
+
+        const type = data.type;
+        const response = data.response || "";
+
+
+
+        let handled = true;
+
+
+
+        switch (type) {
+
+
+            case "google_open":
+
+
+                openUrl(
+                    "https://www.google.com"
+                );
+
+
+                break;
+
+
+
+            case "google_search":
+
+
+                if (data.query) {
+
+
+                    openUrl(
+                        `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
+                    );
+
+
+                }
+
+
+                break;
+
+
+
+            case "youtube_open":
+
+
+                openUrl(
+                    "https://www.youtube.com"
+                );
+
+
+                break;
+
+
+
+            case "youtube_search":
+
+
+            case "youtube_play":
+
+
+                if (data.query) {
+
+
+                    openUrl(
+                        `https://www.youtube.com/results?search_query=${encodeURIComponent(data.query)}`
+                    );
+
+
+                }
+
+
+                break;
+
+
+
+            case "calculator_open":
+
+
+                openUrl(
+                    "https://www.google.com/search?q=calculator"
+                );
+
+
+                break;
+
+
+
+            case "calculator_calculate":
+
+
+                if (data.query) {
+
+
+                    openUrl(
+                        `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
+                    );
+
+
+                }
+
+
+                break;
+
+
+
+            case "instagram_open":
+
+
+                openUrl(
+                    "https://www.instagram.com"
+                );
+
+
+                break;
+
+
+
+            case "facebook_open":
+
+
+                openUrl(
+                    "https://www.facebook.com"
+                );
+
+
+                break;
+
+
+
+            case "weather_show":
+
+
+                openUrl(
+                    data.query
+                        ? `https://www.google.com/search?q=${encodeURIComponent(data.query)}`
+                        : "https://www.google.com/search?q=weather"
+                );
+
+
+                break;
+
+
+
+            default:
+
+
+                handled = false;
+
+
+                break;
+        }
+
+
+
+        if (response) {
+
+
+            setAiText(response);
+
+
+            setShowAIText(true);
+
+
+
+            if (shouldSpeak) {
+                speak(response);
+            }
+        }
+
+
+
+        if (!shouldSpeak) {
+            setIsAIActive(false);
+        }
+
+
+
+        return handled;
+    };
+
+
+
+    // =====================================================
+    // PROCESS COMMAND
+    // =====================================================
+
+
+    const processCommand = async (
+        command,
+        shouldSpeak = true
+    ) => {
+
+
+        const cleanedCommand =
+            String(command || "").trim();
+
+
+
+        if (
+            !cleanedCommand ||
+            processingRef.current
+        ) {
+            return;
+        }
+
+
+
+        processingRef.current = true;
+
+
+
+        const commandStart =
+            performance.now();
+
+
+
+        window.__commandStart =
+            commandStart;
+
+
+
+        console.log(
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        );
+
+
+        console.log(
+            "⚡ COMMAND START:",
+            cleanedCommand
+        );
+
+
+        console.log(
+            "⏱️ Command started at:",
+            new Date().toLocaleTimeString()
+        );
+
+
+
+        setIsSending(true);
+
+
+        setUserText(cleanedCommand);
+
+
+        setAiText("");
+
+
+        setShowAIText(false);
+
+
+        setIsAIActive(true);
+
+
+
+        try {
+
+
+            // =================================================
+            // DIRECT SITE SEARCH
+            // =================================================
+
+
+            const siteSearch =
+                getSearchUrl(cleanedCommand);
+
+
+
+            if (siteSearch?.url) {
+
+
+                const message =
+                    `Searching ${siteSearch.site} for ${siteSearch.query}.`;
+
+
+
+                setAiText(message);
+
+
+                setShowAIText(true);
+
+
+
+                addHistory(
+                    cleanedCommand,
+                    message
+                );
+
+
+
+                console.log(
+                    "🌐 DIRECT SITE SEARCH DETECTED:",
+                    (
+                        (performance.now() - commandStart) /
+                        1000
+                    ).toFixed(2),
+                    "seconds"
+                );
+
+
+
+                openUrl(siteSearch.url);
+
+
+
+                if (shouldSpeak) {
+
+
+                    speak(message);
+
+
+                } else {
+
+
+                    setIsAIActive(false);
+
+
+                }
+
+
+
+                return;
+            }
+
+
+
+            // =================================================
+            // GOOGLE SEARCH
+            // =================================================
+
+
+            const googleMatch =
+                cleanedCommand.match(
+                    /^(?:open|search|find)\s+(.+?)\s+(?:at|on|in)\s+google$/i
+                );
+
+
+
+            if (googleMatch) {
+
+
+                const query =
+                    googleMatch[1].trim();
+
+
+
+                const message =
+                    `Searching Google for ${query}.`;
+
+
+
+                setAiText(message);
+
+
+                setShowAIText(true);
+
+
+
+                addHistory(
+                    cleanedCommand,
+                    message
+                );
+
+
+
+                console.log(
+                    "🔎 GOOGLE SEARCH DETECTED:",
+                    (
+                        (performance.now() - commandStart) /
+                        1000
+                    ).toFixed(2),
+                    "seconds"
+                );
+
+
+
+                openUrl(
+                    `https://www.google.com/search?q=${encodeURIComponent(query)}`
+                );
+
+
+
+                if (shouldSpeak) {
+
+
+                    speak(message);
+
+
+                } else {
+
+
+                    setIsAIActive(false);
+
+
+                }
+
+
+
+                return;
+            }
+
+
+
+            // =================================================
+            // DIRECT URL
+            // =================================================
+
+
+            const directUrl =
+                getDirectUrl(cleanedCommand);
+
+
+
+            if (directUrl) {
+
+
+                const siteName =
+                    cleanedCommand.replace(
+                        /^(open|launch|visit|go to|take me to)\s+/i,
+                        ""
+                    ).trim();
+
+
+
+                const message =
+                    `Opening ${siteName}.`;
+
+
+
+                setAiText(message);
+
+
+                setShowAIText(true);
+
+
+
+                addHistory(
+                    cleanedCommand,
+                    message
+                );
+
+
+
+                console.log(
+                    "🌐 DIRECT URL DETECTED:",
+                    directUrl
+                );
+
+
+
+                openUrl(directUrl);
+
+
+
+                if (shouldSpeak) {
+
+
+                    speak(message);
+
+
+                } else {
+
+
+                    setIsAIActive(false);
+
+
+                }
+
+
+
+                return;
+            }
+
+
+
+            // =================================================
+            // GEMINI REQUEST
+            // =================================================
+
+
+            console.log(
+                "📡 SENDING REQUEST TO BACKEND..."
+            );
+
+
+
+            const backendStart =
+                performance.now();
+
+
+
+            const result =
+                await getGeminiResponse(
+                    cleanedCommand
+                );
+
+
+
+            const backendTime =
+                (performance.now() - backendStart) /
+                1000;
+
+
+
+            console.log(
+                "📡 BACKEND RESPONSE RECEIVED IN:",
+                backendTime.toFixed(2),
+                "seconds"
+            );
+
+
+            console.log(
+                "⏱️ TOTAL TIME AFTER BACKEND:",
+                (
+                    (performance.now() - commandStart) /
+                    1000
+                ).toFixed(2),
+                "seconds"
+            );
+
+
+
+            // =================================================
+            // PARSE RESPONSE
+            // =================================================
+
+
+            let parsedResult = result;
+
+
+
+            console.log(
+                "🧩 PARSING RESPONSE..."
+            );
+
+
+
+            if (typeof result === "string") {
+
+
+                let cleanResult =
+                    result
+                        .replace(/```json/gi, "")
+                        .replace(/```/g, "")
+                        .trim();
+
+
 
                 try {
 
-                  recognitionRef.current.start();
 
-                  setIsListening(
-                    true
-                  );
-
-                } catch {}
-
-              }
-
-            },
-            400
-          );
-      };
+                    parsedResult =
+                        JSON.parse(cleanResult);
 
 
-    // ===================================================
-    // ERROR
-    // ===================================================
+                } catch {
 
-    recognition.onerror =
-      event => {
 
-        console.error(
-          "Speech recognition error:",
-          event.error
-        );
+                    const jsonMatch =
+                        cleanResult.match(
+                            /{[\s\S]*}/
+                        );
 
-        if (
-          event.error ===
-            "not-allowed" ||
-          event.error ===
-            "service-not-allowed"
-        ) {
 
-          listeningRef.current =
-            false;
 
-          setIsListening(
-            false
-          );
+                    if (jsonMatch) {
 
-          alert(
-            "Microphone permission is blocked. Please allow microphone access in Chrome."
-          );
 
-          return;
+                        try {
+
+
+                            parsedResult =
+                                JSON.parse(
+                                    jsonMatch[0]
+                                );
+
+
+                        } catch {
+
+
+                            parsedResult = {
+                                type: "general",
+                                response: cleanResult
+                            };
+
+
+                        }
+
+
+                    } else {
+
+
+                        parsedResult = {
+                            type: "general",
+                            response: cleanResult
+                        };
+
+
+                    }
+                }
+            }
+
+
+
+            // =================================================
+            // ERROR RESPONSE
+            // =================================================
+
+
+            if (
+                !parsedResult ||
+                parsedResult.error
+            ) {
+
+
+                const errorText =
+                    parsedResult?.error ||
+                    "Sorry, I could not process that request.";
+
+
+
+                setAiText(errorText);
+
+
+                setShowAIText(true);
+
+
+
+                addHistory(
+                    cleanedCommand,
+                    errorText
+                );
+
+
+
+                if (shouldSpeak) {
+
+
+                    speak(errorText);
+
+
+                } else {
+
+
+                    setIsAIActive(false);
+
+
+                }
+
+
+
+                return;
+            }
+
+
+
+            // =================================================
+            // GET RESPONSE TEXT
+            // =================================================
+
+
+            const responseText =
+                parsedResult.response ||
+                parsedResult.answer ||
+                parsedResult.text ||
+                "";
+
+
+
+            if (!responseText) {
+
+
+                const errorText =
+                    "Sorry, I did not get an answer.";
+
+
+
+                setAiText(errorText);
+
+
+                setShowAIText(true);
+
+
+
+                addHistory(
+                    cleanedCommand,
+                    errorText
+                );
+
+
+
+                if (shouldSpeak) {
+
+
+                    speak(errorText);
+
+
+                } else {
+
+
+                    setIsAIActive(false);
+
+
+                }
+
+
+
+                return;
+            }
+
+
+
+            console.log(
+                "🤖 ANSWER READY:",
+                (
+                    (performance.now() - commandStart) /
+                    1000
+                ).toFixed(2),
+                "seconds after command start"
+            );
+
+
+
+            setAiText(responseText);
+
+
+            setShowAIText(true);
+
+
+
+            // =================================================
+            // PERMANENT HISTORY SAVE
+            // =================================================
+
+
+            addHistory(
+                cleanedCommand,
+                responseText
+            );
+
+
+
+            // =================================================
+            // SPECIAL COMMAND
+            // =================================================
+
+
+            if (
+                handleSpecialCommand(
+                    {
+                        ...parsedResult,
+                        response: responseText
+                    },
+                    shouldSpeak
+                )
+            ) {
+
+
+                return;
+            }
+
+
+
+            // =================================================
+            // SPEAK RESPONSE
+            // =================================================
+
+
+            if (shouldSpeak) {
+
+
+                console.log(
+                    "🔊 CALLING SPEAK:",
+                    (
+                        (performance.now() - commandStart) /
+                        1000
+                    ).toFixed(2),
+                    "seconds after command start"
+                );
+
+
+
+                speak(responseText);
+
+
+            } else {
+
+
+                setIsAIActive(false);
+
+
+            }
+
+
+
+        } catch (error) {
+
+
+            console.error(
+                "Assistant error:",
+                error
+            );
+
+
+
+            console.error(
+                "❌ ERROR AFTER:",
+                (
+                    (performance.now() - commandStart) /
+                    1000
+                ).toFixed(2),
+                "seconds"
+            );
+
+
+
+            const errorText =
+                error.response?.data?.message ||
+                error.message ||
+                "Sorry, something went wrong.";
+
+
+
+            setAiText(errorText);
+
+
+            setShowAIText(true);
+
+
+
+            addHistory(
+                cleanedCommand,
+                errorText
+            );
+
+
+
+            if (shouldSpeak) {
+
+
+                speak(errorText);
+
+
+            } else {
+
+
+                setIsAIActive(false);
+
+
+            }
+
+
+
+        } finally {
+
+
+            console.log(
+                "🏁 COMMAND FINISHED:",
+                (
+                    (performance.now() - commandStart) /
+                    1000
+                ).toFixed(2),
+                "seconds total"
+            );
+
+
+
+            processingRef.current = false;
+
+
+            setIsSending(false);
+
+
+
+            if (
+                !speakingRef.current &&
+                !shouldSpeak
+            ) {
+
+
+                setIsAIActive(false);
+
+
+            }
         }
-
-        if (
-          event.error ===
-          "audio-capture"
-        ) {
-
-          listeningRef.current =
-            false;
-
-          setIsListening(
-            false
-          );
-
-          alert(
-            "No microphone was detected. Please check your microphone."
-          );
-
-          return;
-        }
-      };
-
-
-    // ===================================================
-    // CLEANUP
-    // ===================================================
-
-    return () => {
-
-      listeningRef.current =
-        false;
-
-      clearTimeout(
-        restartTimeoutRef.current
-      );
-
-      clearTimeout(
-        speechTimeoutRef.current
-      );
-
-      try {
-
-        recognition.abort();
-
-      } catch {}
-
-      recognitionRef.current =
-        null;
-    };
-
-  }, []);
-
-
-  // =====================================================
-  // START LISTENING
-  // =====================================================
-
-  const startListening =
-    () => {
-
-      if (
-        !recognitionRef.current
-      ) {
-
-        alert(
-          "Speech recognition is not supported in this browser."
-        );
-
-        return;
-      }
-
-      // New listening session = new generation
-      speechGenerationRef.current += 1;
-
-      clearTimeout(
-        restartTimeoutRef.current
-      );
-
-      clearTimeout(
-        speechTimeoutRef.current
-      );
-
-      try {
-
-        window.speechSynthesis.cancel();
-
-      } catch {}
-
-      speakingRef.current =
-        false;
-
-      processingRef.current =
-        false;
-
-      listeningRef.current =
-        true;
-
-      setIsSpeaking(false);
-
-      setIsAIActive(false);
-
-      setIsListening(
-        true
-      );
-
-      try {
-
-        recognitionRef.current.start();
-
-      } catch (error) {
-
-        console.log(
-          "Recognition start:",
-          error.message
-        );
-
-        setIsListening(
-          true
-        );
-      }
     };
 
 
-  // =====================================================
-  // STOP LISTENING
-  // =====================================================
 
-  const stopListening =
-    () => {
-
-      listeningRef.current =
-        false;
-
-      setIsListening(
-        false
-      );
-
-      clearTimeout(
-        restartTimeoutRef.current
-      );
-
-      if (
-        recognitionRef.current
-      ) {
-
-        try {
-
-          recognitionRef.current.abort();
-
-        } catch {}
-
-        try {
-
-          recognitionRef.current.stop();
-
-        } catch {}
-      }
-
-      console.log(
-        "Microphone stopped."
-      );
-    };
+    // =====================================================
+    // SEND TEXT
+    // =====================================================
 
 
-  // =====================================================
-  // MIC BUTTON
-  //
-  // ONE BUTTON:
-  //
-  // speaking  -> STOP OLD SPEECH
-  // listening -> STOP LISTENING
-  // normal    -> START NEW LISTENING
-  // =====================================================
+    const handleSendText = async () => {
 
-  const handleMicClick =
-    () => {
-
-      // -----------------------------------------------
-      // CURRENTLY SPEAKING
-      // -----------------------------------------------
-
-      if (
-        isSpeaking ||
-        speakingRef.current ||
-        window.speechSynthesis.speaking
-      ) {
-
-        stopSpeaking();
-
-        return;
-      }
-
-
-      // -----------------------------------------------
-      // CURRENTLY LISTENING
-      // -----------------------------------------------
-
-      if (
-        isListening
-      ) {
-
-        stopListening();
-
-        return;
-      }
-
-
-      // -----------------------------------------------
-      // NEW REQUEST
-      // -----------------------------------------------
-
-      speechGenerationRef.current += 1;
-
-      clearTimeout(
-        speechTimeoutRef.current
-      );
-
-      clearTimeout(
-        restartTimeoutRef.current
-      );
-
-      try {
-
-        window.speechSynthesis.cancel();
-
-      } catch {}
-
-      speakingRef.current =
-        false;
-
-      processingRef.current =
-        false;
-
-      setIsSpeaking(false);
-
-      setIsAIActive(false);
-
-      startListening();
-    };
-
-
-  // =====================================================
-  // LOGOUT
-  // =====================================================
-
-  const handleLogout =
-    async () => {
-
-      stopSpeaking();
-
-      stopListening();
-
-      try {
-
-        await axios.post(
-          `${serverUrl}/api/auth/logout`,
-          {},
-          {
-            withCredentials: true
-          }
-        );
-
-      } catch (error) {
-
-        console.error(
-          "LOGOUT ERROR:",
-          error
-        );
-      }
-
-      setUserData(
-        null
-      );
-
-      navigate(
-        "/signin"
-      );
-    };
-
-
-  // =====================================================
-  // FILTER HISTORY
-  // =====================================================
-
-  const filteredHistory =
-    historyItems.filter(
-      item => {
 
         const command =
-          item?.command ||
-          "";
+            typedText.trim();
 
-        const answer =
-          item?.answer ||
-          "";
 
-        const fileName =
-          item?.fileName ||
-          "";
 
-        const search =
-          historySearch
-            .toLowerCase()
-            .trim();
-
-        if (!search) {
-          return true;
+        if (
+            !command ||
+            isSending
+        ) {
+            return;
         }
 
-        return (
 
-          command
-            .toLowerCase()
-            .includes(search) ||
 
-          answer
-            .toLowerCase()
-            .includes(search) ||
+        if (isListening) {
 
-          fileName
-            .toLowerCase()
-            .includes(search)
+
+            listeningRef.current = false;
+
+
+
+            try {
+                recognitionRef.current?.stop();
+            } catch {}
+
+
+        }
+
+
+
+        setTypedText("");
+
+
+
+        await processCommand(
+            command,
+            false
         );
-      }
-    );
-
-
-  // =====================================================
-  // OPEN HISTORY
-  // =====================================================
-
-  const openHistory =
-    (item) => {
-
-      // Stop any current speech first.
-      stopSpeaking();
-
-      setUserText(
-        item?.command ||
-        ""
-      );
-
-      setAiText(
-        cleanAIResponse(
-          item?.answer ||
-          ""
-        )
-      );
-
-      setShowAIText(
-        true
-      );
-
-      if (
-        item?.type ===
-          "image" &&
-        item?.image
-      ) {
-
-        setHistoryImage(
-          item.image
-        );
-
-      } else {
-
-        setHistoryImage(
-          ""
-        );
-      }
-
-      if (
-        item?.type ===
-        "file"
-      ) {
-
-        setHistoryFileName(
-          item?.fileName ||
-          "Previous PDF"
-        );
-
-      } else {
-
-        setHistoryFileName(
-          ""
-        );
-      }
-
-      setShowHistory(
-        false
-      );
     };
 
 
-  // =====================================================
-  // FORMAT DATE
-  // =====================================================
 
-  const formatDate =
-    (date) => {
+    // =====================================================
+    // INPUT KEY
+    // =====================================================
 
-      if (!date) {
-        return "";
-      }
 
-      try {
+    const handleInputKeyDown = (event) => {
 
-        return new Date(
-          date
-        ).toLocaleString(
-          "en-IN",
-          {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-          }
-        );
 
-      } catch {
+        if (event.key === "Enter") {
 
-        return "";
-      }
+
+            event.preventDefault();
+
+
+            handleSendText();
+
+
+        }
     };
 
 
-  // =====================================================
-  // UI
-  // =====================================================
 
-  return (
+    // =====================================================
+    // SPEECH RECOGNITION
+    // =====================================================
 
-    <div
-      onPaste={
-        handlePaste
-      }
-      className="
-        relative
-        flex
-        h-screen
-        min-h-0
-        w-full
-        flex-col
-        overflow-hidden
-        bg-[#070B14]
-        text-white
-      "
-    >
 
-      {/* =================================================
-          HEADER
-      ================================================= */}
+    useEffect(() => {
 
-      <header
-        className="
-          relative
-          z-40
-          flex
-          h-16
-          w-full
-          shrink-0
-          items-center
-          justify-between
-          border-b
-          border-white/10
-          bg-[#0A1020]/95
-          px-3
-          backdrop-blur
-          sm:px-5
-          md:px-6
-        "
-      >
 
-        <div
-          className="
-            flex
-            min-w-0
-            items-center
-            gap-2
-            sm:gap-3
-          "
-        >
+        const SpeechRecognition =
+            window.SpeechRecognition ||
+            window.webkitSpeechRecognition;
 
-          <button
-            onClick={() => {
 
-              setShowHistory(
-                previous =>
-                  !previous
-              );
 
-              setShowProfileMenu(
-                false
-              );
-            }}
-            className="
-              flex
-              h-10
-              w-10
-              shrink-0
-              items-center
-              justify-center
-              rounded-full
-              border
-              border-white/10
-              text-gray-300
-              transition
-              hover:bg-white/5
-              hover:text-cyan-300
-              active:scale-95
-            "
-            title={
-              showHistory
-                ? "Close history"
-                : "Open history"
+        if (!SpeechRecognition) return;
+
+
+
+        const recognition =
+            new SpeechRecognition();
+
+
+
+        recognition.continuous = true;
+
+
+        recognition.lang = "en-US";
+
+
+        recognition.interimResults = false;
+
+
+        recognition.maxAlternatives = 1;
+
+
+
+        recognitionRef.current =
+            recognition;
+
+
+
+        recognition.onstart = () => {
+
+
+            listeningRef.current = true;
+
+
+            setIsListening(true);
+
+
+
+            console.log(
+                "🎤 MICROPHONE STARTED:",
+                new Date().toLocaleTimeString()
+            );
+        };
+
+
+
+        recognition.onresult = async (event) => {
+
+
+            if (processingRef.current) return;
+
+
+
+            console.log(
+                "🎤 SPEECH RESULT RECEIVED:",
+                new Date().toLocaleTimeString()
+            );
+
+
+
+            const lastResult =
+                event.results[
+                    event.results.length - 1
+                ];
+
+
+
+            if (
+                !lastResult ||
+                !lastResult[0]
+            ) {
+                return;
             }
-          >
-
-            {showHistory ? (
-
-              <IoMdClose
-                size={22}
-              />
-
-            ) : (
-
-              <IoMdMenu
-                size={22}
-              />
-            )}
-
-          </button>
 
 
-          <img
-            src={
-              userData?.assistantImage ||
-              aiImg
+
+            const transcript =
+                lastResult[0]
+                    .transcript
+                    .trim();
+
+
+
+            if (!transcript) return;
+
+
+
+            console.log(
+                "🎤 USER SAID:",
+                transcript
+            );
+
+
+
+            const lowerTranscript =
+                transcript.toLowerCase();
+
+
+
+            const stopCommands = [
+
+
+                "thank you",
+                "thanks",
+                "stop",
+                "bye",
+                "goodbye",
+                "stop listening",
+                "cancel"
+
+
+            ];
+
+
+
+            if (
+                stopCommands.includes(
+                    lowerTranscript
+                )
+            ) {
+
+
+                listeningRef.current = false;
+
+
+                speakingRef.current = false;
+
+
+
+                setIsListening(false);
+
+
+                setIsAIActive(false);
+
+
+
+                try {
+                    recognition.stop();
+                } catch {}
+
+
+
+                window.speechSynthesis.cancel();
+
+
+
+                return;
             }
-            alt="Assistant"
-            className="
-              h-9
-              w-9
-              shrink-0
-              rounded-full
-              border
-              border-cyan-400/30
-              object-cover
-              sm:h-10
-              sm:w-10
-            "
-          />
 
 
-          <div className="min-w-0">
 
-            <p
-              className="
-                truncate
-                text-sm
-                font-semibold
-                text-white
-              "
-            >
-              {userData?.assistantName ||
-                "Assistant"}
-            </p>
-
-            <p
-              className="
-                hidden
-                text-xs
-                text-gray-500
-                sm:block
-              "
-            >
-              Virtual Assistant
-            </p>
-
-          </div>
-
-        </div>
+            setUserText(transcript);
 
 
-        <div
-          className="
-            relative
-            flex
-            items-center
-            gap-2
-          "
-        >
+            setAiText("");
 
-          <button
-            onClick={() =>
-              navigate(
-                "/customize2"
-              )
+
+            setShowAIText(false);
+
+
+
+            // =================================================
+            // GREETING
+            // =================================================
+
+
+            if (
+                lowerTranscript === "hey" ||
+                lowerTranscript === "hi" ||
+                lowerTranscript === "hello"
+            ) {
+
+
+                const answer =
+                    "Yes, I am listening.";
+
+
+
+                addHistory(
+                    transcript,
+                    answer
+                );
+
+
+
+                speak(answer);
+
+
+
+                return;
             }
-            className="
-              hidden
-              rounded-full
-              border
-              border-cyan-400/20
-              px-4
-              py-2
-              text-sm
-              text-cyan-300
-              transition
-              hover:bg-cyan-400/10
-              sm:block
-            "
-          >
-            Customize
-          </button>
 
 
-          <button
-            onClick={() => {
 
-              setShowProfileMenu(
-                previous =>
-                  !previous
-              );
-
-              setShowHistory(
-                false
-              );
-            }}
-            className="
-              flex
-              h-10
-              w-10
-              shrink-0
-              items-center
-              justify-center
-              overflow-hidden
-              rounded-full
-              border
-              border-white/10
-              bg-white/5
-              text-gray-300
-              transition
-              hover:border-cyan-400/30
-              hover:bg-cyan-400/10
-              hover:text-cyan-300
-              active:scale-95
-            "
-            title="Account and settings"
-          >
-
-            {userData?.assistantImage ? (
-
-              <img
-                src={
-                  userData.assistantImage
-                }
-                alt="Profile"
-                className="
-                  h-full
-                  w-full
-                  object-cover
-                "
-              />
-
-            ) : (
-
-              <FiSettings
-                size={19}
-              />
-            )}
-
-          </button>
+            try {
+                recognition.stop();
+            } catch {}
 
 
-          {showProfileMenu && (
 
-            <div
-              className="
-                absolute
-                right-0
-                top-12
-                z-70
-                w-[calc(100vw-1.5rem)]
-                max-w-xs
-                overflow-hidden
-                rounded-2xl
-                border
-                border-white/10
-                bg-[#0B1222]
-                p-2
-                shadow-2xl
-              "
-            >
-
-              <div
-                className="
-                  mb-1
-                  border-b
-                  border-white/10
-                  px-3
-                  py-3
-                "
-              >
-
-                <p
-                  className="
-                    truncate
-                    text-sm
-                    font-semibold
-                  "
-                >
-                  {userData?.name ||
-                    "User"}
-                </p>
-
-                <p
-                  className="
-                    truncate
-                    text-xs
-                    text-gray-500
-                  "
-                >
-                  {userData?.email ||
-                    "Account"}
-                </p>
-
-              </div>
+            console.log(
+                "🎤 SENDING TRANSCRIPT TO processCommand()"
+            );
 
 
-              <button
-                onClick={() => {
 
-                  navigate(
-                    "/customize2"
-                  );
-
-                  setShowProfileMenu(
-                    false
-                  );
-                }}
-                className="
-                  flex
-                  w-full
-                  items-center
-                  gap-3
-                  rounded-xl
-                  px-3
-                  py-3
-                  text-left
-                  text-sm
-                  text-gray-300
-                  hover:bg-white/5
-                "
-              >
-
-                <FiEdit3
-                  size={17}
-                  className="text-cyan-400"
-                />
-
-                Customize Assistant
-
-              </button>
+            await processCommand(
+                transcript,
+                true
+            );
+        };
 
 
-              <button
-                onClick={async () => {
 
-                  await clearHistory();
-
-                  setShowProfileMenu(
-                    false
-                  );
-
-                }}
-                disabled={
-                  historyItems.length ===
-                  0
-                }
-                className="
-                  flex
-                  w-full
-                  items-center
-                  gap-3
-                  rounded-xl
-                  px-3
-                  py-3
-                  text-left
-                  text-sm
-                  text-gray-300
-                  hover:bg-red-400/10
-                  hover:text-red-400
-                  disabled:opacity-40
-                "
-              >
-
-                <FiTrash2
-                  size={17}
-                />
-
-                Clear All History
-
-              </button>
+        recognition.onend = () => {
 
 
-              <button
-                onClick={() => {
-
-                  navigate(
-                    "/change-password"
-                  );
-
-                  setShowProfileMenu(
-                    false
-                  );
-                }}
-                className="
-                  flex
-                  w-full
-                  items-center
-                  gap-3
-                  rounded-xl
-                  px-3
-                  py-3
-                  text-left
-                  text-sm
-                  text-gray-300
-                  hover:bg-white/5
-                "
-              >
-
-                <FiLock
-                  size={17}
-                  className="text-cyan-400"
-                />
-
-                Change Password
-
-              </button>
+            console.log(
+                "🎤 MICROPHONE ENDED:",
+                new Date().toLocaleTimeString()
+            );
 
 
-              <div
-                className="
-                  my-1
-                  border-t
-                  border-white/10
-                "
-              />
+
+            if (
+                listeningRef.current &&
+                !speakingRef.current &&
+                !processingRef.current
+            ) {
 
 
-              <button
-                onClick={
-                  handleLogout
-                }
-                className="
-                  flex
-                  w-full
-                  items-center
-                  gap-3
-                  rounded-xl
-                  px-3
-                  py-3
-                  text-left
-                  text-sm
-                  text-red-400
-                  hover:bg-red-400/10
-                "
-              >
-
-                <FiLogOut
-                  size={17}
-                />
-
-                Logout
-
-              </button>
-
-            </div>
-          )}
-
-        </div>
-
-      </header>
+                clearTimeout(
+                    restartTimeoutRef.current
+                );
 
 
-      {/* =================================================
-          HISTORY
-      ================================================= */}
 
-      {showHistory && (
+                restartTimeoutRef.current =
+                    setTimeout(() => {
 
-        <>
 
-          <div
-            onClick={() =>
-              setShowHistory(false)
+                        console.log(
+                            "🎤 RESTARTING MICROPHONE"
+                        );
+
+
+
+                        try {
+                            recognition.start();
+                        } catch {}
+
+
+                    }, 400);
+
+
+
+            } else if (
+                !listeningRef.current
+            ) {
+
+
+                setIsListening(false);
+
+
+                setIsAIActive(false);
+
+
             }
-            className="
-              fixed
-              inset-0
-              z-40
-              bg-black/50
-              backdrop-blur-sm
-            "
-          />
+        };
 
 
-          <aside
-            className="
-              fixed
-              left-0
-              top-0
-              z-50
-              flex
-              h-full
-              w-[88%]
-              max-w-sm
-              flex-col
-              border-r
-              border-white/10
-              bg-[#090E1A]
-              shadow-2xl
-            "
-          >
 
-            <div
-              className="
-                flex
-                h-16
-                shrink-0
-                items-center
-                justify-between
-                border-b
-                border-white/10
-                px-4
-              "
-            >
-
-              <div>
-
-                <h2
-                  className="
-                    font-semibold
-                  "
-                >
-                  History
-                </h2>
-
-                <p
-                  className="
-                    text-xs
-                    text-gray-500
-                  "
-                >
-                  Your previous conversations
-                </p>
-
-              </div>
+        recognition.onerror = (event) => {
 
 
-              <button
-                onClick={() =>
-                  setShowHistory(
-                    false
-                  )
+            console.log(
+                "❌ Speech recognition error:",
+                event.error
+            );
+
+
+
+            if (
+                event.error === "not-allowed" ||
+                event.error === "audio-capture"
+            ) {
+
+
+                listeningRef.current = false;
+
+
+
+                setIsListening(false);
+
+
+                setIsAIActive(false);
+
+
+            }
+        };
+
+
+
+        return () => {
+
+
+            listeningRef.current = false;
+
+
+            processingRef.current = false;
+
+
+            speakingRef.current = false;
+
+
+
+            clearTimeout(
+                restartTimeoutRef.current
+            );
+
+
+
+            try {
+                recognition.stop();
+            } catch {}
+
+
+
+            window.speechSynthesis.cancel();
+
+
+        };
+
+
+    }, [getGeminiResponse]);
+
+
+
+    // =====================================================
+    // START LISTENING
+    // =====================================================
+
+
+    const startListening = () => {
+
+
+        if (!recognitionRef.current) {
+
+
+            alert(
+                "Speech recognition is not supported in this browser."
+            );
+
+
+            return;
+        }
+
+
+
+        try {
+
+
+            window.speechSynthesis.cancel();
+
+
+            speakingRef.current = false;
+
+
+            processingRef.current = false;
+
+
+
+            setIsAIActive(false);
+
+
+            listeningRef.current = true;
+
+
+            setIsListening(true);
+
+
+
+            console.log(
+                "🎤 START LISTENING BUTTON CLICKED:",
+                new Date().toLocaleTimeString()
+            );
+
+
+
+            recognitionRef.current.start();
+
+
+        } catch {}
+    };
+
+
+
+    // =====================================================
+    // STOP LISTENING
+    // =====================================================
+
+
+    const stopListening = () => {
+
+
+        listeningRef.current = false;
+
+
+        processingRef.current = false;
+
+
+        speakingRef.current = false;
+
+
+
+        setIsListening(false);
+
+
+        setIsAIActive(false);
+
+
+
+        clearTimeout(
+            restartTimeoutRef.current
+        );
+
+
+
+        window.speechSynthesis.cancel();
+
+
+
+        try {
+            recognitionRef.current?.stop();
+        } catch {}
+    };
+
+
+
+    // =====================================================
+    // TOGGLE MIC
+    // =====================================================
+
+
+    const toggleMic = () => {
+
+
+        if (isListening) {
+
+
+            stopListening();
+
+
+        } else {
+
+
+            startListening();
+
+
+        }
+    };
+
+
+
+    // =====================================================
+    // LOGOUT
+    // =====================================================
+
+
+    const handleLogout = async () => {
+
+
+        try {
+
+
+            listeningRef.current = false;
+
+
+            processingRef.current = false;
+
+
+            speakingRef.current = false;
+
+
+
+            setIsListening(false);
+
+
+            setIsAIActive(false);
+
+
+
+            clearTimeout(
+                restartTimeoutRef.current
+            );
+
+
+
+            try {
+                recognitionRef.current?.stop();
+            } catch {}
+
+
+
+            window.speechSynthesis.cancel();
+
+
+
+            await axios.post(
+                `${serverUrl}/api/auth/logout`,
+                {},
+                {
+                    withCredentials: true
                 }
-                className="
-                  flex
-                  h-9
-                  w-9
-                  items-center
-                  justify-center
-                  rounded-lg
-                  text-gray-400
-                  hover:bg-white/5
-                  hover:text-white
-                "
-              >
-
-                <IoMdClose
-                  size={21}
-                />
-
-              </button>
-
-            </div>
+            );
 
 
-            <div
-              className="
-                shrink-0
-                border-b
-                border-white/10
-                p-4
-              "
+
+            // IMPORTANT:
+            // This only clears the current frontend session.
+            // It does NOT delete MongoDB history.
+
+
+            setUserData(null);
+
+
+
+            navigate("/signin");
+
+
+
+        } catch (error) {
+
+
+            console.error(error);
+
+
+        }
+    };
+
+
+
+    // =====================================================
+    // CUSTOMIZE
+    // =====================================================
+
+
+    const handleCustomize = () => {
+
+
+        navigate("/customize2");
+
+
+    };
+
+
+
+    // =====================================================
+    // HISTORY CLICK
+    // =====================================================
+
+
+    const handleHistoryClick = (item) => {
+
+
+        const question =
+            typeof item === "string"
+                ? item
+                : item?.command ||
+                  item?.text ||
+                  item?.query ||
+                  "";
+
+
+
+        const answer =
+            typeof item === "string"
+                ? ""
+                : item?.answer || "";
+
+
+
+        setUserText(question);
+
+
+        setAiText(answer);
+
+
+        setShowAIText(
+            Boolean(answer)
+        );
+
+
+
+        setShowMenu(false);
+
+
+        setIsAIActive(false);
+    };
+
+
+
+    // =====================================================
+    // ASSISTANT DATA
+    // =====================================================
+
+
+    const assistantImage =
+        userData?.selectedImage ||
+        userData?.assistantImage ||
+        userData?.image;
+
+
+
+    const assistantName =
+        userData?.assistantName ||
+        "Assistant";
+
+
+
+    // =====================================================
+    // UI
+    // =====================================================
+
+
+    return (
+
+
+        <div className="relative min-h-screen w-full overflow-hidden bg-[#070B14] text-white">
+
+
+
+            {/* MAIN ASSISTANT */}
+
+
+            <main
+                className={`w-full max-w-225 min-h-screen flex flex-col items-center justify-center box-border pt-16 pb-6 sm:pt-10 sm:pb-0 mx-auto transition-all duration-300 ${
+                    showMenu
+                        ? "blur-[3px] opacity-70"
+                        : "blur-0 opacity-100"
+                }`}
             >
 
-              <div
-                className="
-                  relative
-                "
-              >
 
-                <FiSearch
-                  className="
-                    absolute
-                    left-3
-                    top-1/2
-                    -translate-y-1/2
-                    text-gray-500
-                  "
-                  size={16}
-                />
+                <div className="w-full flex flex-col items-center justify-center px-4 sm:px-5 box-border">
 
 
-                <input
-                  value={
-                    historySearch
-                  }
-                  onChange={e =>
-                    setHistorySearch(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Search history..."
-                  className="
-                    h-10
-                    w-full
-                    rounded-lg
-                    border
-                    border-white/10
-                    bg-white/5
-                    pl-9
-                    pr-3
-                    text-sm
-                    text-white
-                    outline-none
-                    placeholder:text-gray-600
-                    focus:border-cyan-400/30
-                  "
-                />
 
-              </div>
-
-            </div>
+                    {/* ASSISTANT IMAGE */}
 
 
-            <div
-              className="
-                min-h-0
-                flex-1
-                overflow-y-auto
-                p-3
-              "
-            >
-
-              {filteredHistory.length >
-                0 ? (
-
-                filteredHistory.map(
-                  item => (
-
-                    <div
-                      key={
-                        item._id ||
-                        `${item.command}-${item.createdAt}`
-                      }
-                      className="
-                        group
-                        mb-2
-                        rounded-xl
-                        border
-                        border-white/5
-                        bg-white/2.5
-                        p-3
-                        hover:border-cyan-400/20
-                      "
-                    >
-
-                      <button
-                        onClick={() =>
-                          openHistory(
-                            item
-                          )
-                        }
-                        className="
-                          w-full
-                          text-left
-                        "
-                      >
-
-                        <div
-                          className="
-                            mb-2
-                            flex
-                            items-center
-                            justify-between
-                            gap-2
-                          "
-                        >
-
-                          <span
-                            className="
-                              rounded-full
-                              bg-cyan-400/10
-                              px-2
-                              py-1
-                              text-[10px]
-                              uppercase
-                              text-cyan-300
-                            "
-                          >
-                            {item.type ||
-                              "text"}
-                          </span>
+                    <div className="w-[clamp(170px,50vw,260px)] h-[clamp(240px,43vh,380px)] flex items-center justify-center overflow-hidden rounded-[20px]">
 
 
-                          <span
-                            className="
-                              flex
-                              items-center
-                              gap-1
-                              text-[10px]
-                              text-gray-600
-                            "
-                          >
+                        {assistantImage ? (
 
-                            <FiClock
-                              size={10}
+
+                            <img
+                                src={assistantImage}
+                                alt={assistantName}
+                                className="w-full h-full object-cover block"
                             />
 
-                            {formatDate(
-                              item.createdAt
+
+                        ) : (
+
+
+                            <div className="w-full h-full flex items-center justify-center text-[70px]">
+                                🤖
+                            </div>
+
+
+                        )}
+
+
+                    </div>
+
+
+
+                    {/* ASSISTANT NAME */}
+
+
+                    <div className="mt-3.5 text-white text-2xl font-semibold text-center max-sm:text-xl">
+
+
+                        I'm {assistantName}
+
+
+                    </div>
+
+
+
+                    {/* AI / USER GIF */}
+
+
+                    <div className="w-full h-20 sm:h-25 flex items-center justify-center mt-2">
+
+
+                        <img
+                            src={
+                                isAIActive
+                                    ? aiImg
+                                    : userImg
+                            }
+                            alt={
+                                isAIActive
+                                    ? "AI"
+                                    : "User"
+                            }
+                            className="w-20 h-20 sm:w-22.5 sm:h-22.5 object-contain block"
+                        />
+
+
+                    </div>
+
+
+
+                    {/* RESPONSE */}
+
+
+                    <div className="w-full min-h-15 flex items-center justify-center px-2 sm:px-3">
+
+
+                        <h1 className="text-white text-[16px] sm:text-[18px] font-bold text-center w-full max-w-full mt-3.75 leading-[1.6] whitespace-pre-wrap wrap-break-word">
+
+
+                            {showAIText ? (
+
+
+                                <>
+
+
+                                    <div>
+                                        Question: {userText}
+                                    </div>
+
+
+                                    <div className="mt-3">
+                                        Answer: {aiText}
+                                    </div>
+
+
+                                </>
+
+
+                            ) : (
+
+
+                                userText
+
+
                             )}
 
-                          </span>
+
+                        </h1>
+
+
+                    </div>
+
+
+
+                    {/* TEXT INPUT */}
+
+
+                    <div className="w-full max-w-175 mt-5 px-1 sm:px-2">
+
+
+                        <div className="flex items-center gap-2 w-full">
+
+
+                            <input
+                                type="text"
+                                value={typedText}
+                                onChange={event =>
+                                    setTypedText(
+                                        event.target.value
+                                    )
+                                }
+                                onKeyDown={
+                                    handleInputKeyDown
+                                }
+                                placeholder="Type your question or command..."
+                                disabled={isSending}
+                                className="flex-1 min-w-0 px-3 sm:px-4 py-3 rounded-xl bg-white/10 border border-white/10 focus:border-cyan-400/60 outline-none text-white placeholder:text-gray-500 text-sm transition-all duration-200 disabled:opacity-50"
+                            />
+
+
+
+                            <button
+                                onClick={handleSendText}
+                                disabled={
+                                    isSending ||
+                                    !typedText.trim()
+                                }
+                                className="px-4 sm:px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold cursor-pointer disabled:cursor-not-allowed transition-all duration-200 active:scale-95"
+                            >
+
+
+                                {isSending
+                                    ? "..."
+                                    : "Send"}
+
+
+                            </button>
+
 
                         </div>
 
 
-                        {item?.type ===
-                          "image" &&
-                          item?.image && (
-
-                            <img
-                              src={
-                                item.image
-                              }
-                              alt="Previous"
-                              className="
-                                mb-3
-                                h-28
-                                w-full
-                                rounded-xl
-                                object-cover
-                              "
-                            />
-                          )}
+                    </div>
 
 
-                        {item?.type ===
-                          "file" && (
 
-                            <div
-                              className="
-                                mb-3
-                                flex
-                                items-center
-                                gap-3
-                                rounded-xl
-                                bg-cyan-400/3
-                                p-3
-                              "
-                            >
-
-                              <FiFileText
-                                size={22}
-                                className="text-cyan-400"
-                              />
-
-                              <span
-                                className="
-                                  truncate
-                                  text-xs
-                                  text-gray-400
-                                "
-                              >
-                                {item.fileName ||
-                                  "PDF document"}
-                              </span>
-
-                            </div>
-                          )}
+                    {/* MIC BUTTON */}
 
 
-                        <p
-                          className="
-                            line-clamp-2
-                            text-sm
-                            text-gray-300
-                          "
-                        >
-                          {item.command}
-                        </p>
+                    <button
+                        onClick={toggleMic}
+                        className={`mt-5 px-6 py-3 border-none rounded-xl text-white text-base font-semibold cursor-pointer min-w-32.5 transition-all duration-200 active:scale-95 ${
+                           isListening
+    ? "bg-rose-500 hover:bg-rose-600"
+    : "bg-cyan-500 hover:bg-cyan-400"
+                        }`}
+                    >
 
 
-                        {item.answer && (
-
-                          <p
-                            className="
-                              mt-2
-                              line-clamp-2
-                              text-xs
-                              text-gray-600
-                            "
-                          >
-                            {item.answer}
-                          </p>
-                        )}
-
-                      </button>
+                        {isListening
+                            ? "Stop Mic"
+                            : "Start Mic"}
 
 
-                      {item._id &&
-                        !String(
-                          item._id
-                        ).startsWith(
-                          "temp-"
-                        ) && (
+                    </button>
 
-                          <button
-                            onClick={() =>
-                              deleteHistory(
-                                item._id
-                              )
-                            }
-                            className="
-                              mt-2
-                              flex
-                              items-center
-                              gap-1
-                              text-xs
-                              text-gray-600
-                              hover:text-red-400
-                            "
-                          >
 
-                            <FiTrash2
-                              size={12}
-                            />
 
-                            Delete
+                    {/* MIC MESSAGE */}
 
-                          </button>
-                        )}
+
+                    <div className="mt-3 text-gray-300 text-sm text-center max-w-[90%]">
+
+
+                        {isListening
+                            ? "Listening... Speak now."
+                            : "Press the mic to start a conversation."
+                        }
+
 
                     </div>
-                  )
-                )
-
-              ) : (
-
-                <div
-                  className="
-                    flex
-                    h-full
-                    items-center
-                    justify-center
-                    text-sm
-                    text-gray-500
-                  "
-                >
-                  No history found
-                </div>
-              )}
-
-            </div>
-
-          </aside>
-
-        </>
-      )}
 
 
-      {/* =================================================
-          MAIN
-      ================================================= */}
-
-      <main
-        className="
-          flex
-          min-h-0
-          w-full
-          flex-1
-          justify-center
-          overflow-hidden
-        "
-      >
-
-        <section
-          className="
-            flex
-            min-h-0
-            h-full
-            w-full
-            max-w-6xl
-            flex-col
-            items-center
-            overflow-hidden
-            px-3
-            py-4
-            sm:px-6
-            sm:py-6
-          "
-        >
-
-
-          {/* =================================================
-              ONLY CHAT AREA SCROLLS
-          ================================================= */}
-
-          <div
-            className="
-              min-h-0
-              w-full
-              flex-1
-              overflow-y-auto
-              overscroll-contain
-              px-1
-              pb-8
-            "
-          >
-
-            <div
-              className="
-                mx-auto
-                flex
-                w-full
-                max-w-3xl
-                flex-col
-                items-center
-                pt-2
-                sm:pt-5
-              "
-            >
-
-
-              {/* =================================================
-                  ASSISTANT IMAGE
-              ================================================= */}
-
-              <div
-                className={`
-                  mb-4
-                  rounded-full
-                  p-1
-                  transition
-                  ${
-                    isAIActive
-                      ? "ring-4 ring-cyan-400/30"
-                      : ""
-                  }
-                `}
-              >
-
-                <img
-                  src={
-                    userData?.assistantImage ||
-                    aiImg
-                  }
-                  alt="Assistant"
-                  className="
-                    h-20
-                    w-20
-                    rounded-full
-                    object-cover
-                    sm:h-28
-                    sm:w-28
-                    md:h-32
-                    md:w-32
-                  "
-                />
-
-              </div>
-
-
-              {/* =================================================
-                  ASSISTANT NAME
-              ================================================= */}
-
-              <h1
-                className="
-                  px-3
-                  text-center
-                  text-xl
-                  font-semibold
-                  sm:text-2xl
-                  md:text-3xl
-                "
-              >
-                {userData?.assistantName ||
-                  "Assistant"}
-              </h1>
-
-
-              {/* =================================================
-                  STATUS
-              ================================================= */}
-
-              <p
-                className="
-                  mt-2
-                  text-center
-                  text-xs
-                  text-gray-500
-                  sm:text-sm
-                "
-              >
-
-                {isSpeaking
-
-                  ? "Speaking..."
-
-                  : isListening
-
-                    ? "Listening..."
-
-                    : isImageAnalyzing
-
-                      ? "Analyzing image..."
-
-                      : isPdfAnalyzing
-
-                        ? "Analyzing PDF..."
-
-                        : "How can I help you?"}
-
-              </p>
-
-
-              {/* =================================================
-                  HISTORY IMAGE
-              ================================================= */}
-
-              {historyImage && (
-
-                <div
-                  className="
-                    mt-5
-                    w-full
-                    max-w-2xl
-                    rounded-2xl
-                    border
-                    border-cyan-400/10
-                    p-2
-                  "
-                >
-
-                  <img
-                    src={historyImage}
-                    alt="Previous"
-                    className="
-                      mx-auto
-                      max-h-[45vh]
-                      w-full
-                      rounded-xl
-                      object-contain
-                    "
-                  />
 
                 </div>
-              )}
 
 
-              {/* =================================================
-                  HISTORY PDF
-              ================================================= */}
-
-              {historyFileName && (
-
-                <div
-                  className="
-                    mt-5
-                    flex
-                    w-full
-                    max-w-2xl
-                    items-center
-                    gap-3
-                    rounded-2xl
-                    border
-                    border-cyan-400/10
-                    bg-cyan-400/3
-                    p-4
-                  "
-                >
-
-                  <FiFileText
-                    size={25}
-                    className="text-cyan-400"
-                  />
-
-                  <div
-                    className="
-                      min-w-0
-                      flex-1
-                    "
-                  >
-
-                    <p
-                      className="
-                        text-xs
-                        text-gray-500
-                      "
-                    >
-                      Previous PDF
-                    </p>
-
-                    <p
-                      className="
-                        truncate
-                        text-sm
-                        text-gray-300
-                      "
-                    >
-                      {historyFileName}
-                    </p>
-
-                  </div>
-
-                </div>
-              )}
+            </main>
 
 
-              {/* =================================================
-                  USER QUESTION
-              ================================================= */}
 
-              {userText && (
-
-                <div
-                  className="
-                    mt-5
-                    w-full
-                    max-w-2xl
-                    wrap-break-word
-                    rounded-2xl
-                    border
-                    border-cyan-400/10
-                    bg-cyan-400/5
-                    px-4
-                    py-3
-                    text-sm
-                    leading-relaxed
-                    text-gray-300
-                  "
-                >
-                  {userText}
-                </div>
-              )}
+            {/* DESKTOP CONTROLS */}
 
 
-              {/* =================================================
-                  AI ANSWER
-
-                  mb-6 = 24px
-                  pb-8 on parent = additional bottom space
-
-                  The important part is that this is inside
-                  the scrollable chat region.
-              ================================================= */}
-
-              {showAIText &&
-                aiText && (
-
-                  <div
-                    className="
-                      mt-4
-                      mb-6
-                      w-full
-                      max-w-3xl
-                      wrap-break-word
-                      rounded-2xl
-                      border
-                      border-white/10
-                      bg-white/3
-                      px-4
-                      py-4
-                      text-sm
-                      leading-7
-                      whitespace-pre-wrap
-                      text-gray-200
-                      sm:px-6
-                      sm:py-5
-                      sm:text-base
-                    "
-                  >
-                    {aiText}
-                  </div>
-                )}
-
-            </div>
-
-          </div>
-
-
-          {/* =================================================
-              IMAGE PREVIEW
-          ================================================= */}
-
-          {imagePreview && (
-
-            <div
-              className="
-                mb-3
-                w-full
-                max-w-3xl
-                shrink-0
-                rounded-2xl
-                border
-                border-cyan-400/20
-                bg-[#0A1020]
-                p-3
-              "
-            >
-
-              <div
-                className="
-                  flex
-                  items-center
-                  gap-3
-                "
-              >
-
-                <img
-                  src={imagePreview}
-                  alt="Selected"
-                  className="
-                    h-14
-                    w-14
-                    shrink-0
-                    rounded-xl
-                    object-cover
-                  "
-                />
-
-                <div
-                  className="
-                    min-w-0
-                    flex-1
-                  "
-                >
-
-                  <p
-                    className="
-                      text-sm
-                      text-white
-                    "
-                  >
-                    Image selected
-                  </p>
-
-                  <p
-                    className="
-                      text-xs
-                      text-gray-500
-                    "
-                  >
-                    Ask your question below.
-                  </p>
-
-                </div>
+            <div className="fixed top-5 right-5 z-1200 hidden sm:flex flex-col items-end gap-3">
 
 
                 <button
-                  type="button"
-                  onClick={
-                    removeImage
-                  }
-                  className="
-                    flex
-                    h-8
-                    w-8
-                    items-center
-                    justify-center
-                    rounded-lg
-                    text-gray-500
-                    hover:text-red-400
-                  "
+                    onClick={handleLogout}
+                  className="px-3 py-2.5 border-none rounded-[10px] bg-red-500 hover:bg-red-600 text-white text-sm font-semibold cursor-pointer whitespace-nowrap transition-all duration-200 active:scale-95 shadow-lg"
                 >
-
-                  <FiX
-                    size={18}
-                  />
-
+                    Log Out
                 </button>
 
-              </div>
-
-            </div>
-          )}
-
-
-          {/* =================================================
-              PDF PREVIEW
-          ================================================= */}
-
-          {pdfPreviewName && (
-
-            <div
-              className="
-                mb-3
-                w-full
-                max-w-3xl
-                shrink-0
-                rounded-2xl
-                border
-                border-cyan-400/20
-                bg-[#0A1020]
-                p-3
-              "
-            >
-
-              <div
-                className="
-                  flex
-                  items-center
-                  gap-3
-                "
-              >
-
-                <div
-                  className="
-                    flex
-                    h-14
-                    w-14
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-xl
-                    bg-red-400/10
-                  "
-                >
-
-                  <FiFileText
-                    size={25}
-                    className="text-red-400"
-                  />
-
-                </div>
-
-
-                <div
-                  className="
-                    min-w-0
-                    flex-1
-                  "
-                >
-
-                  <p
-                    className="
-                      text-xs
-                      text-gray-500
-                    "
-                  >
-                    PDF selected
-                  </p>
-
-                  <p
-                    className="
-                      truncate
-                      text-sm
-                      text-white
-                    "
-                  >
-                    {pdfPreviewName}
-                  </p>
-
-                </div>
 
 
                 <button
-                  type="button"
-                  onClick={
-                    removePdf
-                  }
-                  className="
-                    flex
-                    h-8
-                    w-8
-                    items-center
-                    justify-center
-                    rounded-lg
-                    text-gray-500
-                    hover:text-red-400
-                  "
+                    onClick={handleCustomize}
+                    className="px-3 py-2.5 border-none rounded-[10px] bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-semibold cursor-pointer whitespace-nowrap transition-all duration-200 active:scale-95 shadow-lg"
+                >
+                    Customize your Assistant
+                </button>
+
+
+            </div>
+
+
+
+            {/* MENU OPEN BUTTON */}
+
+
+            {!showMenu && (
+
+
+                <button
+                    onClick={() =>
+                        setShowMenu(true)
+                    }
+                   className="fixed top-5 left-5 z-1200 flex items-center justify-center w-11 h-11 rounded-xl bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-400/10 text-white text-[29px] cursor-pointer backdrop-blur-xl shadow-lg transition-all duration-200 active:scale-95"
                 >
 
-                  <FiX
-                    size={18}
-                  />
+
+                    <IoMdMenu />
+
 
                 </button>
 
-              </div>
 
-            </div>
-          )}
+            )}
 
 
-          {/* =================================================
-              FIXED INPUT AREA
 
-              shrink-0 = NEVER GETS PUSHED DOWN BY ANSWER
-          ================================================= */}
+            {/* BACKDROP */}
 
-          <div
-            className="
-              w-full
-              max-w-3xl
-              shrink-0
-            "
-          >
 
-            <form
-              onSubmit={
-                handleSend
-              }
-              className="
-                flex
-                min-w-0
-                items-center
-                gap-1
-                rounded-2xl
-                border
-                border-white/10
-                bg-[#0A1020]
-                p-1.5
-                shadow-2xl
-                sm:gap-2
-                sm:p-2
-              "
+            <div
+                onClick={() =>
+                    setShowMenu(false)
+                }
+                className={`fixed inset-0 z-1050 bg-transparent transition-all duration-300 ${
+                    showMenu
+                        ? "visible backdrop-blur-[2px]"
+                        : "invisible pointer-events-none"
+                }`}
+            />
+
+
+
+            {/* SIDE MENU */}
+
+
+            <aside
+                className={`fixed top-0 left-0 bottom-0 z-1100 w-[min(25vw,380px)] min-w-75 max-sm:min-w-0 max-sm:w-[86vw] bg-[#0A1020]/97 backdrop-blur-2xl border-r border-white/10 shadow-[20px_0_60px_rgba(0,0,0,0.3)] flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                    showMenu
+                        ? "translate-x-0"
+                        : "-translate-x-full"
+                }`}
             >
 
 
-              {/* =================================================
-                  IMAGE
-              ================================================= */}
 
-              <button
-                type="button"
-                onClick={() =>
-                  imageInputRef.current?.click()
-                }
-                className="
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-xl
-                  text-gray-400
-                  hover:bg-white/5
-                  hover:text-cyan-300
-                "
-                title="Analyze image"
-              >
-
-                <FiImage
-                  size={19}
-                />
-
-              </button>
+                {/* MENU HEADER */}
 
 
-              <input
-                ref={
-                  imageInputRef
-                }
-                type="file"
-                accept="image/*"
-                onChange={
-                  handleImageSelect
-                }
-                className="hidden"
-              />
+                <div className="flex items-center justify-between px-5 py-4 sm:py-5 border-b border-white/10 shrink-0">
 
 
-              {/* =================================================
-                  PDF
-              ================================================= */}
-
-              <button
-                type="button"
-                onClick={() =>
-                  pdfInputRef.current?.click()
-                }
-                className="
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-xl
-                  text-gray-400
-                  hover:bg-white/5
-                  hover:text-cyan-300
-                "
-                title="Upload PDF"
-              >
-
-                <FiFileText
-                  size={19}
-                />
-
-              </button>
+                    <h2 className="text-white text-lg sm:text-xl font-bold m-0">
+                        Assistant Menu
+                    </h2>
 
 
-              <input
-                ref={
-                  pdfInputRef
-                }
-                type="file"
-                accept="application/pdf,.pdf"
-                onChange={
-                  handlePdfSelect
-                }
-                className="hidden"
-              />
+
+                    <button
+                        onClick={() =>
+                            setShowMenu(false)
+                        }
+                       className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-cyan-400/5 hover:bg-cyan-400/15 border border-cyan-400/10 text-white text-2xl cursor-pointer transition-all duration-200 active:scale-95"
+                        aria-label="Close assistant menu"
+                    >
 
 
-              {/* =================================================
-                  QUESTION
-              ================================================= */}
-
-              <input
-                value={
-                  typedText
-                }
-                onChange={e =>
-                  setTypedText(
-                    e.target.value
-                  )
-                }
-                placeholder={
-                  imagePreview
-
-                    ? "Ask about the image..."
-
-                    : pdfPreviewName
-
-                      ? "Ask about the PDF..."
-
-                      : isListening
-
-                        ? "Listening..."
-
-                        : "Ask me anything..."
-                }
-                className="
-                  min-w-0
-                  flex-1
-                  bg-transparent
-                  px-1
-                  text-sm
-                  text-white
-                  outline-none
-                  placeholder:text-gray-600
-                  sm:px-2
-                "
-              />
+                        <IoMdClose />
 
 
-              {/* =================================================
-                  ONE MIC / STOP BUTTON
-              ================================================= */}
-
-              <button
-                type="button"
-                onClick={
-                  handleMicClick
-                }
-                className={`
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-xl
-                  transition
-                  sm:h-11
-                  sm:w-11
-                  ${
-                    isSpeaking
-
-                      ? "bg-red-400/15 text-red-400 hover:bg-red-400/25"
-
-                      : isListening
-
-                        ? "bg-red-400/10 text-red-400 hover:bg-red-400/20"
-
-                        : "text-gray-400 hover:bg-white/5 hover:text-cyan-300"
-                  }
-                `}
-                title={
-                  isSpeaking
-
-                    ? "Stop speaking"
-
-                    : isListening
-
-                      ? "Stop microphone"
-
-                      : "Start microphone"
-                }
-              >
-
-                {isSpeaking ? (
-
-                  <FiSquare
-                    size={17}
-                    fill="currentColor"
-                  />
-
-                ) : isListening ? (
-
-                  <FiMicOff
-                    size={19}
-                  />
-
-                ) : (
-
-                  <FiMic
-                    size={19}
-                  />
-                )}
-
-              </button>
+                    </button>
 
 
-              {/* =================================================
-                  SEND
-              ================================================= */}
-
-              <button
-                type="submit"
-                disabled={
-                  selectedImage
-
-                    ? isImageAnalyzing
-
-                    : selectedPdf
-
-                      ? isPdfAnalyzing
-
-                      : isSending ||
-                        !typedText.trim()
-                }
-                className="
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-xl
-                  bg-cyan-400
-                  text-black
-                  transition
-                  hover:bg-cyan-300
-                  disabled:cursor-not-allowed
-                  disabled:opacity-40
-                  sm:h-11
-                  sm:w-11
-                "
-                title="Send"
-              >
-
-                <FiSend
-                  size={18}
-                />
-
-              </button>
-
-            </form>
+                </div>
 
 
-            <p
-              className="
-                mt-2
-                text-center
-                text-[10px]
-                text-gray-700
-                sm:text-[11px]
-              "
-            >
-              Text • Voice • Image • PDF Analysis
-            </p>
 
-          </div>
+                {/* MOBILE ASSISTANT PROFILE */}
 
-        </section>
 
-      </main>
+                <div className="sm:hidden px-4 py-4 border-b border-white/10 shrink-0">
 
-    </div>
-  );
+
+                    <div className="flex items-center gap-3">
+
+
+                        <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-white/5 border border-white/10 flex items-center justify-center">
+
+
+                            {assistantImage ? (
+
+
+                                <img
+                                    src={assistantImage}
+                                    alt={assistantName}
+                                    className="w-full h-full object-cover"
+                                />
+
+
+                            ) : (
+
+
+                                <span className="text-2xl">
+                                    🤖
+                                </span>
+
+
+                            )}
+
+
+                        </div>
+
+
+
+                        <div className="min-w-0 flex-1">
+
+
+                            <p className="text-gray-500 text-[11px] m-0">
+                                Assistant
+                            </p>
+
+
+                            <h3 className="text-white text-base font-semibold truncate m-0 mt-0.5">
+                                {assistantName}
+                            </h3>
+
+
+                        </div>
+
+
+                    </div>
+
+
+
+                    {/* MOBILE BUTTONS */}
+
+
+                    <div className="grid grid-cols-2 gap-2.5 mt-3.5">
+
+
+                        <button
+                            onClick={handleCustomize}
+                            className="w-full min-w-0 px-2.5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-semibold cursor-pointer transition-all duration-200 active:scale-95 shadow-md"
+                        >
+                            Customize
+                        </button>
+
+
+
+                        <button
+                            onClick={handleLogout}
+                          className="w-full min-w-0 px-2.5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-semibold cursor-pointer transition-all duration-200 active:scale-95 shadow-md"
+                        >
+                            Log Out
+                        </button>
+
+
+                    </div>
+
+
+                </div>
+
+
+
+                {/* HISTORY HEADER */}
+
+
+                <div className="px-4 sm:px-5 pt-4 pb-3 flex items-center justify-between shrink-0">
+
+
+                    <h3 className="text-white text-base font-semibold m-0">
+                        History
+                    </h3>
+
+
+
+                    <span className="text-gray-500 text-xs">
+
+
+                        {historyItems.length}{" "}
+
+
+                        {historyItems.length === 1
+                            ? "item"
+                            : "items"}
+
+
+                    </span>
+
+
+                </div>
+
+
+
+                {/* HISTORY */}
+
+
+                <div className="flex-1 overflow-y-auto px-3.5 sm:px-4 pb-5 dark-scrollbar">
+
+
+                    {historyItems.length ? (
+
+
+                        <div className="flex flex-col gap-2">
+
+
+                            {historyItems.map(
+                                (item, index) => (
+
+
+                                    <div
+                                        key={`${index}-${typeof item === "string"
+                                            ? item
+                                            : item?.command || index
+                                        }`}
+                                        onClick={() =>
+                                            handleHistoryClick(
+                                                item
+                                            )
+                                        }
+                                        className="group px-3.5 py-3 rounded-xl bg-cyan-400/5 hover:bg-cyan-400/10 border border-cyan-400/10 hover:border-cyan-400/20 text-gray-300 hover:text-white text-sm leading-relaxed wrap-break-word transition-all duration-200 cursor-pointer"
+                                    >
+
+
+                                        <div className="flex gap-3">
+
+
+                                            <span className="text-gray-600 text-xs pt-1 shrink-0">
+                                                {index + 1}
+                                            </span>
+
+
+
+                                            <div className="flex flex-col gap-3 min-w-0 w-full">
+
+
+                                                <div>
+
+
+                                                    <span className="text-gray-500 text-xs">
+                                                        Question:
+                                                    </span>
+
+
+
+                                                    <div className="text-white font-medium mt-1 whitespace-pre-wrap wrap-break-word">
+
+
+                                                        {typeof item === "string"
+                                                            ? item
+                                                            : item?.command ||
+                                                              item?.text ||
+                                                              item?.query ||
+                                                              ""
+                                                        }
+
+
+                                                    </div>
+
+
+                                                </div>
+
+
+
+                                                {typeof item !== "string" &&
+                                                    item?.answer && (
+
+
+                                                        <div>
+
+
+                                                            <span className="text-gray-500 text-xs">
+                                                                Answer:
+                                                            </span>
+
+
+
+                                                            <div className="text-gray-400 text-sm leading-relaxed mt-1 whitespace-pre-wrap wrap-break-word">
+
+
+                                                                {item.answer}
+
+
+                                                            </div>
+
+
+                                                        </div>
+
+
+                                                    )}
+
+
+                                            </div>
+
+
+                                        </div>
+
+
+                                    </div>
+
+
+                                )
+                            )}
+
+
+                        </div>
+
+
+                    ) : (
+
+
+                        <div className="h-full min-h-62.5 flex flex-col items-center justify-center text-center px-5">
+
+
+                            <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-500 text-xl mb-4">
+                                ✦
+                            </div>
+
+
+
+                            <p className="text-gray-400 text-sm m-0">
+                                No history yet
+                            </p>
+
+
+
+                            <p className="text-gray-600 text-xs mt-2 max-w-55 leading-relaxed">
+                                Your searches and commands will appear here.
+                            </p>
+
+
+                        </div>
+
+
+                    )}
+
+
+                </div>
+
+
+            </aside>
+
+
+        </div>
+
+
+    );
 }
 
 
-export default Home;
+
+export default Home
