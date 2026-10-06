@@ -1429,392 +1429,142 @@ function Home() {
       );
     };
 
-// =====================================================
-// WEBSITES
-// =====================================================
 
-const websites = {
-  google: "https://www.google.com",
-  bing: "https://www.bing.com",
-  youtube: "https://www.youtube.com",
-  yahoo: "https://www.yahoo.com",
+  // =====================================================
+  // WEBSITES
+  // =====================================================
 
-  instagram: "https://www.instagram.com",
-  facebook: "https://www.facebook.com",
-  twitter: "https://x.com",
-  x: "https://x.com",
-  pinterest: "https://www.pinterest.com",
-  reddit: "https://www.reddit.com",
-  telegram: "https://web.telegram.org",
-  whatsapp: "https://web.whatsapp.com",
-  discord: "https://discord.com",
+  const websites = {
 
-  github: "https://github.com",
-  linkedin: "https://www.linkedin.com",
-  gmail: "https://mail.google.com",
+    google:
+      "https://www.google.com",
 
-  amazon: "https://www.amazon.in",
-  flipkart: "https://www.flipkart.com",
-  titan: "https://www.titan.co.in",
+    youtube:
+      "https://www.youtube.com",
 
-  spotify: "https://open.spotify.com",
-  netflix: "https://www.netflix.com",
+    yahoo:
+      "https://www.yahoo.com",
 
-  wikipedia: "https://www.wikipedia.org",
-  canva: "https://www.canva.com",
+    instagram:
+      "https://www.instagram.com",
 
-  chatgpt: "https://chatgpt.com",
-  openai: "https://openai.com",
-  gemini: "https://gemini.google.com"
-};
+    facebook:
+      "https://www.facebook.com",
+
+    github:
+      "https://github.com",
+
+    linkedin:
+      "https://www.linkedin.com",
+
+    whatsapp:
+      "https://web.whatsapp.com",
+
+    gmail:
+      "https://mail.google.com",
+
+    amazon:
+      "https://www.amazon.in",
+
+    flipkart:
+      "https://www.flipkart.com",
+
+    spotify:
+      "https://open.spotify.com",
+
+    netflix:
+      "https://www.netflix.com",
+
+    wikipedia:
+      "https://www.wikipedia.org",
+
+    reddit:
+      "https://www.reddit.com",
+
+    discord:
+      "https://discord.com",
+
+    canva:
+      "https://www.canva.com",
+
+    pinterest:
+      "https://www.pinterest.com",
+
+    twitter:
+      "https://x.com",
+
+    x:
+      "https://x.com",
+
+    telegram:
+      "https://web.telegram.org"
+  };
+
 
   // =====================================================
   // WEBSITE SEARCH URL
   // =====================================================
 
-  
-const getWebsiteSearchUrl = (site, query) => {
-  const encodedQuery = encodeURIComponent(query.trim());
+  const getWebsiteSearchUrl =
+    (
+      site,
+      query
+    ) => {
 
-  switch (site) {
-    case "google":
-      return `https://www.google.com/search?q=${encodedQuery}`;
+      const encodedQuery =
+        encodeURIComponent(
+          query.trim()
+        );
 
-    case "bing":
-      return `https://www.bing.com/search?q=${encodedQuery}`;
+      switch (site) {
 
-    case "youtube":
-      return `https://www.youtube.com/results?search_query=${encodedQuery}`;
+        case "google":
+          return `https://www.google.com/search?q=${encodedQuery}`;
 
-    case "yahoo":
-      return `https://search.yahoo.com/search?p=${encodedQuery}`;
+        case "youtube":
+          return `https://www.youtube.com/results?search_query=${encodedQuery}`;
 
-    case "amazon":
-      return `https://www.amazon.in/s?k=${encodedQuery}`;
+        case "yahoo":
+          return `https://search.yahoo.com/search?p=${encodedQuery}`;
 
-    case "flipkart":
-      return `https://www.flipkart.com/search?q=${encodedQuery}`;
+        case "amazon":
+          return `https://www.amazon.in/s?k=${encodedQuery}`;
 
-    case "wikipedia":
-      return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
+        case "flipkart":
+          return `https://www.flipkart.com/search?q=${encodedQuery}`;
 
-    case "reddit":
-      return `https://www.reddit.com/search/?q=${encodedQuery}`;
+        case "wikipedia":
+          return `https://www.wikipedia.org/w/index.php?search=${encodedQuery}`;
 
-    case "github":
-      return `https://github.com/search?q=${encodedQuery}`;
+        case "reddit":
+          return `https://www.reddit.com/search/?q=${encodedQuery}`;
 
-    case "linkedin":
-      return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
+        case "github":
+          return `https://github.com/search?q=${encodedQuery}`;
 
-    case "spotify":
-      return `https://open.spotify.com/search/${encodedQuery}`;
+        case "linkedin":
+          return `https://www.linkedin.com/search/results/all/?keywords=${encodedQuery}`;
 
-    case "pinterest":
-      return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
+        case "spotify":
+          return `https://open.spotify.com/search/${encodedQuery}`;
 
-    case "facebook":
-      return `https://www.facebook.com/search/top?q=${encodedQuery}`;
+        case "pinterest":
+          return `https://www.pinterest.com/search/pins/?q=${encodedQuery}`;
 
-    case "x":
-    case "twitter":
-      return `https://x.com/search?q=${encodedQuery}`;
+        case "facebook":
+          return `https://www.facebook.com/search/top?q=${encodedQuery}`;
 
-    case "instagram":
-      return `https://www.instagram.com/explore/search/keyword/?q=${encodedQuery}`;
+        case "x":
+        case "twitter":
+          return `https://x.com/search?q=${encodedQuery}`;
 
-    default:
-      return null;
-  }
-};
+        case "instagram":
+          return `https://www.instagram.com/explore/search/keyword/?q=${encodedQuery}`;
 
-
-
-// =====================================================
-// GENERIC WEBSITE COMMAND HANDLER
-//
-// OPEN:
-// Open Google
-// Open YouTube
-// Open Titan
-// Open ChatGPT
-// Open Instagram
-//
-// SEARCH:
-// Search shoes on Amazon
-// Search Virat Kohli on YouTube
-// Search DBMS on Google
-// Search React on GitHub
-//
-// ALSO:
-// Open cat on YouTube
-// YouTube cat
-// Amazon shoes
-// =====================================================
-
-const handleWebsiteCommand = (command) => {
-  if (!command || typeof command !== "string") {
-    return false;
-  }
-
-  const text = command
-    .trim()
-    .replace(/[?!.]+$/g, "")
-    .replace(/\s+/g, " ");
-
-  if (!text) {
-    return false;
-  }
-
-  const normalizeSite = (site) => {
-    return site
-      .toLowerCase()
-      .trim()
-      .replace(/^https?:\/\//i, "")
-      .replace(/^www\./i, "")
-      .replace(/\/.*$/i, "")
-      .replace(/\s+/g, "");
-  };
-
-  const aliases = {
-    google: "google",
-    goog: "google",
-
-    bing: "bing",
-
-    youtube: "youtube",
-    yt: "youtube",
-
-    yahoo: "yahoo",
-
-    instagram: "instagram",
-    insta: "instagram",
-
-    facebook: "facebook",
-    fb: "facebook",
-
-    twitter: "twitter",
-    x: "x",
-
-    github: "github",
-
-    linkedin: "linkedin",
-
-    amazon: "amazon",
-    amzn: "amazon",
-
-    flipkart: "flipkart",
-
-    spotify: "spotify",
-
-    netflix: "netflix",
-
-    wikipedia: "wikipedia",
-    wiki: "wikipedia",
-
-    reddit: "reddit",
-
-    pinterest: "pinterest",
-
-    whatsapp: "whatsapp",
-
-    gmail: "gmail",
-
-    discord: "discord",
-
-    canva: "canva",
-
-    telegram: "telegram",
-
-    titan: "titan",
-
-    chatgpt: "chatgpt",
-
-    openai: "openai",
-
-    gemini: "gemini"
-  };
-
-  // ===================================================
-  // 1. OPEN DIRECT URL
-  // ===================================================
-
-  let match = text.match(
-    /^(?:open|go\s+to|visit|navigate\s+to|launch)\s+(https?:\/\/\S+)$/i
-  );
-
-  if (match) {
-    openUrl(match[1]);
-    return true;
-  }
-
-  // ===================================================
-  // 2. OPEN A BARE DOMAIN
-  //
-  // Open amazon.in
-  // Open github.com
-  // ===================================================
-
-  match = text.match(
-    /^(?:open|go\s+to|visit|navigate\s+to|launch)\s+([a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/\S*)?)$/i
-  );
-
-  if (match) {
-    openUrl(`https://${match[1]}`);
-    return true;
-  }
-
-  // ===================================================
-  // 3. SEARCH / OPEN SOMETHING ON A WEBSITE
-  //
-  // Search shoes on Amazon
-  // Search Virat Kohli on YouTube
-  // Open cat on YouTube
-  // Find React on GitHub
-  // ===================================================
-
-  match = text.match(
-    /^(?:search|find|look\s+up|look\s+for|open|watch|play)\s+(.+?)\s+(?:on|in|using)\s+(.+)$/i
-  );
-
-  if (match) {
-    const query = match[1].trim();
-    const rawSite = match[2].trim();
-    const site = aliases[normalizeSite(rawSite)];
-
-    if (query && site) {
-      const searchUrl = getWebsiteSearchUrl(site, query);
-
-      if (searchUrl) {
-        openUrl(searchUrl);
-        return true;
+        default:
+          return null;
       }
-
-      // Known site but no direct search URL
-      const googleUrl =
-        `https://www.google.com/search?q=${encodeURIComponent(
-          `${query} site:${normalizeSite(rawSite)}`
-        )}`;
-
-      openUrl(googleUrl);
-      return true;
-    }
-
-    // Unknown site
-    if (query && rawSite) {
-      const googleUrl =
-        `https://www.google.com/search?q=${encodeURIComponent(
-          `${query} site:${normalizeSite(rawSite)}`
-        )}`;
-
-      openUrl(googleUrl);
-      return true;
-    }
-  }
-
-  // ===================================================
-  // 4. OPEN WEBSITE
-  //
-  // Open Google
-  // Open YouTube
-  // Open Titan
-  // Open ChatGPT
-  // Go to Instagram
-  // Visit Amazon
-  // ===================================================
-
-  match = text.match(
-    /^(?:open|go\s+to|visit|navigate\s+to|launch|take\s+me\s+to)\s+(.+)$/i
-  );
-
-  if (match) {
-    const target = match[1]
-      .trim()
-      .replace(/\s+(website|site)$/i, "");
-
-    const normalizedTarget = normalizeSite(target);
-    const site = aliases[normalizedTarget] || normalizedTarget;
-
-    if (websites[site]) {
-      openUrl(websites[site]);
-      return true;
-    }
-
-    // If it is a URL
-    if (/^https?:\/\//i.test(target)) {
-      openUrl(target);
-      return true;
-    }
-
-    // If it looks like a domain
-    if (
-      /^[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/.*)?$/i.test(target)
-    ) {
-      openUrl(`https://${target}`);
-      return true;
-    }
-
-    // Unknown site name:
-    // Find its official website through Google.
-    const googleUrl =
-      `https://www.google.com/search?q=${encodeURIComponent(
-        `${target} official website`
-      )}`;
-
-    openUrl(googleUrl);
-    return true;
-  }
-
-  // ===================================================
-  // 5. SHORT SEARCH
-  //
-  // YouTube cat
-  // Amazon shoes
-  // GitHub React
-  // Wikipedia Einstein
-  // ===================================================
-
-  match = text.match(
-    /^([a-z0-9.-]+)\s+(.+)$/i
-  );
-
-  if (match) {
-    const possibleSite = normalizeSite(match[1]);
-    const query = match[2].trim();
-
-    const site = aliases[possibleSite];
-
-    if (site) {
-      const searchUrl = getWebsiteSearchUrl(
-        site,
-        query
-      );
-
-      if (searchUrl) {
-        openUrl(searchUrl);
-        return true;
-      }
-    }
-  }
-
-  // ===================================================
-  // 6. JUST THE WEBSITE NAME
-  //
-  // Google
-  // YouTube
-  // Titan
-  // ChatGPT
-  // ===================================================
-
-  const simpleSite = aliases[normalizeSite(text)];
-
-  if (simpleSite && websites[simpleSite]) {
-    openUrl(websites[simpleSite]);
-    return true;
-  }
-
-  return false;
-};
+    };
 
 
   // =====================================================
@@ -2106,137 +1856,419 @@ const handleWebsiteCommand = (command) => {
       processingRef.current =
         true;
 
-try {
+      try {
 
-  // =================================================
-  // GENERIC WEBSITE COMMAND
-  // MUST COME BEFORE GEMINI
-  // =================================================
+        // =================================================
+        // SEARCH
+        // =================================================
 
-  if (handleWebsiteCommand(cleanedCommand)) {
-    return;
-  }
+        const searchCommand =
+          extractSearchCommand(
+            cleanedCommand
+          );
 
-  // =================================================
-  // EXISTING SEARCH
-  // =================================================
+        if (searchCommand) {
 
-  const searchCommand = extractSearchCommand(
-    cleanedCommand
-  );
+          const {
+            site,
+            query
+          } = searchCommand;
 
-  if (searchCommand) {
-    const {
-      site,
-      query
-    } = searchCommand;
+          const siteName =
+            site === "x"
+              ? "X"
+              : site
+                  .charAt(0)
+                  .toUpperCase() +
+                site.slice(1);
 
-    const siteName =
-      site === "x"
-        ? "X"
-        : site.charAt(0).toUpperCase() +
-          site.slice(1);
+          const answer =
+            `Searching ${siteName} for ${query}.`;
 
-    const answer =
-      `Searching ${siteName} for ${query}.`;
+          setAiText(
+            answer
+          );
 
-    setAiText(answer);
-    setShowAIText(true);
+          setShowAIText(
+            true
+          );
 
-    await addHistory(
-      cleanedCommand,
-      answer,
-      type
-    );
+          await addHistory(
+            cleanedCommand,
+            answer,
+            type
+          );
 
-    const searchUrl =
-      getWebsiteSearchUrl(
-        site,
-        query
-      );
+          const searchUrl =
+            getWebsiteSearchUrl(
+              site,
+              query
+            );
 
-    if (searchUrl) {
-      openUrl(searchUrl);
-    }
+          if (searchUrl) {
 
-    if (shouldSpeak) {
-      speak(answer);
-    }
+            openUrl(
+              searchUrl
+            );
+          }
 
-    return;
-  }
+          if (
+            shouldSpeak
+          ) {
 
-  // =================================================
-  // GOOGLE
-  // =================================================
+            speak(
+              answer
+            );
+          }
 
-  const googleMatch =
-    cleanedCommand.match(
-      /^(?:google)\s+(.+)$/i
-    );
+          return;
+        }
 
-  if (googleMatch) {
-    const query =
-      googleMatch[1].trim();
 
-    const answer =
-      `Searching Google for ${query}.`;
+        // =================================================
+        // GOOGLE
+        // =================================================
 
-    setAiText(answer);
-    setShowAIText(true);
+        const googleMatch =
+          cleanedCommand.match(
+            /^(?:google)\s+(.+)$/i
+          );
 
-    await addHistory(
-      cleanedCommand,
-      answer,
-      type
-    );
+        if (googleMatch) {
 
-    googleSearch(query);
+          const query =
+            googleMatch[1].trim();
 
-    if (shouldSpeak) {
-      speak(answer);
-    }
+          const answer =
+            `Searching Google for ${query}.`;
 
-    return;
-  }
+          setAiText(
+            answer
+          );
 
-  // =================================================
-  // YOUTUBE
-  // =================================================
+          setShowAIText(
+            true
+          );
 
-  const youtubeMatch =
-    cleanedCommand.match(
-      /^(?:youtube|yt)\s+(.+)$/i
-    );
+          await addHistory(
+            cleanedCommand,
+            answer,
+            type
+          );
 
-  if (youtubeMatch) {
-    const query =
-      youtubeMatch[1].trim();
+          googleSearch(
+            query
+          );
 
-    const answer =
-      `Searching YouTube for ${query}.`;
+          if (
+            shouldSpeak
+          ) {
 
-    setAiText(answer);
-    setShowAIText(true);
+            speak(
+              answer
+            );
+          }
 
-    await addHistory(
-      cleanedCommand,
-      answer,
-      type
-    );
+          return;
+        }
 
-    youtubeSearch(query);
 
-    if (shouldSpeak) {
-      speak(answer);
-    }
+        // =================================================
+        // YOUTUBE
+        // =================================================
 
-    return;
-  }
+        const youtubeMatch =
+          cleanedCommand.match(
+            /^(?:youtube|yt)\s+(.+)$/i
+          );
 
-  // =================================================
-  // YOUR GEMINI CODE STARTS HERE
-  // =================================================
+        if (youtubeMatch) {
+
+          const query =
+            youtubeMatch[1].trim();
+
+          const answer =
+            `Searching YouTube for ${query}.`;
+
+          setAiText(
+            answer
+          );
+
+          setShowAIText(
+            true
+          );
+
+          await addHistory(
+            cleanedCommand,
+            answer,
+            type
+          );
+
+          youtubeSearch(
+            query
+          );
+
+          if (
+            shouldSpeak
+          ) {
+
+            speak(
+              answer
+            );
+          }
+
+          return;
+        }
+
+
+        // =================================================
+        // OPEN WEBSITE
+        // =================================================
+
+        const directMatch =
+          cleanedCommand.match(
+            /^(?:open|launch|visit|go\s+to|take\s+me\s+to)\s+(.+)$/i
+          );
+
+        if (directMatch) {
+
+          let site =
+            directMatch[1]
+              .trim()
+              .toLowerCase()
+              .replace(
+                /\s+(website|site)$/i,
+                ""
+              );
+
+          if (
+            websites[site]
+          ) {
+
+            const displayName =
+              site === "x"
+                ? "X"
+                : site
+                    .charAt(0)
+                    .toUpperCase() +
+                  site.slice(1);
+
+            const answer =
+              `Opening ${displayName}.`;
+
+            setAiText(
+              answer
+            );
+
+            setShowAIText(
+              true
+            );
+
+            await addHistory(
+              cleanedCommand,
+              answer,
+              type
+            );
+
+            openUrl(
+              websites[site]
+            );
+
+            if (
+              shouldSpeak
+            ) {
+
+              speak(
+                answer
+              );
+            }
+
+            return;
+          }
+        }
+
+
+        // =================================================
+        // GEMINI
+        // =================================================
+
+        const result =
+          await getGeminiResponseRef.current(
+            cleanedCommand
+          );
+
+        // -----------------------------------------------
+        // IMPORTANT:
+        // If user stopped/restarted while Gemini was
+        // processing, ignore the OLD response.
+        // -----------------------------------------------
+
+        if (
+          !processingRef.current
+        ) {
+
+          return;
+        }
+
+        let parsedResult =
+          result;
+
+        if (
+          typeof result ===
+          "string"
+        ) {
+
+          const cleanResult =
+            result
+              .replace(
+                /```json/gi,
+                ""
+              )
+              .replace(
+                /```/g,
+                ""
+              )
+              .trim();
+
+          try {
+
+            parsedResult =
+              JSON.parse(
+                cleanResult
+              );
+
+          } catch {
+
+            parsedResult = {
+
+              type:
+                "general",
+
+              response:
+                cleanResult
+            };
+          }
+        }
+
+        const rawResponse =
+          parsedResult?.response ||
+          parsedResult?.answer ||
+          parsedResult?.text ||
+          "Sorry, I could not understand that.";
+
+        const response =
+          cleanAIResponse(
+            rawResponse
+          );
+
+
+        // =================================================
+        // GOOGLE ACTION
+        // =================================================
+
+        if (
+          parsedResult?.type ===
+          "google_open"
+        ) {
+
+          openUrl(
+            "https://www.google.com"
+          );
+
+        } else if (
+          parsedResult?.type ===
+          "google_search"
+        ) {
+
+          if (
+            parsedResult?.query?.trim()
+          ) {
+
+            googleSearch(
+              parsedResult.query
+            );
+          }
+        }
+
+
+        // =================================================
+        // YOUTUBE ACTION
+        // =================================================
+
+        else if (
+          parsedResult?.type ===
+          "youtube_open"
+        ) {
+
+          openUrl(
+            "https://www.youtube.com"
+          );
+
+        } else if (
+          parsedResult?.type ===
+            "youtube_search" ||
+          parsedResult?.type ===
+            "youtube_play"
+        ) {
+
+          if (
+            parsedResult?.query?.trim()
+          ) {
+
+            youtubeSearch(
+              parsedResult.query
+            );
+          }
+        }
+
+
+        // =================================================
+        // CALCULATOR
+        // =================================================
+
+        else if (
+          parsedResult?.type ===
+          "calculator_open"
+        ) {
+
+          openUrl(
+            "https://www.google.com/search?q=calculator"
+          );
+        }
+
+
+        // =================================================
+        // DISPLAY
+        // =================================================
+
+        setAiText(
+          response
+        );
+
+        setShowAIText(
+          true
+        );
+
+        await addHistory(
+          cleanedCommand,
+          response,
+          type
+        );
+
+
+        // =================================================
+        // SPEAK
+        // =================================================
+
+        if (
+          shouldSpeak
+        ) {
+
+          speak(
+            response
+          );
+        }
+
       } catch (error) {
 
         console.error(
@@ -2654,7 +2686,7 @@ try {
         await addHistory(
           question,
           answer,
-          "pdf",
+          "file",
           "",
           selectedPdf.name
         );
@@ -3488,7 +3520,7 @@ try {
 
       if (
         item?.type ===
-        "pdf"
+        "file"
       ) {
 
         setHistoryFileName(
@@ -4278,7 +4310,7 @@ try {
 
 
                         {item?.type ===
-                          "pdf" && (
+                          "file" && (
 
                             <div
                               className="
