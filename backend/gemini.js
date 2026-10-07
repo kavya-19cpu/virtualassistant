@@ -26,127 +26,17 @@ const extractGeminiText = (response) => {
 };
 
 // ============================================================
-// GEMINI POST WITH RETRY
-//
-// Handles:
-// - 429 Too Many Requests
-// - 500 Internal Server Error
-// - 502 Bad Gateway
-// - 503 Service Unavailable
-// - 504 Gateway Timeout
-// - Temporary network errors
-// ============================================================
-
-async function postWithRetry(url, data, config = {}) {
-    const maxAttempts = 4;
-
-    const retryableNetworkCodes = new Set([
-        "ECONNABORTED",
-        "ETIMEDOUT",
-        "ECONNRESET",
-        "EAI_AGAIN",
-        "ENETUNREACH",
-        "ECONNREFUSED"
-    ]);
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-
-        try {
-
-            return await axios.post(
-                url,
-                data,
-                config
-            );
-
-        } catch (error) {
-
-            const status = error?.response?.status;
-
-            const retryable =
-                status === 429 ||
-                (status >= 500 && status <= 599) ||
-                retryableNetworkCodes.has(error?.code);
-
-            // ------------------------------------------------
-            // Do not retry permanent errors
-            // ------------------------------------------------
-
-            if (!retryable || attempt === maxAttempts) {
-
-                throw error;
-            }
-
-            // ------------------------------------------------
-            // Respect Retry-After if Gemini sends it
-            // ------------------------------------------------
-
-            const retryAfterHeader =
-                error?.response?.headers?.["retry-after"];
-
-            const retryAfter =
-                Number(retryAfterHeader);
-
-            // ------------------------------------------------
-            // Exponential backoff
-            //
-            // Attempt 1 → 1 second
-            // Attempt 2 → 2 seconds
-            // Attempt 3 → 4 seconds
-            //
-            // Maximum 8 seconds
-            // ------------------------------------------------
-
-            const delay =
-                Number.isFinite(retryAfter) &&
-                retryAfter > 0
-                    ? retryAfter * 1000
-                    : Math.min(
-                        1000 * (2 ** (attempt - 1)),
-                        8000
-                    );
-
-            console.warn(
-                `Gemini request failed ` +
-                `(attempt ${attempt}/${maxAttempts}); ` +
-                `retrying in ${delay}ms`,
-                {
-                    status,
-                    code: error?.code
-                }
-            );
-
-            await new Promise(
-                (resolve) => setTimeout(resolve, delay)
-            );
-        }
-    }
-}
-
-// ============================================================
 // LOG GEMINI ERROR
 // ============================================================
 
 const logGeminiError = (label, error) => {
-
     console.error("=================================");
     console.error(label);
     console.error("=================================");
 
-    console.error(
-        "MESSAGE:",
-        error?.message
-    );
-
-    console.error(
-        "CODE:",
-        error?.code
-    );
-
-    console.error(
-        "STATUS:",
-        error?.response?.status
-    );
+    console.error("MESSAGE:", error?.message);
+    console.error("CODE:", error?.code);
+    console.error("STATUS:", error?.response?.status);
 
     console.error(
         "GEMINI RESPONSE:",
@@ -157,10 +47,7 @@ const logGeminiError = (label, error) => {
         )
     );
 
-    if (
-        error?.request &&
-        !error?.response
-    ) {
+    if (error?.request && !error?.response) {
         console.error(
             "REQUEST ERROR: Gemini did not return an HTTP response."
         );
@@ -221,11 +108,8 @@ async function geminiResponse(
     assistantName,
     userName
 ) {
-
     try {
-
-        const apiUrl =
-            getGeminiApiUrl();
+        const apiUrl = getGeminiApiUrl();
 
         const prompt = `
 You are an AI assistant that answers the user's question accurately.
@@ -259,37 +143,30 @@ Begin immediately with the answer.
 Never begin with a greeting, username, assistant name, introduction, or filler.
 `;
 
-        // ====================================================
-        // NORMAL REQUEST
-        // ====================================================
-
-        const response =
-            await postWithRetry(
-                apiUrl,
-                {
-                    contents: [
-                        {
-                            parts: [
-                                {
-                                    text: prompt
-                                }
-                            ]
-                        }
-                    ],
-                    generationConfig: {
-                        temperature: 0.1
+        const response = await axios.post(
+            apiUrl,
+            {
+                contents: [
+                    {
+                        parts: [
+                            {
+                                text: prompt
+                            }
+                        ]
                     }
-                },
-                {
-                    timeout: 120000
+                ],
+                generationConfig: {
+                    temperature: 0.1
                 }
-            );
+            },
+            {
+                timeout: 120000
+            }
+        );
 
-        const answer =
-            extractGeminiText(response);
+        const answer = extractGeminiText(response);
 
         if (!answer) {
-
             throw new Error(
                 "Gemini returned an empty response"
             );
@@ -324,7 +201,6 @@ async function geminiImageResponse(
     assistantName,
     userName
 ) {
-
     try {
 
         // ====================================================
@@ -332,54 +208,34 @@ async function geminiImageResponse(
         // ====================================================
 
         if (!imageBuffer) {
-
             throw new Error(
                 "Image buffer is missing"
             );
         }
 
         if (!Buffer.isBuffer(imageBuffer)) {
-
             throw new Error(
                 "Image data is not a valid buffer"
             );
         }
 
         if (imageBuffer.length === 0) {
-
             throw new Error(
                 "Image buffer is empty"
             );
         }
 
         if (!mimeType) {
-
             throw new Error(
                 "Image MIME type is missing"
             );
         }
 
-        console.log(
-            "================================="
-        );
-
-        console.log(
-            "IMAGE INPUT DEBUG"
-        );
-
-        console.log(
-            "================================="
-        );
-
-        console.log(
-            "MIME TYPE:",
-            mimeType
-        );
-
-        console.log(
-            "BUFFER SIZE:",
-            imageBuffer.length
-        );
+        console.log("=================================");
+        console.log("IMAGE INPUT DEBUG");
+        console.log("=================================");
+        console.log("MIME TYPE:", mimeType);
+        console.log("BUFFER SIZE:", imageBuffer.length);
 
         const supportedMimeTypes = [
             "image/jpeg",
@@ -389,25 +245,18 @@ async function geminiImageResponse(
             "image/heif"
         ];
 
-        if (
-            !supportedMimeTypes.includes(
-                mimeType
-            )
-        ) {
-
+        if (!supportedMimeTypes.includes(mimeType)) {
             throw new Error(
                 `Unsupported image MIME type: ${mimeType}`
             );
         }
 
-        const apiUrl =
-            getGeminiApiUrl();
+        const apiUrl = getGeminiApiUrl();
 
         const base64Image =
             imageBuffer.toString("base64");
 
         if (!base64Image) {
-
             throw new Error(
                 "Failed to convert image to base64"
             );
@@ -652,55 +501,40 @@ Do not introduce yourself.
 Start directly with the answer.
 `;
 
-        console.log(
-            "================================="
-        );
-
-        console.log(
-            "IMAGE PASS 1 START"
-        );
-
-        console.log(
-            "================================="
-        );
+        console.log("=================================");
+        console.log("IMAGE PASS 1 START");
+        console.log("=================================");
 
         let firstResponse;
 
-        // ====================================================
-        // IMAGE PASS 1 REQUEST
-        // ====================================================
-
         try {
 
-            firstResponse =
-                await postWithRetry(
-                    apiUrl,
-                    {
-                        contents: [
-                            {
-                                parts: [
-                                    {
-                                        text: solvePrompt
-                                    },
-                                    {
-                                        inline_data: {
-                                            mime_type:
-                                                mimeType,
-                                            data:
-                                                base64Image
-                                        }
+            firstResponse = await axios.post(
+                apiUrl,
+                {
+                    contents: [
+                        {
+                            parts: [
+                                {
+                                    text: solvePrompt
+                                },
+                                {
+                                    inline_data: {
+                                        mime_type: mimeType,
+                                        data: base64Image
                                     }
-                                ]
-                            }
-                        ],
-                        generationConfig: {
-                            temperature: 0.1
+                                }
+                            ]
                         }
-                    },
-                    {
-                        timeout: 120000
+                    ],
+                    generationConfig: {
+                        temperature: 0.1
                     }
-                );
+                },
+                {
+                    timeout: 120000
+                }
+            );
 
             console.log(
                 "IMAGE PASS 1 HTTP STATUS:",
@@ -722,12 +556,9 @@ Start directly with the answer.
         }
 
         const firstAnswer =
-            extractGeminiText(
-                firstResponse
-            );
+            extractGeminiText(firstResponse);
 
         if (!firstAnswer) {
-
             throw new Error(
                 "Gemini first image pass returned empty response"
             );
@@ -919,55 +750,40 @@ Accuracy is more important than speed.
 START DIRECTLY WITH THE ANSWER.
 `;
 
-        console.log(
-            "================================="
-        );
-
-        console.log(
-            "IMAGE PASS 2 START"
-        );
-
-        console.log(
-            "================================="
-        );
+        console.log("=================================");
+        console.log("IMAGE PASS 2 START");
+        console.log("=================================");
 
         let secondResponse;
 
-        // ====================================================
-        // IMAGE PASS 2 REQUEST
-        // ====================================================
-
         try {
 
-            secondResponse =
-                await postWithRetry(
-                    apiUrl,
-                    {
-                        contents: [
-                            {
-                                parts: [
-                                    {
-                                        text: verifyPrompt
-                                    },
-                                    {
-                                        inline_data: {
-                                            mime_type:
-                                                mimeType,
-                                            data:
-                                                base64Image
-                                        }
+            secondResponse = await axios.post(
+                apiUrl,
+                {
+                    contents: [
+                        {
+                            parts: [
+                                {
+                                    text: verifyPrompt
+                                },
+                                {
+                                    inline_data: {
+                                        mime_type: mimeType,
+                                        data: base64Image
                                     }
-                                ]
-                            }
-                        ],
-                        generationConfig: {
-                            temperature: 0.1
+                                }
+                            ]
                         }
-                    },
-                    {
-                        timeout: 120000
+                    ],
+                    generationConfig: {
+                        temperature: 0.1
                     }
-                );
+                },
+                {
+                    timeout: 120000
+                }
+            );
 
             console.log(
                 "IMAGE PASS 2 HTTP STATUS:",
@@ -985,25 +801,16 @@ START DIRECTLY WITH THE ANSWER.
                 error
             );
 
-            console.warn(
-                "Image verification failed; returning the first answer."
-            );
-
-            return firstAnswer;
+            throw error;
         }
 
         const verifiedAnswer =
-            extractGeminiText(
-                secondResponse
-            );
+            extractGeminiText(secondResponse);
 
         if (!verifiedAnswer) {
-
-            console.warn(
-                "Image verification returned empty response; returning first answer."
+            throw new Error(
+                "Gemini image verification returned empty response"
             );
-
-            return firstAnswer;
         }
 
         console.log(
@@ -1048,63 +855,39 @@ async function geminiPdfResponse(
     assistantName,
     userName
 ) {
-
     try {
 
-        // ====================================================
-        // VALIDATE PDF
-        // ====================================================
-
         if (!pdfBuffer) {
-
             throw new Error(
                 "PDF buffer is missing"
             );
         }
 
         if (!Buffer.isBuffer(pdfBuffer)) {
-
             throw new Error(
                 "PDF data is not a valid buffer"
             );
         }
 
         if (pdfBuffer.length === 0) {
-
             throw new Error(
                 "PDF buffer is empty"
             );
         }
 
-        console.log(
-            "================================="
-        );
-
-        console.log(
-            "PDF INPUT DEBUG"
-        );
-
-        console.log(
-            "================================="
-        );
+        console.log("=================================");
+        console.log("PDF INPUT DEBUG");
+        console.log("=================================");
 
         console.log(
             "PDF BUFFER SIZE:",
             pdfBuffer.length
         );
 
-        const apiUrl =
-            getGeminiApiUrl();
+        const apiUrl = getGeminiApiUrl();
 
         const base64Pdf =
             pdfBuffer.toString("base64");
-
-        if (!base64Pdf) {
-
-            throw new Error(
-                "Failed to convert PDF to base64"
-            );
-        }
 
         // ====================================================
         // PASS 1 — SOLVE PDF
@@ -1271,55 +1054,41 @@ Do not introduce yourself.
 Start directly with the answer.
 `;
 
-        console.log(
-            "================================="
-        );
-
-        console.log(
-            "PDF PASS 1 START"
-        );
-
-        console.log(
-            "================================="
-        );
+        console.log("=================================");
+        console.log("PDF PASS 1 START");
+        console.log("=================================");
 
         let firstResponse;
 
-        // ====================================================
-        // PDF PASS 1 REQUEST
-        // ====================================================
-
         try {
 
-            firstResponse =
-                await postWithRetry(
-                    apiUrl,
-                    {
-                        contents: [
-                            {
-                                parts: [
-                                    {
-                                        text: solvePrompt
-                                    },
-                                    {
-                                        inline_data: {
-                                            mime_type:
-                                                "application/pdf",
-                                            data:
-                                                base64Pdf
-                                        }
+            firstResponse = await axios.post(
+                apiUrl,
+                {
+                    contents: [
+                        {
+                            parts: [
+                                {
+                                    text: solvePrompt
+                                },
+                                {
+                                    inline_data: {
+                                        mime_type:
+                                            "application/pdf",
+                                        data: base64Pdf
                                     }
-                                ]
-                            }
-                        ],
-                        generationConfig: {
-                            temperature: 0.1
+                                }
+                            ]
                         }
-                    },
-                    {
-                        timeout: 120000
+                    ],
+                    generationConfig: {
+                        temperature: 0.1
                     }
-                );
+                },
+                {
+                    timeout: 120000
+                }
+            );
 
             console.log(
                 "PDF PASS 1 HTTP STATUS:",
@@ -1341,12 +1110,9 @@ Start directly with the answer.
         }
 
         const firstAnswer =
-            extractGeminiText(
-                firstResponse
-            );
+            extractGeminiText(firstResponse);
 
         if (!firstAnswer) {
-
             throw new Error(
                 "Gemini first PDF pass returned empty response"
             );
@@ -1498,55 +1264,41 @@ Accuracy is more important than speed.
 START DIRECTLY WITH THE FINAL ANSWER.
 `;
 
-        console.log(
-            "================================="
-        );
-
-        console.log(
-            "PDF PASS 2 START"
-        );
-
-        console.log(
-            "================================="
-        );
+        console.log("=================================");
+        console.log("PDF PASS 2 START");
+        console.log("=================================");
 
         let secondResponse;
 
-        // ====================================================
-        // PDF PASS 2 REQUEST
-        // ====================================================
-
         try {
 
-            secondResponse =
-                await postWithRetry(
-                    apiUrl,
-                    {
-                        contents: [
-                            {
-                                parts: [
-                                    {
-                                        text: verifyPrompt
-                                    },
-                                    {
-                                        inline_data: {
-                                            mime_type:
-                                                "application/pdf",
-                                            data:
-                                                base64Pdf
-                                        }
+            secondResponse = await axios.post(
+                apiUrl,
+                {
+                    contents: [
+                        {
+                            parts: [
+                                {
+                                    text: verifyPrompt
+                                },
+                                {
+                                    inline_data: {
+                                        mime_type:
+                                            "application/pdf",
+                                        data: base64Pdf
                                     }
-                                ]
-                            }
-                        ],
-                        generationConfig: {
-                            temperature: 0.1
+                                }
+                            ]
                         }
-                    },
-                    {
-                        timeout: 120000
+                    ],
+                    generationConfig: {
+                        temperature: 0.1
                     }
-                );
+                },
+                {
+                    timeout: 120000
+                }
+            );
 
             console.log(
                 "PDF PASS 2 HTTP STATUS:",
@@ -1564,25 +1316,16 @@ START DIRECTLY WITH THE FINAL ANSWER.
                 error
             );
 
-            console.warn(
-                "PDF verification failed; returning the first answer."
-            );
-
-            return firstAnswer;
+            throw error;
         }
 
         const verifiedAnswer =
-            extractGeminiText(
-                secondResponse
-            );
+            extractGeminiText(secondResponse);
 
         if (!verifiedAnswer) {
-
-            console.warn(
-                "PDF verification returned empty response; returning first answer."
+            throw new Error(
+                "Gemini PDF verification returned empty response"
             );
-
-            return firstAnswer;
         }
 
         console.log(
