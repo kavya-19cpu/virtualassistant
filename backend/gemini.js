@@ -25,6 +25,47 @@ const extractGeminiText = (response) => {
         .trim();
 };
 
+
+// Add after extractGeminiText().
+async function postWithRetry(url, data, config = {}) {
+    const maxAttempts = 4;
+    const retryableNetworkCodes = new Set([
+        "ECONNABORTED",
+        "ETIMEDOUT",
+        "ECONNRESET",
+        "EAI_AGAIN"
+    ]);
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            return await axios.post(url, data, config);
+        } catch (error) {
+            const status = error.response?.status;
+            const retryable =
+                status === 429 ||
+                (status >= 500 && status <= 599) ||
+                retryableNetworkCodes.has(error.code);
+
+            if (!retryable || attempt === maxAttempts) {
+                throw error;
+            }
+
+            const retryAfter = Number(error.response?.headers?.["retry-after"]);
+            const delay = Number.isFinite(retryAfter) && retryAfter > 0
+                ? retryAfter * 1000
+                : Math.min(1000 * (2 ** (attempt - 1)), 8000);
+
+            console.warn(
+                `Gemini request failed (attempt ${attempt}/${maxAttempts}); retrying in ${delay}ms`,
+                { status, code: error.code }
+            );
+
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+}
+
+
 // ============================================================
 // LOG GEMINI ERROR
 // ============================================================
@@ -509,7 +550,7 @@ Start directly with the answer.
 
         try {
 
-            firstResponse = await axios.post(
+          firstResponse = await postWithRetry(
                 apiUrl,
                 {
                     contents: [
@@ -801,7 +842,10 @@ START DIRECTLY WITH THE ANSWER.
                 error
             );
 
-            throw error;
+            console.warn(
+                "Image verification failed; returning the first answer."
+            );
+            return firstAnswer;
         }
 
         const verifiedAnswer =
@@ -1062,7 +1106,7 @@ Start directly with the answer.
 
         try {
 
-            firstResponse = await axios.post(
+           firstResponse = await postWithRetry(
                 apiUrl,
                 {
                     contents: [
@@ -1316,7 +1360,10 @@ START DIRECTLY WITH THE FINAL ANSWER.
                 error
             );
 
-            throw error;
+            console.warn(
+                "PDF verification failed; returning the first answer."
+            );
+            return firstAnswer;
         }
 
         const verifiedAnswer =
